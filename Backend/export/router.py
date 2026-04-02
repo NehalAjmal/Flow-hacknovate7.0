@@ -1,6 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import Response
+import asyncio
+
+from .schemas import FocusDNARequest
 from .service import generate_weekly_insight, draw_focus_dna_card
 
+router = APIRouter()
 
 @router.post("/focus-dna")
 async def export_focus_dna(payload: FocusDNARequest):

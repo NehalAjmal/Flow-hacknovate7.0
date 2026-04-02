@@ -1,3 +1,10 @@
+import asyncio
+import io
+from PIL import Image, ImageDraw, ImageFont
+import google.generativeai as genai
+from config import settings
+from .schemas import FocusDNARequest
+
 async def generate_weekly_insight(data: FocusDNARequest) -> str:
     """
     Ask Gemini to produce one specific, personal insight based on this
@@ -76,17 +83,28 @@ def draw_focus_dna_card(data: FocusDNARequest, insight: str) -> bytes:
  
     # Try to load a system font, fall back to default if not available.
     # On Mac, Arial is available. The fallback is Pillow's built-in bitmap font.
+    # Safely load fonts with a guaranteed fallback
     try:
-        font_large  = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 32)
-        font_medium = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 22)
-        font_small  = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 16)
-        font_tiny   = ImageFont.truetype("/System/Library/Fonts/Arial.ttf", 13)
-    except:
-        # Pillow built-in — no size control but always available
-        font_large  = ImageFont.load_default()
-        font_medium = font_large
-        font_small  = font_large
-        font_tiny   = font_large
+        # Try finding Arial by name (macOS usually supports this)
+        font_large  = ImageFont.truetype("Arial", 32)
+        font_medium = ImageFont.truetype("Arial", 22)
+        font_small  = ImageFont.truetype("Arial", 16)
+        font_tiny   = ImageFont.truetype("Arial", 13)
+    except IOError:
+        try:
+            # Try the hardcoded macOS path
+            font_large  = ImageFont.truetype("/Library/Fonts/Arial.ttf", 32)
+            font_medium = ImageFont.truetype("/Library/Fonts/Arial.ttf", 22)
+            font_small  = ImageFont.truetype("/Library/Fonts/Arial.ttf", 16)
+            font_tiny   = ImageFont.truetype("/Library/Fonts/Arial.ttf", 13)
+        except IOError:
+            # Bulletproof Fallback: Use Pillow's default built-in font
+            # (Note: The default font cannot be resized, so all text will be the same size,
+            # but it guarantees the server won't crash)
+            font_large = ImageFont.load_default()
+            font_medium = ImageFont.load_default()
+            font_small = ImageFont.load_default()
+            font_tiny = ImageFont.load_default()
  
     # ── Header bar ────────────────────────────────────────────────────────────
     draw.rectangle([(0, 0), (W, 60)], fill=(13, 20, 40))

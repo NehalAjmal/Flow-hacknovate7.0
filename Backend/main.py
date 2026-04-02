@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from sessions.router import router as session_router
+from calendar_app.router import router as calendar_router
+from export.router import router as export_router
+
 app = FastAPI(title="FLOW API")
 
 app.add_middleware(

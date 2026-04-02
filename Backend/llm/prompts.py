@@ -1,3 +1,6 @@
+
+
+
 STUCK_PROMPT_TEMPLATE = f"""
 You are FLOW, an AI cognitive assistant helping a developer who is stuck.
  

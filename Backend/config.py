@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     database_url: str
 
     # Gemini model to use — gemini-1.5-flash is fast and free-tier friendly
-    gemini_model: str = "gemini-1.5-flash"
+    gemini_model: str = "gemini-2.5-flash"
 
     # How long a JWT token stays valid (in minutes)
     access_token_expire_minutes: int = 60 * 24  # 24 hours

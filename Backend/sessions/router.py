@@ -1,6 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
+import google.generativeai as genai
+import json
 from llm.client import get_gemini_model
+from config import settings
+from .schemas import StuckRequest, StuckResponse, StuckSuggestion
 
+router = APIRouter()
 
 @router.post("/stuck", response_model=StuckResponse)
 async def get_stuck_suggestions(payload: StuckRequest):

@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 from .service import compute_warning_level, build_recommendation
+from .schemas import CalendarContext
 
+router = APIRouter()
 
 @router.get("/context", response_model=CalendarContext)
 async def get_calendar_context(
