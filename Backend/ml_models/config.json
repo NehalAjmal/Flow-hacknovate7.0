@@ -1,0 +1,12 @@
+{
+  "ear_threshold": 0.55,
+  "blink_min": 2,
+  "blink_max": 8,
+  "fatigue_min": 8,
+  "microsleep_frames": 25,
+  "microsleep_window_sec": 60,
+  "low_microsleeps": 1,
+  "high_microsleeps": 3,
+  "critical_microsleeps": 5,
+  "head_down_frames": 5
+}
