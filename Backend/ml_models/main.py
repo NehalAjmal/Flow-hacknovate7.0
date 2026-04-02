@@ -204,25 +204,30 @@ while True:
                 threading.Thread(target=beep).start()
                 last_beep_time = time.time()
 
-        # -------- LOG -------- #
-        output = {
-            "timestamp": time.time(),
-            "fatigue_score": round(fatigue_score, 3),
-            "fatigue_state": fatigue_state,
-            "microsleep_level": microsleep_level,
-            "microsleeps_last_60s": microsleep_count,
-            "yawning": yawning,
-            "head_down": head_down,
-            "event": event
-        }
+    # -------- LOG -------- #
+    output = {
+        "timestamp": time.time(),
+        "fatigue_score": round(fatigue_score, 3),
+        "fatigue_state": fatigue_state,
+        "microsleep_level": microsleep_level,
+        "microsleeps_last_60s": microsleep_count,
+        "yawning": yawning,
+        "head_down": head_down,
+        "event": event
+    }
 
-        log_data.append(output)
+    log_data.append(output)
 
-        if time.time() - last_save_time > 5:
-            with open("fatigue_log.json", "w") as f:
-                json.dump(log_data, f, indent=4)
-            last_save_time = time.time()
+    # 🔥 KEEP ONLY LAST 10 ENTRIES
+    if len(log_data) > 10:
+        log_data = log_data[-10:]
 
+    # -------- SAVE -------- #
+    if time.time() - last_save_time > 5:
+        with open("fatigue.json", "w") as f:
+            json.dump(log_data, f, indent=4)
+
+        last_save_time = time.time()
     # -------- ALWAYS SHOW SCORE -------- #
     cv2.putText(frame, f"Fatigue: {fatigue_score:.2f}", (20, 40),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,255,255), 2)
