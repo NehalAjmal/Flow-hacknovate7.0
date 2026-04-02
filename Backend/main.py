@@ -10,6 +10,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(session_router, prefix="/session", tags=["Session"])
+app.include_router(calendar_router, prefix="/calendar", tags=["Calendar"])
+app.include_router(export_router, prefix="/export", tags=["Export"])
+
 @app.get("/")
 def root():
     return {"status": "FLOW backend running"}
