@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
-import 'theme.dart';
+import '../core/theme.dart';
 
 class PatternsScreen extends StatefulWidget {
-  const PatternsScreen({Key? key}) : super(key: key);
+  const PatternsScreen({super.key});
 
   @override
   State<PatternsScreen> createState() => _PatternsScreenState();
@@ -11,8 +11,6 @@ class PatternsScreen extends StatefulWidget {
 
 class _PatternsScreenState extends State<PatternsScreen> {
   String _selectedPeriod = 'Week';
-  
-  // Dummy data for the heatmap to match the redesign (28 days)
   final List<double> _heatmapData = List.generate(28, (index) => Random().nextDouble());
 
   @override
@@ -42,7 +40,7 @@ class _PatternsScreenState extends State<PatternsScreen> {
                           const SizedBox(width: 8),
                           Expanded(child: _buildStatPill(context, "14%", "Avg drift", isWarning: true)),
                         ],
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -58,28 +56,21 @@ class _PatternsScreenState extends State<PatternsScreen> {
     );
   }
 
-  // ─── TOP BAR & TOGGLE ───────────────────────────────────────────────────
   Widget _buildTopBar(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "YOUR COGNITIVE PROFILE",
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: isDark ? FlowTheme.text3Dark : FlowTheme.text3Light,
-              ),
-            ),
+            Text("YOUR COGNITIVE PROFILE",
+                style: theme.textTheme.labelMedium?.copyWith(color: isDark ? FlowTheme.text3Dark : FlowTheme.text3Light)),
             const SizedBox(height: 2),
             Text("Patterns & Insights", style: theme.textTheme.headlineLarge),
           ],
         ),
-        // Custom Toggle Row
         Container(
           padding: const EdgeInsets.all(3),
           decoration: BoxDecoration(
@@ -98,18 +89,15 @@ class _PatternsScreenState extends State<PatternsScreen> {
                   decoration: BoxDecoration(
                     color: isSelected ? theme.cardColor : Colors.transparent,
                     borderRadius: BorderRadius.circular(100),
-                    boxShadow: isSelected 
-                      ? [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 2))]
-                      : [],
+                    boxShadow: isSelected
+                        ? [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 2))]
+                        : [],
                   ),
-                  child: Text(
-                    period,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? theme.textTheme.bodyLarge?.color : theme.textTheme.bodySmall?.color,
-                    ),
-                  ),
+                  child: Text(period,
+                      style: TextStyle(
+                        fontSize: 12, fontWeight: FontWeight.w600,
+                        color: isSelected ? theme.textTheme.bodyLarge?.color : theme.textTheme.bodySmall?.color,
+                      )),
                 ),
               );
             }).toList(),
@@ -119,12 +107,10 @@ class _PatternsScreenState extends State<PatternsScreen> {
     );
   }
 
-  // ─── PEAK HOURS CHART ───────────────────────────────────────────────────
   Widget _buildPeakHoursChart(BuildContext context) {
     final bars = [0.30, 0.15, 0.10, 0.85, 0.92, 0.78, 0.50, 0.35, 0.70, 0.65, 0.40, 0.20];
     final hours = ['7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18'];
     final theme = Theme.of(context);
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -144,11 +130,9 @@ class _PatternsScreenState extends State<PatternsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: List.generate(bars.length, (index) {
                   final h = bars[index];
-                  // If it's the 12 PM trough (index 6), make it orange/fatigue color
-                  final isTrough = index == 6; 
+                  final isTrough = index == 6;
                   final color = isTrough ? theme.colorScheme.secondary : theme.primaryColor;
                   final opacity = h > 0.7 ? 0.9 : (h > 0.4 ? 0.5 : 0.3);
-
                   return Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 1.5),
@@ -161,7 +145,7 @@ class _PatternsScreenState extends State<PatternsScreen> {
                               child: Container(
                                 width: double.infinity,
                                 decoration: BoxDecoration(
-                                  color: color.withOpacity(opacity),
+                                  color: color.withValues(alpha: opacity),
                                   borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                                 ),
                               ),
@@ -182,7 +166,6 @@ class _PatternsScreenState extends State<PatternsScreen> {
     );
   }
 
-  // ─── RIGHT COLUMN CARDS ─────────────────────────────────────────────────
   Widget _buildCycleCard(BuildContext context) {
     return Container(
       width: double.infinity,
@@ -195,20 +178,16 @@ class _PatternsScreenState extends State<PatternsScreen> {
         ),
         borderRadius: BorderRadius.circular(28),
       ),
-      child: Column(
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
+        children: [
           Text("PERSONAL CYCLE", style: TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'DM Mono', letterSpacing: 1.5)),
           SizedBox(height: 4),
-          Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(text: "92 ", style: TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -2)),
-                TextSpan(text: "min", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-              ],
-            ),
-          ),
+          Text.rich(TextSpan(children: [
+            TextSpan(text: "92 ", style: TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -2)),
+            TextSpan(text: "min", style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+          ])),
           SizedBox(height: 2),
           Text("Your avg ultradian period", style: TextStyle(fontSize: 12, color: Colors.white70)),
         ],
@@ -220,13 +199,9 @@ class _PatternsScreenState extends State<PatternsScreen> {
     final theme = Theme.of(context);
     final bgColor = isWarning ? theme.colorScheme.secondaryContainer : theme.colorScheme.primaryContainer;
     final valColor = isWarning ? theme.colorScheme.secondary : theme.primaryColor;
-
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20)),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -238,7 +213,6 @@ class _PatternsScreenState extends State<PatternsScreen> {
     );
   }
 
-  // ─── AI INSIGHTS ────────────────────────────────────────────────────────
   Widget _buildInsightsCard(BuildContext context) {
     return Card(
       child: Padding(
@@ -251,10 +225,7 @@ class _PatternsScreenState extends State<PatternsScreen> {
                 Text("AI insights this week", style: Theme.of(context).textTheme.headlineSmall),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(100),
-                  ),
+                  decoration: BoxDecoration(color: Theme.of(context).colorScheme.primaryContainer, borderRadius: BorderRadius.circular(100)),
                   child: Text("↑ 3 new", style: Theme.of(context).textTheme.labelLarge?.copyWith(color: Theme.of(context).primaryColor, fontSize: 10)),
                 ),
               ],
@@ -276,18 +247,12 @@ class _PatternsScreenState extends State<PatternsScreen> {
   Widget _buildInsightItem(BuildContext context, String emoji, String title, String sub, String tag, String type) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
     Color bgColor = theme.colorScheme.primaryContainer;
     if (type == "orange") bgColor = isDark ? FlowTheme.fatigueBgDark : FlowTheme.fatigueBgLight;
     if (type == "rose") bgColor = isDark ? FlowTheme.driftBgDark : FlowTheme.driftBgLight;
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.transparent),
-      ),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.transparent)),
       child: Row(
         children: [
           Container(
@@ -312,7 +277,6 @@ class _PatternsScreenState extends State<PatternsScreen> {
     );
   }
 
-  // ─── HEATMAP ────────────────────────────────────────────────────────────
   Widget _buildHeatmapCard(BuildContext context) {
     return Card(
       child: Padding(
@@ -322,49 +286,39 @@ class _PatternsScreenState extends State<PatternsScreen> {
           children: [
             Text("Focus heatmap — last 28 days", style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 14),
-            // The Grid
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7, // 7 days a week
-                crossAxisSpacing: 4,
-                mainAxisSpacing: 4,
-                childAspectRatio: 1,
+                crossAxisCount: 7, crossAxisSpacing: 4, mainAxisSpacing: 4, childAspectRatio: 1,
               ),
               itemCount: 28,
               itemBuilder: (context, index) {
                 final val = _heatmapData[index];
                 double opacity = 0.2;
-                if (val > 0.8) opacity = 1.0;
-                else if (val > 0.6) opacity = 0.85;
-                else if (val > 0.4) opacity = 0.65;
-                else if (val > 0.2) opacity = 0.4;
-                
+                if (val > 0.8) { opacity = 1.0; }
+                else if (val > 0.6) { opacity = 0.85; }
+                else if (val > 0.4) { opacity = 0.65; }
+                else if (val > 0.2) { opacity = 0.4; }
                 return Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor.withOpacity(opacity),
+                    color: Theme.of(context).primaryColor.withValues(alpha: opacity),
                     borderRadius: BorderRadius.circular(6),
                   ),
                 );
               },
             ),
             const SizedBox(height: 14),
-            // Legend
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text("LESS", style: Theme.of(context).textTheme.labelSmall),
                 const SizedBox(width: 8),
-                _buildLegendBox(0.1),
-                _buildLegendBox(0.3),
-                _buildLegendBox(0.6),
-                _buildLegendBox(0.85),
-                _buildLegendBox(1.0),
+                _buildLegendBox(0.1), _buildLegendBox(0.3), _buildLegendBox(0.6), _buildLegendBox(0.85), _buildLegendBox(1.0),
                 const SizedBox(width: 8),
                 Text("MORE", style: Theme.of(context).textTheme.labelSmall),
               ],
-            )
+            ),
           ],
         ),
       ),
@@ -376,7 +330,7 @@ class _PatternsScreenState extends State<PatternsScreen> {
       width: 10, height: 10,
       margin: const EdgeInsets.symmetric(horizontal: 2),
       decoration: BoxDecoration(
-        color: Theme.of(context).primaryColor.withOpacity(opacity),
+        color: Theme.of(context).primaryColor.withValues(alpha: opacity),
         borderRadius: BorderRadius.circular(3),
       ),
     );
@@ -385,10 +339,8 @@ class _PatternsScreenState extends State<PatternsScreen> {
   Widget _buildTag(BuildContext context, String text, {bool isGreen = false, bool isOrange = false, bool isRose = false}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
     Color bgColor = theme.colorScheme.primaryContainer;
     Color textColor = theme.primaryColor;
-
     if (isOrange) {
       bgColor = isDark ? FlowTheme.fatigueBgDark : FlowTheme.fatigueBgLight;
       textColor = theme.colorScheme.secondary;
@@ -396,7 +348,6 @@ class _PatternsScreenState extends State<PatternsScreen> {
       bgColor = isDark ? FlowTheme.driftBgDark : FlowTheme.driftBgLight;
       textColor = theme.colorScheme.error;
     }
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(100)),

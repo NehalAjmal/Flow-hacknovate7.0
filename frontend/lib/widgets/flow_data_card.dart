@@ -9,7 +9,7 @@ class FlowDataCard extends StatefulWidget {
   const FlowDataCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(24.0), 
+    this.padding = const EdgeInsets.all(24.0),
     this.backgroundColor,
     this.borderColor,
   });
@@ -24,7 +24,6 @@ class _FlowDataCardState extends State<FlowDataCard> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
@@ -37,14 +36,16 @@ class _FlowDataCardState extends State<FlowDataCard> {
           padding: widget.padding,
           decoration: BoxDecoration(
             color: widget.backgroundColor ?? theme.cardColor,
-            borderRadius: BorderRadius.circular(24.0), // More organic rounding
+            borderRadius: BorderRadius.circular(24.0),
             border: Border.all(
-              color: _isHovered ? theme.primaryColor.withOpacity(0.5) : (widget.borderColor ?? theme.dividerColor), 
+              color: _isHovered
+                  ? theme.primaryColor.withValues(alpha: 0.5)
+                  : (widget.borderColor ?? theme.dividerColor),
               width: 1.5,
             ),
-            boxShadow: _isHovered ? [
-              BoxShadow(color: theme.primaryColor.withOpacity(0.1), blurRadius: 30, offset: const Offset(0, 10))
-            ] : [],
+            boxShadow: _isHovered
+                ? [BoxShadow(color: theme.primaryColor.withValues(alpha: 0.1), blurRadius: 30, offset: const Offset(0, 10))]
+                : [],
           ),
           child: widget.child,
         ),

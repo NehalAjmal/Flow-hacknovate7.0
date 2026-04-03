@@ -1,88 +1,98 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
-class SkeletonBox extends StatefulWidget {
-  final double width;
-  final double height;
-  final BorderRadius? borderRadius;
+/// Shows a countdown pill to the next meeting, e.g. "Team standup · 14m"
+class MeetingCountdownPill extends StatefulWidget {
+  final DateTime nextMeetingTime;
+  final String meetingTitle;
 
-  const SkeletonBox({
-    Key? key,
-    required this.width,
-    required this.height,
-    this.borderRadius,
-  }) : super(key: key);
+  const MeetingCountdownPill({
+    super.key,
+    required this.nextMeetingTime,
+    required this.meetingTitle,
+  });
 
   @override
-  State<SkeletonBox> createState() => _SkeletonBoxState();
+  State<MeetingCountdownPill> createState() => _MeetingCountdownPillState();
 }
 
-class _SkeletonBoxState extends State<SkeletonBox> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
+class _MeetingCountdownPillState extends State<MeetingCountdownPill> {
+  late Timer _timer;
+  late Duration _remaining;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this, 
-      duration: const Duration(milliseconds: 1200)
-    )..repeat(reverse: true);
-    
-    _animation = Tween<double>(begin: 0.2, end: 0.6).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut)
-    );
+    _remaining = widget.nextMeetingTime.difference(DateTime.now());
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) {
+        setState(() {
+          _remaining = widget.nextMeetingTime.difference(DateTime.now());
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _timer.cancel();
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark ? Colors.white : Colors.black;
-
-    return AnimatedBuilder(
-      animation: _animation,
-      builder: (context, child) {
-        return Container(
-          width: widget.width,
-          height: widget.height,
-          decoration: BoxDecoration(
-            color: baseColor.withOpacity(_animation.value * 0.1),
-            borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
-          ),
-        );
-      },
-    );
+  String get _label {
+    if (_remaining.isNegative) return widget.meetingTitle;
+    final minutes = _remaining.inMinutes;
+    if (minutes < 60) return '${widget.meetingTitle} · ${minutes}m';
+    final hours = _remaining.inHours;
+    return '${widget.meetingTitle} · ${hours}h ${minutes % 60}m';
   }
-}
 
-// Complete pre-built layout for the large Dashboard stat cards
-class SkeletonStatCard extends StatelessWidget {
-  const SkeletonStatCard({Key? key}) : super(key: key);
+  bool get _isUrgent => !_remaining.isNegative && _remaining.inMinutes <= 10;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SkeletonBox(width: 80, height: 14, borderRadius: BorderRadius.circular(4)),
-            const SizedBox(height: 16),
-            SkeletonBox(width: 120, height: 48, borderRadius: BorderRadius.circular(8)),
-            const SizedBox(height: 16),
-            SkeletonBox(width: double.infinity, height: 8, borderRadius: BorderRadius.circular(4)),
-            const SizedBox(height: 8),
-            SkeletonBox(width: double.infinity, height: 8, borderRadius: BorderRadius.circular(4)),
-            const SizedBox(height: 8),
-            SkeletonBox(width: 150, height: 8, borderRadius: BorderRadius.circular(4)),
-          ],
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final bgColor = _isUrgent
+        ? theme.colorScheme.errorContainer
+        : (isDark
+            ? const Color(0xFF1E3028) // primaryTintDark
+            : const Color(0xFFE6EFE8)); // primaryTintLight
+
+    final textColor = _isUrgent
+        ? theme.colorScheme.error
+        : theme.primaryColor;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(100),
+        border: Border.all(
+          color: textColor.withValues(alpha: 0.3),
+          width: 1,
         ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            _isUrgent ? Icons.alarm_rounded : Icons.calendar_today_rounded,
+            size: 13,
+            color: textColor,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            _label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: textColor,
+              fontFamily: 'DM Mono',
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'theme.dart';
+import '../core/theme.dart';
 
 class TeamScreen extends StatelessWidget {
   const TeamScreen({Key? key}) : super(key: key);

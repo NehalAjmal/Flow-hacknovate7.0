@@ -6,11 +6,11 @@ class SkeletonBox extends StatefulWidget {
   final BorderRadius? borderRadius;
 
   const SkeletonBox({
-    Key? key,
+    super.key,
     required this.width,
     required this.height,
     this.borderRadius,
-  }) : super(key: key);
+  });
 
   @override
   State<SkeletonBox> createState() => _SkeletonBoxState();
@@ -35,10 +35,8 @@ class _SkeletonBoxState extends State<SkeletonBox> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final baseColor = isDark ? Colors.white : Colors.black;
-
     return AnimatedBuilder(
       animation: _animation,
       builder: (context, child) {
@@ -46,7 +44,7 @@ class _SkeletonBoxState extends State<SkeletonBox> with SingleTickerProviderStat
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: baseColor.withOpacity(_animation.value * 0.1),
+            color: baseColor.withValues(alpha: _animation.value * 0.1),
             borderRadius: widget.borderRadius ?? BorderRadius.circular(12),
           ),
         );
@@ -55,9 +53,8 @@ class _SkeletonBoxState extends State<SkeletonBox> with SingleTickerProviderStat
   }
 }
 
-// A pre-built skeleton for a standard data card
 class SkeletonStatCard extends StatelessWidget {
-  const SkeletonStatCard({Key? key}) : super(key: key);
+  const SkeletonStatCard({super.key});
 
   @override
   Widget build(BuildContext context) {

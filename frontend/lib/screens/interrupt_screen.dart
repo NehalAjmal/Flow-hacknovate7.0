@@ -1,19 +1,13 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import '../theme.dart';
+import '../core/theme.dart';
 
-enum InterruptType {
-  fatigue,
-  drift,
-  ultradianBreak,
-  userRequested,
-}
+enum InterruptType { fatigue, drift, ultradianBreak, userRequested }
 
 class InterruptScreen extends StatefulWidget {
   final InterruptType type;
-  
-  const InterruptScreen({Key? key, required this.type}) : super(key: key);
+  const InterruptScreen({super.key, required this.type});
 
   @override
   State<InterruptScreen> createState() => _InterruptScreenState();
@@ -24,7 +18,6 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
   bool _timerStarted = false;
   int _secondsLeft = 0;
   Timer? _countdownTimer;
-
   late AnimationController _breatheCtrl;
   late Animation<double> _breatheAnim;
   late AnimationController _entryCtrl;
@@ -33,26 +26,15 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
   @override
   void initState() {
     super.initState();
-    // Default times based on the interrupt type
     _selectedMinutes = switch (widget.type) {
       InterruptType.fatigue => 5,
       InterruptType.ultradianBreak => 10,
       InterruptType.drift => 5,
       InterruptType.userRequested => 5,
     };
-
-    // The expanding/contracting breathing animation
-    _breatheCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 4000),
-    )..repeat(reverse: true);
+    _breatheCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 4000))..repeat(reverse: true);
     _breatheAnim = CurvedAnimation(parent: _breatheCtrl, curve: Curves.easeInOut);
-
-    // Initial page load slide-up animation
-    _entryCtrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    )..forward();
+    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 500))..forward();
     _entryAnim = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic);
   }
 
@@ -65,22 +47,12 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
   }
 
   void _startBreak() {
-    setState(() {
-      _timerStarted = true;
-      _secondsLeft = _selectedMinutes * 60;
-    });
-
+    setState(() { _timerStarted = true; _secondsLeft = _selectedMinutes * 60; });
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
+      if (!mounted) { t.cancel(); return; }
       setState(() {
         _secondsLeft--;
-        if (_secondsLeft <= 0) {
-          t.cancel();
-          _onBreakComplete();
-        }
+        if (_secondsLeft <= 0) { t.cancel(); _onBreakComplete(); }
       });
     });
   }
@@ -97,10 +69,7 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
         content: Text('Ready to resume your session?', style: Theme.of(context).textTheme.bodyMedium),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Exit interrupt screen back to session
-            },
+            onPressed: () { Navigator.pop(context); Navigator.pop(context); },
             child: Text('Resume session →', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w600)),
           ),
         ],
@@ -116,40 +85,36 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
 
   _InterruptCopy get _copyConfig {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (widget.type) {
-      case InterruptType.fatigue:
-        return _InterruptCopy(
-          icon: Icons.battery_alert_rounded,
-          color: isDark ? FlowTheme.fatigueDark : FlowTheme.fatigueLight,
-          title: 'Your brain needs a reset',
-          message: "You've been in deep focus for a while — your cognitive reserves are depleting. A break now will buy you 45 more minutes of quality work.",
-          tag: 'AI DETECTED — FATIGUE',
-        );
-      case InterruptType.drift:
-        return _InterruptCopy(
-          icon: Icons.cloud_off_rounded,
-          color: isDark ? FlowTheme.driftDark : FlowTheme.driftLight,
-          title: "You've drifted from your intention",
-          message: "Context drift is normal. Noticing it is the skill. FLOW paused your session to help you reset and return intentionally.",
-          tag: 'AI DETECTED — DRIFT',
-        );
-      case InterruptType.ultradianBreak:
-        return _InterruptCopy(
-          icon: Icons.waves_rounded,
-          color: isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight,
-          title: 'Natural break point reached',
-          message: "You've completed a full ultradian focus cycle. This is the ideal moment for a 10–15 min break — not too early, not too late.",
-          tag: 'ULTRADIAN RHYTHM',
-        );
-      case InterruptType.userRequested:
-        return _InterruptCopy(
-          icon: Icons.self_improvement_rounded,
-          color: isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight,
-          title: 'Taking a break',
-          message: "Good call. Step away, let your visual focus relax, and come back fresh. FLOW will keep your session warm.",
-          tag: 'USER INITIATED',
-        );
-    }
+    return switch (widget.type) {
+      InterruptType.fatigue => _InterruptCopy(
+        icon: Icons.battery_alert_rounded,
+        color: isDark ? FlowTheme.fatigueDark : FlowTheme.fatigueLight,
+        title: 'Your brain needs a reset',
+        message: "You've been in deep focus for a while — your cognitive reserves are depleting. A break now will buy you 45 more minutes of quality work.",
+        tag: 'AI DETECTED — FATIGUE',
+      ),
+      InterruptType.drift => _InterruptCopy(
+        icon: Icons.cloud_off_rounded,
+        color: isDark ? FlowTheme.driftDark : FlowTheme.driftLight,
+        title: "You've drifted from your intention",
+        message: "Context drift is normal. Noticing it is the skill. FLOW paused your session to help you reset and return intentionally.",
+        tag: 'AI DETECTED — DRIFT',
+      ),
+      InterruptType.ultradianBreak => _InterruptCopy(
+        icon: Icons.waves_rounded,
+        color: isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight,
+        title: 'Natural break point reached',
+        message: "You've completed a full ultradian focus cycle. This is the ideal moment for a 10–15 min break — not too early, not too late.",
+        tag: 'ULTRADIAN RHYTHM',
+      ),
+      InterruptType.userRequested => _InterruptCopy(
+        icon: Icons.self_improvement_rounded,
+        color: isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight,
+        title: 'Taking a break',
+        message: "Good call. Step away, let your visual focus relax, and come back fresh. FLOW will keep your session warm.",
+        tag: 'USER INITIATED',
+      ),
+    };
   }
 
   @override
@@ -161,38 +126,28 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
       backgroundColor: theme.scaffoldBackgroundColor,
       body: AnimatedBuilder(
         animation: _entryAnim,
-        builder: (context, child) {
-          return Opacity(
-            opacity: _entryAnim.value,
-            child: Transform.translate(
-              offset: Offset(0, 20 * (1 - _entryAnim.value)),
-              child: child,
-            ),
-          );
-        },
+        builder: (context, child) => Opacity(
+          opacity: _entryAnim.value,
+          child: Transform.translate(offset: Offset(0, 20 * (1 - _entryAnim.value)), child: child),
+        ),
         child: Row(
           children: [
-            // Left Half: Breathing Ring
             Expanded(
               flex: 5,
               child: Center(
                 child: AnimatedBuilder(
                   animation: _breatheAnim,
-                  builder: (context, child) {
-                    return _BreathingRing(
-                      color: copy.color,
-                      breatheValue: _breatheAnim.value,
-                      timerStarted: _timerStarted,
-                      secondsLeft: _secondsLeft,
-                      totalSeconds: _selectedMinutes * 60,
-                      formatTime: _formatCountdown,
-                    );
-                  },
+                  builder: (context, child) => _BreathingRing(
+                    color: copy.color,
+                    breatheValue: _breatheAnim.value,
+                    timerStarted: _timerStarted,
+                    secondsLeft: _secondsLeft,
+                    totalSeconds: _selectedMinutes * 60,
+                    formatTime: _formatCountdown,
+                  ),
                 ),
               ),
             ),
-            
-            // Right Half: Controls & Text
             Expanded(
               flex: 4,
               child: Padding(
@@ -204,9 +159,9 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: copy.color.withOpacity(0.1),
+                        color: copy.color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(6),
-                        border: Border.all(color: copy.color.withOpacity(0.3)),
+                        border: Border.all(color: copy.color.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -222,18 +177,16 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
                     const SizedBox(height: 16),
                     Text(copy.message, style: theme.textTheme.bodyMedium?.copyWith(height: 1.6)),
                     const SizedBox(height: 40),
-                    
                     if (!_timerStarted) ...[
                       Text('HOW LONG?', style: theme.textTheme.labelSmall),
                       const SizedBox(height: 12),
                       Row(
                         children: [5, 10, 15, 20].map((min) {
-                          final isSelected = _selectedMinutes == min;
                           return Padding(
                             padding: const EdgeInsets.only(right: 10),
                             child: _DurationButton(
                               label: '$min min',
-                              isSelected: isSelected,
+                              isSelected: _selectedMinutes == min,
                               baseColor: copy.color,
                               theme: theme,
                               onTap: () => setState(() => _selectedMinutes = min),
@@ -261,7 +214,7 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
                           onPressed: () => Navigator.pop(context),
                           child: Text('Dismiss and resume session', style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
                         ),
-                      )
+                      ),
                     ] else ...[
                       Text('BREAK IN PROGRESS', style: theme.textTheme.labelSmall),
                       const SizedBox(height: 24),
@@ -270,13 +223,13 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
                         label: const Text('End break early'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: copy.color,
-                          side: BorderSide(color: copy.color.withOpacity(0.5)),
+                          side: BorderSide(color: copy.color.withValues(alpha: 0.5)),
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () => Navigator.pop(context),
-                      )
-                    ]
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -288,8 +241,6 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
   }
 }
 
-// ─── INTERNAL WIDGETS FOR INTERRUPT SCREEN ───
-
 class _BreathingRing extends StatelessWidget {
   final Color color;
   final double breatheValue;
@@ -299,63 +250,38 @@ class _BreathingRing extends StatelessWidget {
   final String Function(int) formatTime;
 
   const _BreathingRing({
-    required this.color,
-    required this.breatheValue,
-    required this.timerStarted,
-    required this.secondsLeft,
-    required this.totalSeconds,
-    required this.formatTime,
+    required this.color, required this.breatheValue, required this.timerStarted,
+    required this.secondsLeft, required this.totalSeconds, required this.formatTime,
   });
 
   @override
   Widget build(BuildContext context) {
     final progress = timerStarted ? 1.0 - (secondsLeft / totalSeconds) : 0.0;
-    
     return Stack(
       alignment: Alignment.center,
       children: [
-        // The pulsing glow behind the ring
         Container(
-          width: 380,
-          height: 380,
+          width: 380, height: 380,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.1 + (breatheValue * 0.1)),
-                blurRadius: 80,
-                spreadRadius: 20 + (breatheValue * 40),
-              )
-            ],
+            boxShadow: [BoxShadow(color: color.withValues(alpha: 0.1 + breatheValue * 0.1), blurRadius: 80, spreadRadius: 20 + breatheValue * 40)],
           ),
         ),
-        // The physical ring drawing
         CustomPaint(
           size: const Size(380, 380),
-          painter: _BreathRingPainter(
-            color: color, 
-            progress: progress, 
-            breathe: breatheValue
-          ),
+          painter: _BreathRingPainter(color: color, progress: progress, breathe: breatheValue),
         ),
-        // The timer text inside
         Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               timerStarted ? formatTime(secondsLeft) : formatTime(totalSeconds),
-              style: TextStyle(
-                fontSize: 72,
-                fontWeight: FontWeight.w800,
-                color: color,
-                fontFamily: 'DM Mono',
-                letterSpacing: -2,
-              ),
+              style: TextStyle(fontSize: 72, fontWeight: FontWeight.w800, color: color, fontFamily: 'DM Mono', letterSpacing: -2),
             ),
-            if (timerStarted) 
+            if (timerStarted)
               Text('REMAINING', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color)),
           ],
-        )
+        ),
       ],
     );
   }
@@ -365,37 +291,20 @@ class _BreathRingPainter extends CustomPainter {
   final Color color;
   final double progress;
   final double breathe;
-
   _BreathRingPainter({required this.color, required this.progress, required this.breathe});
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = (size.width / 2) - 24;
-    final strokeWidth = 8.0 + (breathe * 4.0); // Thickens as it breathes
-
-    // Base faded ring
-    canvas.drawCircle(
-      center, 
-      radius,
-      Paint()
-        ..color = color.withOpacity(0.12)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth,
-    );
-
-    // Active progress arc
+    final strokeWidth = 8.0 + (breathe * 4.0);
+    canvas.drawCircle(center, radius,
+        Paint()..color = color.withValues(alpha: 0.12)..style = PaintingStyle.stroke..strokeWidth = strokeWidth);
     if (progress > 0) {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
-        -math.pi / 2, 
-        2 * math.pi * progress.clamp(0.0, 1.0),
-        false,
-        Paint()
-          ..color = color
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeWidth = strokeWidth,
+        -math.pi / 2, 2 * math.pi * progress.clamp(0.0, 1.0), false,
+        Paint()..color = color..style = PaintingStyle.stroke..strokeCap = StrokeCap.round..strokeWidth = strokeWidth,
       );
     }
   }
@@ -410,14 +319,7 @@ class _DurationButton extends StatelessWidget {
   final Color baseColor;
   final ThemeData theme;
   final VoidCallback onTap;
-
-  const _DurationButton({
-    required this.label, 
-    required this.isSelected, 
-    required this.baseColor, 
-    required this.theme, 
-    required this.onTap,
-  });
+  const _DurationButton({required this.label, required this.isSelected, required this.baseColor, required this.theme, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -428,20 +330,14 @@ class _DurationButton extends StatelessWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: isSelected ? baseColor.withOpacity(0.12) : Colors.transparent,
-          border: Border.all(
-            color: isSelected ? baseColor : theme.dividerColor, 
-            width: isSelected ? 1.5 : 1.0
-          ),
+          color: isSelected ? baseColor.withValues(alpha: 0.12) : Colors.transparent,
+          border: Border.all(color: isSelected ? baseColor : theme.dividerColor, width: isSelected ? 1.5 : 1.0),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(
-          label,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: isSelected ? baseColor : theme.textTheme.labelSmall?.color,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
-          ),
-        ),
+        child: Text(label, style: theme.textTheme.bodyMedium?.copyWith(
+          color: isSelected ? baseColor : theme.textTheme.labelSmall?.color,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.normal,
+        )),
       ),
     );
   }
@@ -453,12 +349,5 @@ class _InterruptCopy {
   final String title;
   final String message;
   final String tag;
-
-  _InterruptCopy({
-    required this.icon, 
-    required this.color, 
-    required this.title, 
-    required this.message, 
-    required this.tag
-  });
+  _InterruptCopy({required this.icon, required this.color, required this.title, required this.message, required this.tag});
 }

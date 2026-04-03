@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
-import 'theme.dart';
-import 'main_layout.dart';
+import 'core/theme.dart';
+import 'screens/main_layout.dart';
 
 void main() {
   runApp(const FlowApp());
 }
 
 class FlowApp extends StatefulWidget {
-  const FlowApp({Key? key}) : super(key: key);
+  const FlowApp({super.key});
 
   @override
   State<FlowApp> createState() => _FlowAppState();
 }
 
 class _FlowAppState extends State<FlowApp> {
-  ThemeMode _themeMode = ThemeMode.system; // Starts with system preference
+  ThemeMode _themeMode = ThemeMode.system;
 
   @override
   Widget build(BuildContext context) {

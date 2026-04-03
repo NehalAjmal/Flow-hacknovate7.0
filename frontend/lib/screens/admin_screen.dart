@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'theme.dart';
+import '../core/theme.dart';
 
 class AdminScreen extends StatelessWidget {
   const AdminScreen({Key? key}) : super(key: key);
