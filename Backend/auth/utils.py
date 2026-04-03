@@ -2,6 +2,10 @@ import jwt
 import bcrypt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from dotenv import find_dotenv, load_dotenv
+
+load_dotenv(find_dotenv())
+
 from config import settings
 
 SECRET_KEY = settings.jwt_secret_key
