@@ -1,0 +1,79 @@
+{
+  "fatigue": {
+    "title": "Your brain needs a reset",
+    "messages": [
+      "You've been in deep focus for a while — your cognitive reserves are depleting. A 5-minute break now will buy you 45 more minutes of quality work.",
+      "Your signal patterns suggest mental fatigue. Step away from the screen. Walk to the window. Let your visual focus relax.",
+      "Sustained attention has limits. You've reached yours for this cycle. A short break isn't losing time — it's investing in the next hour.",
+      "Your typing rhythm and response patterns indicate fatigue. Close your eyes for 60 seconds. It genuinely helps.",
+      "FLOW is detecting a natural cognitive dip. This happens to everyone. A 5-minute walk will restore more than another 30 minutes of grinding will produce."
+    ],
+    "action_label": "Take a 5-min break",
+    "duration_seconds": 300
+  },
+
+  "stuck": {
+    "title": "You've been circling the same problem",
+    "messages": [
+      "You've spent significant time on this without progress. The answer is probably not where you've been looking. Try explaining the problem out loud.",
+      "Being stuck means your current mental model is wrong, not that you're not smart enough. Step back and ask: what am I assuming that might be false?",
+      "When you're stuck, the instinct is to try harder. The data says try differently. Break the problem into the smallest possible pieces.",
+      "You've been here a while. This is a signal to change strategy, not double down on the current one. Ask for help, rubber duck it, or switch tasks for 10 minutes.",
+      "FLOW sees you looping. The fastest path forward is usually not through — it's around. Consider approaching from a completely different angle."
+    ],
+    "action_label": "Get AI suggestions",
+    "duration_seconds": null
+  },
+
+  "passive": {
+    "title": "You've drifted from your intention",
+    "messages": [
+      "You declared an intention when you started this session. The app you're using right now isn't it. Still worth doing?",
+      "You've been in passive consumption mode for a while. Your declared task is waiting. Even 10 focused minutes is worth more than this.",
+      "Context drift is normal. Noticing it is the skill. Your session goal was specific — want to get back to it?",
+      "Your attention has wandered. That's human. FLOW's job is just to surface it. What do you actually want to do with the next 20 minutes?",
+      "You started this session with a clear goal. You're currently not working toward it. Deliberate choice or unnoticed drift?"
+    ],
+    "action_label": "Return to task",
+    "duration_seconds": null
+  },
+
+  "ultradian_break": {
+    "title": "Natural break point reached",
+    "messages": [
+      "Your personal rhythm suggests this is a natural transition point. Your brain is ready for a short reset before the next cycle.",
+      "You've completed a full ultradian focus cycle. This is the ideal moment for a 10-15 minute break — not too early, not too late.",
+      "FLOW has learned your personal cycle length. This is your natural break point. Taking it now will improve the quality of the next cycle.",
+      "Your brain works in cycles. You just finished one. A short break here isn't weakness — it's working with your biology, not against it.",
+      "Peak cognitive performance comes from cycling between focus and recovery. Your recovery window is now."
+    ],
+    "action_label": "Start a 10-min break",
+    "duration_seconds": 600
+  },
+
+  "meeting_warning": {
+    "title": "Meeting approaching",
+    "messages": [
+      "You have a meeting in less than 30 minutes. Consider wrapping up your current train of thought and leaving a note for where to resume.",
+      "Calendar alert: a meeting is coming up. Deep work requires long uninterrupted blocks. You may not have enough time to go deep — consider lighter tasks now.",
+      "Upcoming meeting detected. If you start a deep focus session now, the meeting will interrupt your flow at the worst time. Plan accordingly.",
+      "You have a commitment coming up soon. This is a good time for shallow work, email, or review — tasks that don't require deep context.",
+      "Meeting in under 30 minutes. FLOW recommends not starting a new deep work session. Use this time for preparation or review instead."
+    ],
+    "action_label": "Prepare for meeting",
+    "duration_seconds": null
+  },
+
+  "deep_work": {
+    "title": "You are in deep flow",
+    "messages": [
+      "Your signals are aligned. You're in deep work. FLOW will stay quiet and protect this state.",
+      "All signals nominal. Focus score high. Cognitive alignment confirmed. Keep going.",
+      "You're in the zone. FLOW sees it. No interruptions until your pattern says otherwise.",
+      "Strong behavioral signal, low drift, consistent rhythm. This is what peak cognitive work looks like. Don't stop.",
+      "Deep focus confirmed. FLOW is running silently in the background. You won't hear from us unless something changes."
+    ],
+    "action_label": null,
+    "duration_seconds": null
+  }
+}

@@ -1,14 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
-from dotenv import load_dotenv
-import os
-
-load_dotenv()  # must be called before os.getenv reads DATABASE_URL
-
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://root:password@localhost/flow_db")
+from config import settings
 
 engine = create_engine(
-    DATABASE_URL,
+    settings.database_url,
     pool_pre_ping=True,
     pool_recycle=3600,
 )

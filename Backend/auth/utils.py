@@ -1,22 +1,11 @@
-import os
 import jwt
 import bcrypt
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-from dotenv import load_dotenv
+from config import settings
 
-load_dotenv()
-
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
+SECRET_KEY = settings.jwt_secret_key
 ALGORITHM  = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
-
-_PLACEHOLDER = "your-super-secret-development-key-change-me"
-if not SECRET_KEY or SECRET_KEY == _PLACEHOLDER:
-    raise RuntimeError(
-        "JWT_SECRET_KEY is not set (or is still the placeholder). "
-        "Add a strong random value to your .env file before starting the server."
-    )
 
 
 def get_password_hash(password: str) -> str:
@@ -30,7 +19,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (
-        expires_delta if expires_delta else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_delta if expires_delta else timedelta(minutes=settings.access_token_expire_minutes)
     )
     to_encode["exp"] = expire
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
