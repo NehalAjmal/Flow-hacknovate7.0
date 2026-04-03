@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   _RegisterScreenState createState() => _RegisterScreenState();
@@ -122,7 +122,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: _sex,
+                  initialValue: _sex,
                   dropdownColor: const Color(0xFF2A2A2A),
                   style: const TextStyle(color: Colors.white),
                   decoration: _buildInputDecoration("Biological Sex (HRV Baseline)"),
@@ -138,7 +138,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 // Company Routing
                 SwitchListTile(
                   title: const Text("I am joining a Company Team", style: TextStyle(color: Colors.white)),
-                  activeColor: flowGreen,
+                  activeThumbColor: flowGreen,
                   contentPadding: EdgeInsets.zero,
                   value: _isCompanyEmployee,
                   onChanged: (val) => setState(() => _isCompanyEmployee = val),
