@@ -1,47 +1,37 @@
 import 'package:flutter/material.dart';
-import 'package:window_manager/window_manager.dart'; 
-import 'core/theme.dart';
-import 'screens/login_screen.dart';
+import 'theme.dart';
+import 'main_layout.dart';
 
-final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  await windowManager.ensureInitialized();
-
-  // Changed to Normal title bar so you can minimize/close, but we will maximize it
-  WindowOptions windowOptions = const WindowOptions(
-    titleBarStyle: TitleBarStyle.normal, 
-    center: true,
-  );
-
-  windowManager.waitUntilReadyToShow(windowOptions, () async {
-    await windowManager.show();
-    await windowManager.focus();
-    await windowManager.maximize(); // Maximizes the window instead of locking it!
-  });
-
+void main() {
   runApp(const FlowApp());
 }
 
-class FlowApp extends StatelessWidget {
-  const FlowApp({super.key});
+class FlowApp extends StatefulWidget {
+  const FlowApp({Key? key}) : super(key: key);
+
+  @override
+  State<FlowApp> createState() => _FlowAppState();
+}
+
+class _FlowAppState extends State<FlowApp> {
+  ThemeMode _themeMode = ThemeMode.system; // Starts with system preference
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: themeNotifier,
-      builder: (_, ThemeMode currentMode, __) {
-        return MaterialApp(
-          title: 'FLOW',
-          debugShowCheckedModeBanner: false,
-          theme: FlowTheme.lightTheme,
-          darkTheme: FlowTheme.darkTheme,
-          themeMode: currentMode,
-          home: const LoginScreen(), 
-        );
-      },
+    return MaterialApp(
+      title: 'FLOW',
+      debugShowCheckedModeBanner: false,
+      theme: FlowTheme.lightTheme,
+      darkTheme: FlowTheme.darkTheme,
+      themeMode: _themeMode,
+      home: MainLayout(
+        currentThemeMode: _themeMode,
+        onThemeModeChanged: (ThemeMode newMode) {
+          setState(() {
+            _themeMode = newMode;
+          });
+        },
+      ),
     );
   }
 }

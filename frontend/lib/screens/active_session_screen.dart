@@ -1,414 +1,355 @@
-// lib/screens/active_session_screen.dart
-//
-// Upgraded vs original:
-//   • Meeting countdown pill in the top-right
-//   • Focus score sparkline below the telemetry console header
-//   • "Take a Break" button (+ duration picker row) lets the user
-//     self-initiate a break without waiting for an AI trigger
-//   • "Feeling stuck?" chip routes to InterruptScreen(drift)
-//   • Session controls moved to a cleaner action strip at the bottom
-//   • isDrifting now drives BOTH the ring AND the background (unchanged)
-
-import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
-import '../widgets/flow_data_card.dart';
-import '../widgets/focus_ring.dart';
-import '../widgets/focus_sparkline.dart';
-import '../widgets/meeting_countdown_pill.dart';
+import 'theme.dart';
+import 'widgets/focus_sparkline.dart';
+import 'widgets/meeting_countdown_pill.dart';
 import 'interrupt_screen.dart';
-import 'session_end_screen.dart';
 
 class ActiveSessionScreen extends StatefulWidget {
-  const ActiveSessionScreen({super.key});
+  final VoidCallback? onEndSession;
+  const ActiveSessionScreen({Key? key, this.onEndSession}) : super(key: key);
 
   @override
   State<ActiveSessionScreen> createState() => _ActiveSessionScreenState();
 }
 
-class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
-  bool isDrifting = false;
-
-  // Demo meeting time — 32 minutes from when the screen opens
-  late final DateTime _nextMeeting;
-
-  // Last 8 focus-score readings for the sparkline (demo data)
+class _ActiveSessionScreenState extends State<ActiveSessionScreen> with SingleTickerProviderStateMixin {
+  int _secondsElapsed = 47 * 60 + 12;
+  bool _isPaused = false;
+  late Timer _timer;
+  late AnimationController _blinkController;
   final List<double> _focusHistory = [72, 65, 78, 80, 76, 82, 85, 88];
 
   @override
   void initState() {
     super.initState();
-    _nextMeeting = DateTime.now().add(const Duration(minutes: 32));
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!_isPaused && mounted) setState(() => _secondsElapsed++);
+    });
+
+    _blinkController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    )..repeat(reverse: true);
   }
 
-  void _openInterrupt(InterruptType type) {
-    Navigator.push(
-      context,
+  @override
+  void dispose() {
+    _timer.cancel();
+    _blinkController.dispose();
+    super.dispose();
+  }
+
+  void _togglePause() => setState(() => _isPaused = !_isPaused);
+
+  void _triggerBreak(InterruptType type) {
+    Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (_, __, ___) => InterruptScreen(type: type),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
       ),
     );
   }
 
-  void _endSession() {
-    Navigator.pushReplacement(
-      context,
-      PageRouteBuilder(
-        pageBuilder: (_, __, ___) => const SessionEndScreen(),
-        transitionsBuilder: (_, animation, __, child) =>
-            FadeTransition(opacity: animation, child: child),
-      ),
-    );
+  String _formatTime(int totalSeconds) {
+    int h = totalSeconds ~/ 3600;
+    int m = (totalSeconds % 3600) ~/ 60;
+    int s = totalSeconds % 60;
+    String minSec = '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+    return h > 0 ? '${h.toString().padLeft(2, '0')}:$minSec' : minSec;
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme    = Theme.of(context);
-    final targetBg = isDrifting
-        ? FlowTheme.stateColor(context, SessionState.drift)
-            .withValues(alpha: 0.05)
-        : theme.scaffoldBackgroundColor;
-
-    return AnimatedContainer(
-      duration: const Duration(seconds: 1),
-      color:    targetBg,
-      child: Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Padding(
-          padding: const EdgeInsets.fromLTRB(64, 40, 64, 32),
-          child: Column(
-            children: [
-              // ── Top bar ────────────────────────────────────────────────
-              _buildTopBar(theme),
-              const SizedBox(height: 32),
-
-              // ── Main content ───────────────────────────────────────────
-              Expanded(
-                child: Row(
-                  children: [
-                    Expanded(flex: 5, child: _buildFocusCore(theme)),
-                    const SizedBox(width: 64),
-                    Expanded(flex: 4, child: _buildTelemetryConsole(theme)),
-                  ],
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
+        child: Column(
+          children: [
+            _buildTopBar(context),
+            const SizedBox(height: 24),
+            _buildSessionHero(context),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ─── LEFT COLUMN: Telemetry Console ──────────────
+                Expanded(
+                  flex: 2,
+                  child: Column(
+                    children: [
+                      _buildTelemetryConsole(context),
+                      const SizedBox(height: 12),
+                      _buildDriftMeterCard(context),
+                    ],
+                  ),
                 ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ── Break strip ────────────────────────────────────────────
-              _buildBreakStrip(theme),
-            ],
-          ),
+                const SizedBox(width: 14),
+                // ─── RIGHT COLUMN: Rhythm & Flow ─────────────────
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    children: [
+                      _buildUltradianCard(context),
+                      const SizedBox(height: 12),
+                      _buildFlowStatusCard(context),
+                      const SizedBox(height: 12),
+                      _buildSessionGoalCard(context),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          ],
         ),
       ),
     );
   }
 
-  // ── Top bar ────────────────────────────────────────────────────────────────
+  // ─── TOP BAR ─────────────────────────────────────────────────────────────
+  Widget _buildTopBar(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-  Widget _buildTopBar(ThemeData theme) {
     return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Back (returns to AppShell but keeps session "running")
-        IconButton(
-          icon: Icon(Icons.arrow_back_rounded,
-              color: theme.textTheme.labelSmall?.color),
-          onPressed: () => Navigator.pop(context),
-        ),
-        const SizedBox(width: 8),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('ACTIVE SESSION', style: theme.textTheme.labelSmall),
-            Text('Debugging auth module',
-                style: theme.textTheme.headlineSmall),
+            Text("SESSION IN PROGRESS", style: theme.textTheme.labelMedium?.copyWith(color: isDark ? FlowTheme.text3Dark : FlowTheme.text3Light)),
+            const SizedBox(height: 2),
+            Text("Stay in the zone.", style: theme.textTheme.headlineLarge),
           ],
         ),
-        const Spacer(),
-
-        // Meeting countdown pill
-        MeetingCountdownPill(
-          nextMeetingTime: _nextMeeting,
-          meetingTitle:    'Team standup',
-        ),
-        const SizedBox(width: 16),
-
-        // End session
-        OutlinedButton.icon(
-          icon:  const Icon(Icons.stop_rounded, size: 16),
-          label: const Text('End session'),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: theme.textTheme.labelSmall?.color,
-            side:            BorderSide(color: theme.dividerColor),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
-          ),
-          onPressed: _endSession,
-        ),
+        Row(
+          children: [
+            MeetingCountdownPill(
+              nextMeetingTime: DateTime.now().add(const Duration(minutes: 32)),
+              meetingTitle: "Team standup",
+            ),
+            const SizedBox(width: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(color: isDark ? FlowTheme.primaryTintDark : FlowTheme.primaryTintLight, borderRadius: BorderRadius.circular(100)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FadeTransition(
+                    opacity: _blinkController,
+                    child: Container(width: 6, height: 6, decoration: BoxDecoration(color: theme.primaryColor, shape: BoxShape.circle)),
+                  ),
+                  const SizedBox(width: 6),
+                  Text("LIVE", style: theme.textTheme.labelLarge?.copyWith(color: theme.primaryColor)),
+                ],
+              ),
+            ),
+          ],
+        )
       ],
     );
   }
 
-  // ── Focus core (left) ──────────────────────────────────────────────────────
-
-  Widget _buildFocusCore(ThemeData theme) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        FocusRing(
-          progress:   0.68,
-          timeString: '28:14',
-          isDrifting: isDrifting,
-        ),
-        const SizedBox(height: 40),
-        Text('ACTIVE PROTOCOL', style: theme.textTheme.labelSmall),
-        const SizedBox(height: 8),
-        Text('Debugging auth module',
-            style: theme.textTheme.headlineLarge),
-        const SizedBox(height: 20),
-
-        // ── Feeling stuck? chip ──────────────────────────────────────
-        GestureDetector(
-          onTap: () => _openInterrupt(InterruptType.drift),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
-              color: theme.dividerColor.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(color: theme.dividerColor),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.help_outline_rounded,
-                    size: 14,
-                    color: theme.textTheme.labelSmall?.color),
-                const SizedBox(width: 8),
-                Text('Feeling stuck?',
-                    style: theme.textTheme.labelSmall),
-              ],
-            ),
-          ),
-        ),
-
-        // Debug toggle (same as original FAB, now a chip)
-        const SizedBox(height: 12),
-        GestureDetector(
-          onTap: () => setState(() => isDrifting = !isDrifting),
-          child: Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color:        theme.colorScheme.error.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(
-                  color: theme.colorScheme.error.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.bug_report_rounded,
-                    size: 12, color: theme.colorScheme.error),
-                const SizedBox(width: 6),
-                Text('Toggle drift (demo)',
-                    style: theme.textTheme.labelSmall
-                        ?.copyWith(color: theme.colorScheme.error)),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ── Telemetry console (right) ──────────────────────────────────────────────
-
-  Widget _buildTelemetryConsole(ThemeData theme) {
-    return FlowDataCard(
-      padding: EdgeInsets.zero,
-      child:   Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+  // ─── SESSION HERO ────────────────────────────────────────────────────────
+  Widget _buildSessionHero(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 28),
+      decoration: BoxDecoration(color: Theme.of(context).primaryColor, borderRadius: BorderRadius.circular(36)),
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          // Header + sparkline
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-            child: Row(
+          Positioned(
+            top: -90, left: -90,
+            child: Container(width: 200, height: 200, decoration: BoxDecoration(color: Colors.white.withOpacity(0.08), shape: BoxShape.circle)),
+          ),
+          Column(
+            children: [
+              const Text("TIME ELAPSED", style: TextStyle(fontSize: 12, color: Colors.white70, fontFamily: 'DM Mono', letterSpacing: 1.2)),
+              Text(_formatTime(_secondsElapsed), style: const TextStyle(fontSize: 64, fontWeight: FontWeight.w800, fontFamily: 'DM Mono', color: Colors.white, letterSpacing: -3, height: 1.1)),
+              const SizedBox(height: 8),
+              const Text("🐛 Debug auth module — JWT token refresh", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.white)),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildHeroActionButton(_isPaused ? "Resume" : "Pause", _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, _togglePause),
+                  const SizedBox(width: 8),
+                  _buildQuickBreakBtn("5m break", () => _triggerBreak(InterruptType.userRequested)),
+                  const SizedBox(width: 8),
+                  _buildQuickBreakBtn("Feeling stuck?", () => _triggerBreak(InterruptType.drift), isWarning: true),
+                  const SizedBox(width: 8),
+                  _buildHeroActionButton("End session", Icons.check_rounded, widget.onEndSession ?? () {}),
+                ],
+              )
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroActionButton(String label, IconData icon, VoidCallback onTap) {
+    return TextButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, color: Colors.white, size: 18),
+      label: Text(label, style: const TextStyle(color: Colors.white)),
+      style: TextButton.styleFrom(
+        backgroundColor: Colors.white.withOpacity(0.15),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildQuickBreakBtn(String label, VoidCallback onTap, {bool isWarning = false}) {
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: isWarning ? Colors.white.withOpacity(0.9) : Colors.white.withOpacity(0.2),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(label, style: TextStyle(color: isWarning ? const Color(0xFF7A2E3A) : Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+      ),
+    );
+  }
+
+  // ─── LEFT COLUMN: TELEMETRY ─────────────────────────────────────────────
+  Widget _buildTelemetryConsole(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('LIVE TELEMETRY',
-                    style: theme.textTheme.labelSmall),
-                Row(
-                  children: [
-                    Container(
-                      width:  8, height: 8,
-                      decoration: BoxDecoration(
-                        color: theme.primaryColor, shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Text('LIVE',
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: theme.primaryColor)),
-                  ],
-                ),
+                Text("LIVE TELEMETRY", style: theme.textTheme.labelMedium),
+                Text('82 now', style: theme.textTheme.labelSmall?.copyWith(color: theme.primaryColor, fontWeight: FontWeight.bold)),
               ],
             ),
-          ),
-
-          // Focus score sparkline
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            const SizedBox(height: 16),
+            // The animated sparkline!
+            FocusSparkline(scores: _focusHistory, color: theme.primaryColor, height: 60),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('FOCUS TREND',
-                        style: theme.textTheme.labelSmall),
-                    Text('82 now',
-                        style: theme.textTheme.labelSmall
-                            ?.copyWith(color: theme.primaryColor)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                FocusSparkline(
-                  scores: _focusHistory,
-                  color:  theme.primaryColor,
-                  height: 52,
+                _buildMinStat("BPM", "74", theme.textTheme.bodyLarge?.color),
+                _buildMinStat("EAR", "0.28", theme.colorScheme.secondary),
+                _buildMinStat("DRIFT", "LOW", theme.primaryColor),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMinStat(String label, String val, Color? color) {
+    return Column(
+      children: [
+        Text(val, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color, letterSpacing: -0.5)),
+        const SizedBox(height: 4),
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
+      ],
+    );
+  }
+
+  Widget _buildDriftMeterCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Drift meter", style: theme.textTheme.labelMedium),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: isDark ? FlowTheme.primaryTintDark : FlowTheme.primaryTintLight, borderRadius: BorderRadius.circular(100)),
+                  child: Text("LOW", style: theme.textTheme.labelLarge?.copyWith(color: theme.primaryColor)),
                 ),
               ],
             ),
-          ),
-
-          const Divider(),
-
-          // Telemetry rows
-          _buildTelemetryRow('HEART RATE',  '74',   'BPM',       theme),
-          const Divider(),
-          _buildTelemetryRow('EYE ASPECT',  '0.28', 'EAR',       theme),
-          const Divider(),
-          _buildTelemetryRow('COGNITIVE',   '0.25', 'SIGNAL',    theme),
-          const Divider(),
-          _buildTelemetryRow('DRIFT SCORE', '14%',  'LOW',       theme,
-              highlight: !isDrifting),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTelemetryRow(
-    String label, String value, String unit, ThemeData theme,
-    {bool highlight = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: theme.textTheme.labelSmall),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline:       TextBaseline.alphabetic,
-            children: [
-              Text(value,
-                  style: theme.textTheme.headlineLarge?.copyWith(
-                    fontFeatures: [const FontFeature.tabularFigures()],
-                    color: highlight ? theme.primaryColor : null,
-                  )),
-              const SizedBox(width: 8),
-              Text(unit, style: theme.textTheme.labelSmall),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Break strip (bottom) ───────────────────────────────────────────────────
-
-  Widget _buildBreakStrip(ThemeData theme) {
-    final fatigueColor =
-        FlowTheme.stateColor(context, SessionState.trough);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
-      decoration: BoxDecoration(
-        color:        theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border:       Border.all(color: theme.dividerColor),
-      ),
-      child: Row(
-        children: [
-          // Left: label
-          Icon(Icons.self_improvement_rounded,
-              color: fatigueColor, size: 20),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize:       MainAxisSize.min,
-            children: [
-              Text('Take a break?',
-                  style: theme.textTheme.bodyLarge
-                      ?.copyWith(fontWeight: FontWeight.w600)),
-              Text('Your rhythm suggests a break in ~13 min',
-                  style: theme.textTheme.bodyMedium),
-            ],
-          ),
-          const Spacer(),
-
-          // Quick-pick duration buttons
-          ...([5, 10, 15].map((min) => Padding(
-                padding: const EdgeInsets.only(left: 8),
-                child: OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: fatigueColor,
-                    side: BorderSide(
-                        color: fatigueColor.withValues(alpha: 0.4)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+            const SizedBox(height: 14),
+            Container(
+              height: 10, width: double.infinity,
+              decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(8)),
+              alignment: Alignment.centerLeft,
+              child: FractionallySizedBox(
+                widthFactor: 0.14,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    gradient: LinearGradient(colors: [theme.primaryColor, theme.colorScheme.secondary]),
                   ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (_, __, ___) => InterruptScreen(
-                          type: InterruptType.userRequested,
-                        ),
-                        transitionsBuilder: (_, anim, __, child) =>
-                            FadeTransition(opacity: anim, child: child),
-                      ),
-                    );
-                  },
-                  child: Text('$min min',
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
                 ),
-              ))),
-
-          const SizedBox(width: 8),
-
-          // Full interrupt screen
-          ElevatedButton.icon(
-            icon:  Icon(Icons.pause_rounded, size: 16, color: Colors.white),
-            label: const Text('Custom break',
-                style: TextStyle(color: Colors.white)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: fatigueColor,
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 16),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              elevation: 0,
+              ),
             ),
-            onPressed: () => _openInterrupt(InterruptType.userRequested),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("ALIGNED", style: theme.textTheme.labelSmall),
+                Text("14%", style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'DM Mono', color: theme.primaryColor)),
+                Text("DRIFT", style: theme.textTheme.labelSmall),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
-}
+
+  // ─── RIGHT COLUMN: RHYTHM & FLOW ────────────────────────────────────────
+  Widget _buildUltradianCard(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Ultradian position", style: Theme.of(context).textTheme.labelMedium),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                _buildRhythmSegment(context, isTrough: true),
+                _buildRhythmSegment(context, isPeak: true),
+                _buildRhythmSegment(context, isPeak: true),
+                _buildRhythmSegment(context, isCurrent: true),
+                _buildRhythmSegment(context, isUpcoming: true),
+                _buildRhythmSegment(context, isUpcoming: true),
+              ],
+            ),
+            const SizedBox(height: 10),
+            RichText(
+              text: TextSpan(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 12),
+                children: [
+                  const TextSpan(text: "Peak phase — "),
+                  TextSpan(text: "~13 min", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor)),
+                  const TextSpan(text: " until recommended break"),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRhythmSegment(BuildContext context, {bool isTrough = false, bool isPeak = false, bool isCurrent = false, bool isUpcoming = false}) {
+    final theme = Theme.of(context);
+    Color bgColor = isTrough ? theme.colorScheme.secondary.withOpacity(0.6) : (isPeak ? theme.primaryColor : theme.dividerColor);

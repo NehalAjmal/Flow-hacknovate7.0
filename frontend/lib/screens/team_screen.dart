@@ -1,139 +1,297 @@
 import 'package:flutter/material.dart';
-import 'dart:math' as math;
-import '../widgets/flow_data_card.dart';
-import '../core/theme.dart';
+import 'theme.dart';
 
 class TeamScreen extends StatelessWidget {
-  const TeamScreen({super.key});
+  const TeamScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildTopBar(context),
+            const SizedBox(height: 24),
+            _buildTeamStatsGrid(context),
+            const SizedBox(height: 14),
+            _buildTeamNodesCard(context),
+            const SizedBox(height: 14),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: _buildTeamFocusWindow(context)),
+                const SizedBox(width: 14),
+                Expanded(child: _buildCollectiveDrift(context)),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── TOP BAR ─────────────────────────────────────────────────────────────
+  Widget _buildTopBar(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Stack(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // LAYER 1: The Network Grid
-        Positioned.fill(
-          child: CustomPaint(
-            painter: _NetworkGridPainter(color: theme.dividerColor.withValues(alpha: 0.3)),
-          ),
-        ),
-        
-        // LAYER 2: Spatial Nodes
-        Padding(
-          padding: const EdgeInsets.all(48.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildHeader(theme),
-              Expanded(
-                child: Stack(
-                  children: [
-                    // Mapping "Nodes" to random spatial positions
-                    const _TeamNode(name: "Amaan", pos: Offset(0.2, 0.3), status: "Deep Work", isActive: true),
-                    const _TeamNode(name: "Sarah", pos: Offset(0.7, 0.2), status: "Focus", isActive: true),
-                    const _TeamNode(name: "Laraib", pos: Offset(0.5, 0.6), status: "Trough", isActive: false),
-                    const _TeamNode(name: "Aleena", pos: Offset(0.8, 0.7), status: "Deep Work", isActive: true),
-                  ],
-                ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "DEPARTMENT TELEMETRY",
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: isDark ? FlowTheme.text3Dark : FlowTheme.text3Light,
               ),
-              _buildTeamStats(theme),
-            ],
+            ),
+            const SizedBox(height: 2),
+            Text("Team node map", style: theme.textTheme.headlineLarge),
+          ],
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: isDark ? FlowTheme.primaryTintDark : FlowTheme.primaryTintLight,
+            borderRadius: BorderRadius.circular(100),
+          ),
+          child: Text(
+            "ERR011",
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildHeader(ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text("DEPARTMENT TELEMETRY", style: theme.textTheme.labelLarge),
-        const SizedBox(height: 8),
-        Text("Engineering Node Map", style: theme.textTheme.displayMedium),
-      ],
-    );
-  }
-
-  Widget _buildTeamStats(ThemeData theme) {
+  // ─── HERO STATS ──────────────────────────────────────────────────────────
+  Widget _buildTeamStatsGrid(BuildContext context) {
     return Row(
       children: [
-        _buildMiniInsight("74%", "AVG ALIGNMENT", theme),
-        const SizedBox(width: 48),
-        _buildMiniInsight("12", "ACTIVE NODES", theme),
-        const SizedBox(width: 48),
-        _buildMiniInsight("2.4h", "COLLECTIVE FLOW", theme),
+        Expanded(child: _buildHeroCard("AVG ALIGNMENT", "74%", const [Color(0xFF4F6F57), Color(0xFF6B8F71)])),
+        const SizedBox(width: 14),
+        Expanded(child: _buildHeroCard("ACTIVE NODES", "12", const [Color(0xFF8B5E3A), Color(0xFFC4845A)])),
+        const SizedBox(width: 14),
+        Expanded(child: _buildHeroCard("COLLECTIVE FLOW", "2.4h", const [Color(0xFF1A4A44), Color(0xFF3D7A72)])),
       ],
     );
   }
 
-  Widget _buildMiniInsight(String val, String label, ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(val, style: theme.textTheme.headlineMedium?.copyWith(color: theme.primaryColor)),
-        Text(label, style: theme.textTheme.labelSmall),
-      ],
-    );
-  }
-}
-
-class _TeamNode extends StatelessWidget {
-  final String name;
-  final Offset pos;
-  final String status;
-  final bool isActive;
-
-  const _TeamNode({required this.name, required this.pos, required this.status, required this.isActive});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = isActive ? theme.primaryColor : FlowTheme.textSecondaryDark;
-
-    return Align(
-      alignment: Alignment(pos.dx * 2 - 1, pos.dy * 2 - 1),
+  Widget _buildHeroCard(String label, String value, List<Color> gradientColors) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: gradientColors, begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(28),
+      ),
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: color.withValues(alpha: 0.1),
-              border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
-              boxShadow: isActive ? [
-                BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 5)
-              ] : [],
-            ),
-            child: Center(
-              child: Text(name[0], style: theme.textTheme.headlineMedium?.copyWith(color: color)),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(name, style: theme.textTheme.bodyLarge),
-          Text(status, style: theme.textTheme.labelSmall?.copyWith(color: color)),
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'DM Mono', letterSpacing: 1.5)),
+          const SizedBox(height: 6),
+          Text(value, style: const TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -2, height: 1)),
         ],
       ),
     );
   }
-}
 
-class _NetworkGridPainter extends CustomPainter {
-  final Color color;
-  _NetworkGridPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()..color = color..strokeWidth = 1;
-    for (double i = 0; i < size.width; i += 60) {
-      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
-    }
-    for (double i = 0; i < size.height; i += 60) {
-      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
-    }
+  // ─── TEAM NODES ──────────────────────────────────────────────────────────
+  Widget _buildTeamNodesCard(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Your team", style: Theme.of(context).textTheme.headlineSmall),
+                Text("Full view", style: TextStyle(fontSize: 11, color: Theme.of(context).primaryColor, fontFamily: 'DM Mono', fontWeight: FontWeight.w600)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(child: _buildTeamNode(context, "Amaan", "A", "● Deep Work", "92% focus", const [Color(0xFF4F6F57), Color(0xFF6B8F71)], true)),
+                const SizedBox(width: 10),
+                Expanded(child: _buildTeamNode(context, "Nehal", "N", "● Focus", "78% focus", const [Color(0xFF3D7A72), Color(0xFF5AAD9E)], true)),
+                const SizedBox(width: 10),
+                Expanded(child: _buildTeamNode(context, "Laraib", "L", "◎ Trough", "43% focus", const [Color(0xFF8B5E3A), Color(0xFFC4845A)], false)),
+                const SizedBox(width: 10),
+                Expanded(child: _buildTeamNode(context, "Shreya", "S", "● Deep Work", "88% focus", const [Color(0xFF7A6B8F), Color(0xFF9E8FB0)], true)),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
   }
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+
+  Widget _buildTeamNode(BuildContext context, String name, String initial, String status, String focusScore, List<Color> avatarGradient, bool isInFlow) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final borderColor = isInFlow ? theme.primaryColor : theme.colorScheme.secondary;
+    final bgColor = isInFlow 
+        ? (isDark ? FlowTheme.primaryTintDark : FlowTheme.primaryTintLight)
+        : (isDark ? FlowTheme.fatigueBgDark : FlowTheme.fatigueBgLight);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: Border.all(color: borderColor, width: 1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: avatarGradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(initial, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          const SizedBox(height: 8),
+          Text(name, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: theme.textTheme.bodyLarge?.color)),
+          const SizedBox(height: 2),
+          Text(status, style: theme.textTheme.labelSmall),
+          const SizedBox(height: 8),
+          _buildTag(context, focusScore, isGreen: isInFlow, isOrange: !isInFlow),
+        ],
+      ),
+    );
+  }
+
+  // ─── BOTTOM CHARTS ───────────────────────────────────────────────────────
+  Widget _buildTeamFocusWindow(BuildContext context) {
+    final bars = [0.20, 0.15, 0.80, 0.90, 0.55, 0.30, 0.65, 0.25];
+    final theme = Theme.of(context);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Team focus window", style: theme.textTheme.headlineSmall),
+            const SizedBox(height: 14),
+            SizedBox(
+              height: 60,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: List.generate(bars.length, (index) {
+                  final h = bars[index];
+                  final isTrough = index == 4; // 55% peak dip
+                  final color = isTrough ? theme.colorScheme.secondary : theme.primaryColor;
+                  final opacity = h > 0.7 ? 0.9 : (h > 0.4 ? 0.5 : 0.3);
+
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 1.5),
+                      child: FractionallySizedBox(
+                        heightFactor: h,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(opacity),
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text("Best meeting slots: Tue/Thu 14–15h", style: theme.textTheme.labelSmall),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollectiveDrift(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Collective drift events", style: theme.textTheme.headlineSmall),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Slack notifications", style: theme.textTheme.bodyMedium),
+                _buildTag(context, "47 today", isRose: true),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: LinearProgressIndicator(
+                value: 0.72,
+                minHeight: 8,
+                backgroundColor: theme.dividerColor,
+                color: theme.colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Ad-hoc meetings", style: theme.textTheme.bodyMedium),
+                _buildTag(context, "3 today", isOrange: true),
+              ],
+            ),
+            const SizedBox(height: 6),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(100),
+              child: LinearProgressIndicator(
+                value: 0.34,
+                minHeight: 8,
+                backgroundColor: theme.dividerColor,
+                color: theme.colorScheme.secondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTag(BuildContext context, String text, {bool isGreen = false, bool isOrange = false, bool isRose = false}) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    Color bgColor = theme.colorScheme.primaryContainer;
+    Color textColor = theme.primaryColor;
+
+    if (isOrange) {
+      bgColor = isDark ? FlowTheme.fatigueBgDark : FlowTheme.fatigueBgLight;
+      textColor = theme.colorScheme.secondary;
+    } else if (isRose) {
+      bgColor = isDark ? FlowTheme.driftBgDark : FlowTheme.driftBgLight;
+      textColor = theme.colorScheme.error;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(100)),
+      child: Text(text, style: theme.textTheme.labelLarge?.copyWith(color: textColor, fontSize: 9)),
+    );
+  }
 }

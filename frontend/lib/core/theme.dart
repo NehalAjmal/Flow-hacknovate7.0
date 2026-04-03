@@ -1,63 +1,61 @@
 import 'package:flutter/material.dart';
 
+// ─── SESSION STATE ENUM ───────────────────────────────────────────────────────
+// Use this everywhere instead of raw booleans.
+// It maps directly to your Focus, Trough, and Drift UI states.
+enum SessionState {
+  focus,   // Normal: green ring, cool bg
+  trough,  // Fatigue warning: orange/copper ring, warm bg shift
+  drift,   // Critical: rose/wine ring, red-tinted bg shift
+}
+
 class FlowTheme {
   FlowTheme._();
 
-  // ─── LIGHT MODE PALETTE (Olive Tint System) ──────────────────────────────
+  // ─── LIGHT MODE PALETTE (Redesign Specs) ──────────────────────────────
+  static const Color bgLight = Color(0xFFEEF3EF);
+  static const Color surfaceLight = Color(0xFFF4F8F5);
+  static const Color elevatedLight = Color(0xFFFAFCFB);
 
-  // Backgrounds — three distinct tinted layers, no pure white
-  static const Color bgLight = Color(0xFFEEF3EF);        // Base: page bg, subtle olive tint
-  static const Color surfaceLight = Color(0xFFF4F8F5);   // Surface: cards, navbar
-  static const Color elevatedLight = Color(0xFFFAFCFB);  // Elevated: modals, overlays
-
-  // Primary identity — dusty olive
   static const Color primaryLight = Color(0xFF6B8F71);
-  static const Color primaryTintLight = Color(0xFFE6EFE8); // badge bg, active pill bg
-  static const Color primaryStrongLight = Color(0xFF4F6F57); // hover, pressed
+  static const Color primaryTintLight = Color(0xFFE6EFE8);
+  static const Color primaryStrongLight = Color(0xFF4F6F57);
 
-  // State colors — light mode
-  static const Color fatigueBgLight = Color(0xFFF6F0E8);   // Trough page bg shift
-  static const Color fatigueLight = Color(0xFFA67C52);     // Faded copper — warning ring, label
-  static const Color driftBgLight = Color(0xFFF2E5E7);     // Drift page bg shift
-  static const Color driftLight = Color(0xFF7A2E3A);       // Wine plum — critical ring, alert
+  static const Color fatigueBgLight = Color(0xFFF6F0E8);
+  static const Color fatigueLight = Color(0xFFA67C52);
 
-  // Text — light mode
-  static const Color textPrimaryLight = Color(0xFF0F172A);
-  static const Color textSecondaryLight = Color(0xFF6B7280);
-  static const Color textTertiaryLight = Color(0xFF9CA3AF);
+  static const Color driftBgLight = Color(0xFFF2E5E7);
+  static const Color driftLight = Color(0xFF7A2E3A);
 
-  // Border — light mode
-  static const Color borderLight = Color(0xFFE2E6E2);
+  static const Color text1Light = Color(0xFF1A2E1F);
+  static const Color text2Light = Color(0xFF4A6350);
+  static const Color text3Light = Color(0xFF8A9E8D);
 
-  // ─── DARK MODE PALETTE (Deep Forest System) ───────────────────────────────
+  static const Color borderLight = Color(0xFFD8E4DA);
 
-  // Backgrounds
-  static const Color bgDark = Color(0xFF161A18);           // Base: deep forest
-  static const Color surfaceDark = Color(0xFF1E2421);      // Surface: cards, navbar
-  static const Color elevatedDark = Color(0xFF252E28);     // Elevated: modals, overlays
+  // ─── DARK MODE PALETTE (Redesign Specs) ───────────────────────────────
+  static const Color bgDark = Color(0xFF161A18);
+  static const Color surfaceDark = Color(0xFF1E2421);
+  static const Color elevatedDark = Color(0xFF252E28);
 
-  // Primary identity — muted sage
   static const Color primaryDark = Color(0xFF5A8060);
-  static const Color primaryTintDark = Color(0xFF1E3028);   // badge bg, active pill bg
-  static const Color primaryLightDark = Color(0xFF7AAD82);  // hover, text accent
+  static const Color primaryTintDark = Color(0xFF1E3028);
+  static const Color primaryStrongDark = Color(0xFF7AAD82);
 
-  // State colors — dark mode
-  static const Color fatigueBgDark = Color(0xFF1E1810);    // Trough page bg shift
-  static const Color fatigueDark = Color(0xFFC4845A);      // Warning ring
-  static const Color driftBgDark = Color(0xFF1E1214);      // Drift page bg shift
-  static const Color driftDark = Color(0xFF9E3D4A);        // Critical ring
+  static const Color fatigueBgDark = Color(0xFF2A1E10);
+  static const Color fatigueDark = Color(0xFFC4845A);
 
-  // Text — dark mode
-  static const Color textPrimaryDark = Color(0xFFE8F0EA);
-  static const Color textSecondaryDark = Color(0xFF8A9E8D);
-  static const Color textTertiaryDark = Color(0xFF566658);
+  static const Color driftBgDark = Color(0xFF2A1218);
+  static const Color driftDark = Color(0xFF9E3D4A);
 
-  // Border — dark mode
+  static const Color text1Dark = Color(0xFFE8F0EA);
+  static const Color text2Dark = Color(0xFF8A9E8D);
+  static const Color text3Dark = Color(0xFF566658);
+
   static const Color borderDark = Color(0xFF2A342C);
 
-  // ─── SEMANTIC HELPERS (use these in widgets, not raw colors) ─────────────
+  // ─── SEMANTIC HELPERS ─────────────────────────────────────────────────────
 
-  /// Returns the correct page background for the current session state.
   static Color pageBackground(BuildContext context, SessionState state) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (state) {
@@ -70,7 +68,6 @@ class FlowTheme {
     }
   }
 
-  /// Returns the correct ring/accent color for the current session state.
   static Color stateColor(BuildContext context, SessionState state) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (state) {
@@ -83,7 +80,6 @@ class FlowTheme {
     }
   }
 
-  /// Returns the ring track (background) color for the current session state.
   static Color ringTrackColor(BuildContext context, SessionState state) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (state) {
@@ -92,12 +88,11 @@ class FlowTheme {
       case SessionState.trough:
         return isDark ? fatigueBgDark : fatigueBgLight;
       case SessionState.drift:
-        return isDark ? driftBgDark : const Color(0xFFF2E5E7);
+        return isDark ? driftBgDark : driftBgLight; // Using standard tint
     }
   }
 
   // ─── PAGE TRANSITIONS ─────────────────────────────────────────────────────
-
   static const PageTransitionsTheme _fluidTransitions = PageTransitionsTheme(
     builders: {
       TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
@@ -106,8 +101,7 @@ class FlowTheme {
     },
   );
 
-  // ─── LIGHT THEME ──────────────────────────────────────────────────────────
-
+  // ─── LIGHT THEME BUILDER ──────────────────────────────────────────────────
   static ThemeData get lightTheme {
     return ThemeData(
       brightness: Brightness.light,
@@ -115,7 +109,7 @@ class FlowTheme {
       primaryColor: primaryLight,
       cardColor: surfaceLight,
       dividerColor: borderLight,
-      fontFamily: 'Inter',
+      fontFamily: 'Sora', // Main font
       pageTransitionsTheme: _fluidTransitions,
       colorScheme: const ColorScheme.light(
         primary: primaryLight,
@@ -128,125 +122,69 @@ class FlowTheme {
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onError: Colors.white,
-        onSurface: textPrimaryLight,
+        onSurface: text1Light,
       ),
       textTheme: const TextTheme(
-        // Numbers — big + bold (data-driven feel)
-        displayLarge: TextStyle(
-          color: textPrimaryLight,
-          fontWeight: FontWeight.w700,
-          fontSize: 48,
-          letterSpacing: -1.5,
-        ),
-        displayMedium: TextStyle(
-          color: textPrimaryLight,
-          fontWeight: FontWeight.w700,
-          fontSize: 36,
-          letterSpacing: -1.0,
-        ),
-        // Titles — medium weight
-        headlineLarge: TextStyle(
-          color: textPrimaryLight,
-          fontWeight: FontWeight.w500,
-          fontSize: 24,
-        ),
-        headlineMedium: TextStyle(
-          color: textPrimaryLight,
-          fontWeight: FontWeight.w500,
-          fontSize: 18,
-        ),
-        headlineSmall: TextStyle(
-          color: textPrimaryLight,
-          fontWeight: FontWeight.w500,
-          fontSize: 16,
-        ),
-        // Body
-        bodyLarge: TextStyle(color: textPrimaryLight, fontSize: 14, height: 1.6),
-        bodyMedium: TextStyle(color: textSecondaryLight, fontSize: 13, height: 1.5),
-        bodySmall: TextStyle(color: textTertiaryLight, fontSize: 12, height: 1.4),
-        // Labels — light + uppercase (use with .toUpperCase() in widget)
-        labelLarge: TextStyle(
-          color: textSecondaryLight,
-          fontSize: 11,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 1.4,
-        ),
-        labelMedium: TextStyle(
-          color: textSecondaryLight,
-          fontSize: 10,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 1.2,
-        ),
-        labelSmall: TextStyle(
-          color: textTertiaryLight,
-          fontSize: 9,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 1.0,
-        ),
+        // Big numbers
+        displayLarge: TextStyle(color: text1Light, fontWeight: FontWeight.w800, fontSize: 56, letterSpacing: -2.0),
+        displayMedium: TextStyle(color: text1Light, fontWeight: FontWeight.w800, fontSize: 40, letterSpacing: -2.0),
+        
+        // Titles
+        headlineLarge: TextStyle(color: text1Light, fontWeight: FontWeight.w700, fontSize: 24, letterSpacing: -0.5),
+        headlineMedium: TextStyle(color: text1Light, fontWeight: FontWeight.w700, fontSize: 18),
+        headlineSmall: TextStyle(color: text1Light, fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: -0.2), // Section titles
+        
+        // Body text
+        bodyLarge: TextStyle(color: text1Light, fontSize: 15, fontWeight: FontWeight.w500),
+        bodyMedium: TextStyle(color: text2Light, fontSize: 13, fontWeight: FontWeight.w400),
+        bodySmall: TextStyle(color: text3Light, fontSize: 11, fontWeight: FontWeight.w400),
+        
+        // Labels & Monospace (DM Mono)
+        labelLarge: TextStyle(fontFamily: 'DM Mono', color: text2Light, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.02), // Badges
+        labelMedium: TextStyle(fontFamily: 'DM Mono', color: text3Light, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.0), // Card Labels
+        labelSmall: TextStyle(fontFamily: 'DM Mono', color: text3Light, fontSize: 9, fontWeight: FontWeight.w500, letterSpacing: 0.8),
       ),
       cardTheme: CardThemeData(
         color: surfaceLight,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: borderLight, width: 0.5),
+          borderRadius: BorderRadius.circular(28), // --radius-lg from redesign
+          side: const BorderSide(color: borderLight, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceLight,
+        fillColor: elevatedLight,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: borderLight, width: 0.5),
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: borderLight, width: 2),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: borderLight, width: 0.5),
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: borderLight, width: 2),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryLight, width: 1),
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: primaryLight, width: 2),
         ),
-        labelStyle: const TextStyle(color: textSecondaryLight, fontSize: 13),
+        hintStyle: const TextStyle(color: text3Light, fontSize: 15, fontFamily: 'Sora'),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryLight,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          textStyle: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)), // Pill shape
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: primaryLight,
-          side: const BorderSide(color: primaryLight, width: 0.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          textStyle: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: borderLight,
-        thickness: 0.5,
-        space: 0,
-      ),
+      dividerTheme: const DividerThemeData(color: borderLight, thickness: 1, space: 8),
     );
   }
 
-  // ─── DARK THEME ───────────────────────────────────────────────────────────
-
+  // ─── DARK THEME BUILDER ───────────────────────────────────────────────────
   static ThemeData get darkTheme {
     return ThemeData(
       brightness: Brightness.dark,
@@ -254,7 +192,7 @@ class FlowTheme {
       primaryColor: primaryDark,
       cardColor: surfaceDark,
       dividerColor: borderDark,
-      fontFamily: 'Inter',
+      fontFamily: 'Sora',
       pageTransitionsTheme: _fluidTransitions,
       colorScheme: const ColorScheme.dark(
         primary: primaryDark,
@@ -267,126 +205,58 @@ class FlowTheme {
         onPrimary: Colors.white,
         onSecondary: Colors.white,
         onError: Colors.white,
-        onSurface: textPrimaryDark,
+        onSurface: text1Dark,
       ),
       textTheme: const TextTheme(
-        displayLarge: TextStyle(
-          color: textPrimaryDark,
-          fontWeight: FontWeight.w700,
-          fontSize: 48,
-          letterSpacing: -1.5,
-        ),
-        displayMedium: TextStyle(
-          color: textPrimaryDark,
-          fontWeight: FontWeight.w700,
-          fontSize: 36,
-          letterSpacing: -1.0,
-        ),
-        headlineLarge: TextStyle(
-          color: textPrimaryDark,
-          fontWeight: FontWeight.w500,
-          fontSize: 24,
-        ),
-        headlineMedium: TextStyle(
-          color: textPrimaryDark,
-          fontWeight: FontWeight.w500,
-          fontSize: 18,
-        ),
-        headlineSmall: TextStyle(
-          color: textPrimaryDark,
-          fontWeight: FontWeight.w500,
-          fontSize: 16,
-        ),
-        bodyLarge: TextStyle(color: textPrimaryDark, fontSize: 14, height: 1.6),
-        bodyMedium: TextStyle(color: textSecondaryDark, fontSize: 13, height: 1.5),
-        bodySmall: TextStyle(color: textTertiaryDark, fontSize: 12, height: 1.4),
-        labelLarge: TextStyle(
-          color: textSecondaryDark,
-          fontSize: 11,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 1.4,
-        ),
-        labelMedium: TextStyle(
-          color: textSecondaryDark,
-          fontSize: 10,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 1.2,
-        ),
-        labelSmall: TextStyle(
-          color: textTertiaryDark,
-          fontSize: 9,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 1.0,
-        ),
+        displayLarge: TextStyle(color: text1Dark, fontWeight: FontWeight.w800, fontSize: 56, letterSpacing: -2.0),
+        displayMedium: TextStyle(color: text1Dark, fontWeight: FontWeight.w800, fontSize: 40, letterSpacing: -2.0),
+        headlineLarge: TextStyle(color: text1Dark, fontWeight: FontWeight.w700, fontSize: 24, letterSpacing: -0.5),
+        headlineMedium: TextStyle(color: text1Dark, fontWeight: FontWeight.w700, fontSize: 18),
+        headlineSmall: TextStyle(color: text1Dark, fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: -0.2),
+        bodyLarge: TextStyle(color: text1Dark, fontSize: 15, fontWeight: FontWeight.w500),
+        bodyMedium: TextStyle(color: text2Dark, fontSize: 13, fontWeight: FontWeight.w400),
+        bodySmall: TextStyle(color: text3Dark, fontSize: 11, fontWeight: FontWeight.w400),
+        labelLarge: TextStyle(fontFamily: 'DM Mono', color: text2Dark, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.02),
+        labelMedium: TextStyle(fontFamily: 'DM Mono', color: text3Dark, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.0),
+        labelSmall: TextStyle(fontFamily: 'DM Mono', color: text3Dark, fontSize: 9, fontWeight: FontWeight.w500, letterSpacing: 0.8),
       ),
       cardTheme: CardThemeData(
         color: surfaceDark,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: borderDark, width: 0.5),
+          borderRadius: BorderRadius.circular(28),
+          side: const BorderSide(color: borderDark, width: 1),
         ),
         margin: EdgeInsets.zero,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surfaceDark,
+        fillColor: elevatedDark,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: borderDark, width: 0.5),
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: borderDark, width: 2),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: borderDark, width: 0.5),
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: borderDark, width: 2),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryDark, width: 1),
+          borderRadius: BorderRadius.circular(28),
+          borderSide: const BorderSide(color: primaryDark, width: 2),
         ),
-        labelStyle: const TextStyle(color: textSecondaryDark, fontSize: 13),
+        hintStyle: const TextStyle(color: text3Dark, fontSize: 15, fontFamily: 'Sora'),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primaryDark,
           foregroundColor: Colors.white,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          textStyle: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          textStyle: const TextStyle(fontFamily: 'Sora', fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ),
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: primaryDark,
-          side: const BorderSide(color: primaryDark, width: 0.5),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          textStyle: const TextStyle(
-            fontFamily: 'Inter',
-            fontSize: 13,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-      dividerTheme: const DividerThemeData(
-        color: borderDark,
-        thickness: 0.5,
-        space: 0,
-      ),
+      dividerTheme: const DividerThemeData(color: borderDark, thickness: 1, space: 8),
     );
   }
-}
-
-// ─── SESSION STATE ENUM ───────────────────────────────────────────────────────
-// Use this everywhere instead of raw booleans like isDrifting / isFatigued.
-// It makes state-based color logic clean and consistent across all screens.
-
-enum SessionState {
-  focus,   // Normal: olive ring, cool bg
-  trough,  // Fatigue warning: copper ring, warm bg shift
-  drift,   // Critical: wine ring, red-tinted bg shift
 }
