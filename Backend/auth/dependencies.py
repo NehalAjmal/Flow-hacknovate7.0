@@ -35,3 +35,19 @@ def get_current_user(
         raise credentials_exception
 
     return user
+
+class RoleChecker:
+    def __init__(self, allowed_roles: list):
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, current_user: User = Depends(get_current_user)):
+        if current_user.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Access denied. Requires one of: {self.allowed_roles}"
+            )
+        return current_user
+
+# Create the specific bouncers you can use in your routes
+require_admin = RoleChecker(["admin"])
+require_employee = RoleChecker(["employee", "admin"]) # Admins can do anything employees can

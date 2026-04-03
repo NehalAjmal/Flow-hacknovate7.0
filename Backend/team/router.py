@@ -2,16 +2,16 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session as DBSession
 
 from db_models.base import get_db
-from auth.dependencies import get_current_user
 from db_models.user import User
 from db_models.session import Session
 from .schemas import TeamSummaryResponse, EmployeeStatus
+from auth.dependencies import get_current_user, require_admin
 
 router = APIRouter()
 
 @router.get("/summary", response_model=TeamSummaryResponse)
 def get_team_summary(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: DBSession = Depends(get_db)
 ):
     team_id = current_user.team_id
