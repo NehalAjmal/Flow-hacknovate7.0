@@ -1,19 +1,26 @@
+# sessions/schemas.py
+# FIX: Python 3.9 needs List[X] instead of list[X]
+
+from typing import List
 from pydantic import BaseModel
+
 
 class StuckRequest(BaseModel):
     session_id: str
-    task_declared: str          # What the user said they were working on
-    difficulty: str             # "light" | "moderate" | "heavy"
-    stuck_duration_minutes: int # How many minutes they've been looping
-    active_window: str          # What app/window they're currently in
-    session_duration_minutes: int  # Total session time so far
- 
+    task_declared: str
+    difficulty: str
+    stuck_duration_minutes: int
+    active_window: str
+    session_duration_minutes: int
+
+
 class StuckSuggestion(BaseModel):
-    strategy: str       # Short name for the strategy e.g. "Rubber Duck Debugging"
-    explanation: str    # Why this strategy fits their specific situation
-    first_step: str     # The single concrete next action to take right now
- 
+    strategy: str
+    explanation: str
+    first_step: str
+
+
 class StuckResponse(BaseModel):
-    suggestions: list[StuckSuggestion]
-    encouragement: str  # One warm, human sentence to end on
+    suggestions: List[StuckSuggestion]
+    encouragement: str
     session_id: str

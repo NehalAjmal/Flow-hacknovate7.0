@@ -1,5 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from dotenv import find_dotenv, load_dotenv
+
+load_dotenv(find_dotenv())
+
 from config import settings
 
 engine = create_engine(
