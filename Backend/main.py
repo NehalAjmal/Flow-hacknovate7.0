@@ -7,6 +7,8 @@ from auth.router import router as auth_router
 from sessions.router import router as session_router
 from calendar_app.router import router as calendar_router
 from export.router import router as export_router
+from user.router import router as user_router
+from team.router import router as team_router
 
 app = FastAPI(title="FLOW API")
 
@@ -21,6 +23,8 @@ app.include_router(auth_router)
 app.include_router(session_router, prefix="/session", tags=["Session"])
 app.include_router(calendar_router, prefix="/calendar", tags=["Calendar"])
 app.include_router(export_router, prefix="/export", tags=["Export"])
+app.include_router(user_router, prefix="/user", tags=["User Dashboard"])
+app.include_router(team_router, prefix="/team", tags=["Team & Admin"])
 
 @app.get("/")
 def root():
@@ -30,10 +34,10 @@ def root():
 def ping():
     return {"message": "pong"}
 
-@app.get("/dashboard")
-def view_dashboard(current_user: User = Depends(get_current_user)):
-    return {
-        "message": f"Welcome to Flow, {current_user.full_name}!",
-        "role": current_user.role,
-        "team_id": current_user.team_id
-    }
+# @app.get("/dashboard")
+# def view_dashboard(current_user: User = Depends(get_current_user)):
+#     return {
+#         "message": f"Welcome to Flow, {current_user.full_name}!",
+#         "role": current_user.role,
+#         "team_id": current_user.team_id
+#     }
