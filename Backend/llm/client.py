@@ -3,7 +3,7 @@
 # sessions/router.py calls client.aio.models.generate_content(...)
 # so the client must be a google.genai.Client instance.
 
-from google import genai
+import google.genai as genai
 from config import settings
 
 # Single shared client — initialized once at startup
