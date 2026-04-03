@@ -8,7 +8,7 @@ class RegisterRequest(BaseModel):
     password:     str
     age:          Optional[int]  = None
     sex:          Optional[str]  = None
-    account_type: str            = "solo"   # solo | company_employee | admin
+    account_type: str            = "solo"   
     company_code: Optional[str]  = None
 
     @field_validator("account_type")
@@ -27,18 +27,17 @@ class LoginRequest(BaseModel):
 
 class GoogleAuthRequest(BaseModel):
     token:        str
-    password:     str                    # user sets their own password even when signing up via Google
+    password:     str                   
     account_type: Optional[str] = "solo"
     company_code: Optional[str] = None
 
 
 class RegisterResponse(BaseModel):
-    user_id:     str          # UUID string
+    user_id:     str          
     token:       str
     role:        str
     team_id:     Optional[str] = None
     redirect_to: str
 
 
-# LoginResponse reuses the same shape
 LoginResponse = RegisterResponse

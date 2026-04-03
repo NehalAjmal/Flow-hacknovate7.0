@@ -20,7 +20,6 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 
-# ── Helper ─────────────────────────────────────────────────────────────────────
 
 def _resolve_team(db: Session, account_type: str, company_code: Optional[str] = None):
     """
@@ -44,7 +43,6 @@ def _resolve_team(db: Session, account_type: str, company_code: Optional[str] = 
     return "solo", None
 
 
-# ── /register ──────────────────────────────────────────────────────────────────
 
 @router.post(
     "/register",
@@ -81,9 +79,6 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
     )
 
 
-# ── /login ─────────────────────────────────────────────────────────────────────
-# This was missing — Swagger's "Authorize" button and OAuth2PasswordBearer
-# both point to auth/login, so it must exist.
 
 @router.post(
     "/login",
@@ -112,7 +107,6 @@ def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
     )
 
 
-# ── /google ────────────────────────────────────────────────────────────────────
 
 @router.post(
     "/google",
@@ -134,11 +128,8 @@ def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == email).first()
 
     if user:
-        # Existing user — just issue a new token. No extra fields to update here;
-        # if role/team changes are needed that's a separate settings endpoint.
         pass
     else:
-        # New user via Google — create account
         role, team_id = _resolve_team(db, payload.account_type or "solo", payload.company_code)
 
         user = User(

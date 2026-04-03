@@ -7,7 +7,6 @@ from db_models.base import get_db
 from db_models.user import User
 from auth.utils import SECRET_KEY, ALGORITHM
 
-# tokenUrl must match the /login route we added in router.py
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
@@ -22,7 +21,6 @@ def get_current_user(
     )
 
     try:
-        # jwt.decode already validates exp — raises ExpiredSignatureError if stale
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
