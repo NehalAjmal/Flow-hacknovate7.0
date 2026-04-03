@@ -13,7 +13,7 @@
 # to render the Focus DNA card and let the user screenshot/share it natively.
 # Flutter's share_plus package handles the actual file export.
 
-from llm.client import get_gemini_model
+from llm.client import get_gemini_client, get_model_name
 from llm.prompts import focus_dna_insight_prompt
 from .schemas import FocusDNARequest, FocusDNAResponse
 
@@ -38,8 +38,11 @@ async def generate_focus_dna(data: FocusDNARequest) -> FocusDNAResponse:
 
     # Call Gemini for the personalized insight
     try:
-        model = get_gemini_model()
-        response = await model.generate_content_async(prompt)
+        client = get_gemini_client()
+        response = await client.aio.models.generate_content(
+            model=get_model_name(),
+            contents=prompt
+        )
         insight = response.text.strip().strip('"').strip("'")
     except Exception:
         # If Gemini fails, use a data-driven fallback so the card still works
