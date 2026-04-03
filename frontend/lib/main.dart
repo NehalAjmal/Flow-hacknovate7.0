@@ -6,7 +6,7 @@ void main() {
 }
 
 class FlowApp extends StatelessWidget {
-  const FlowApp({Key? key}) : super(key: key);
+  const FlowApp({super.key});
 
   @override
   Widget build(BuildContext context) {

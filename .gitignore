@@ -2,6 +2,3 @@ venv/
 .venv/
 .env
 ENV/
-
-# by nehal
-test_api.py
