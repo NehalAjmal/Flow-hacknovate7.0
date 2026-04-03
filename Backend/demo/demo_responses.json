@@ -1,0 +1,222 @@
+{
+  "_note": "Set DEMO_MODE=true in .env to serve these responses instead of live data. Safety net for demo day.",
+
+  "GET /": {
+    "status": "FLOW backend running",
+    "version": "2.0",
+    "team": "Error 011"
+  },
+
+  "GET /api/ping": {
+    "message": "pong"
+  },
+
+  "POST /auth/login": {
+    "user_id": "demo-user-001",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.demo",
+    "role": "employee",
+    "team_id": "team-err011",
+    "redirect_to": "/dashboard"
+  },
+
+  "GET /user/dashboard": {
+    "focus_score_today": 78,
+    "focus_score_delta": 5,
+    "sessions_today": 2,
+    "total_duration_minutes": 94,
+    "rhythm_position_minutes": 34,
+    "minutes_until_trough": 18,
+    "greeting_message": "Good afternoon. Your peak window opens in 2 hours."
+  },
+
+  "GET /session/pre-check": {
+    "recommendation": "Your data shows 10:00 is your peak focus hour. You're currently in a secondary peak window.",
+    "suggested_duration_min": 52,
+    "warnings": []
+  },
+
+  "POST /session/start": {
+    "session_id": "demo-session-001",
+    "message": "Session started. Agent should begin sending signals."
+  },
+
+  "GET /session/status": {
+    "should_intervene": false,
+    "combined_score": 0.81,
+    "threshold": 0.65,
+    "state": "deep_work",
+    "focus_score": 81.0,
+    "signals": {
+      "ultradian": 0.88,
+      "behavioral": 0.79,
+      "biometric": 0.72,
+      "ear": 0.85
+    },
+    "primary_driver": "deep_work",
+    "intervention_type": null,
+    "intervention_message": null,
+    "intervention_action": null
+  },
+
+  "GET /session/status_stuck": {
+    "should_intervene": true,
+    "combined_score": 0.42,
+    "threshold": 0.65,
+    "state": "stuck",
+    "focus_score": 38.0,
+    "signals": {
+      "ultradian": 0.45,
+      "behavioral": 0.22,
+      "biometric": 0.68,
+      "ear": 0.71
+    },
+    "primary_driver": "stuck",
+    "intervention_type": "You've been circling the same problem",
+    "intervention_message": "You've been here a while. This is a signal to change strategy, not double down on the current one. Ask for help, rubber duck it, or switch tasks for 10 minutes.",
+    "intervention_action": "Get AI suggestions"
+  },
+
+  "POST /session/stuck": {
+    "session_id": "demo-session-001",
+    "suggestions": [
+      {
+        "strategy": "Constraint Inversion",
+        "explanation": "For JWT middleware debugging, flip the problem: instead of asking why auth fails, ask what would make it pass, then trace backwards.",
+        "first_step": "Write the single line of code that would represent a successful auth response, then trace every dependency backwards from there."
+      },
+      {
+        "strategy": "Minimal Reproduction",
+        "explanation": "Your active window suggests you're in a complex file. JWT issues are almost always reproducible in 10 lines.",
+        "first_step": "Open a new scratch file and write the smallest possible token verification — just decode(), no middleware, no DB — and confirm it works there first."
+      },
+      {
+        "strategy": "Assumption Audit",
+        "explanation": "After 34 minutes on this problem, your mental model has likely calcified. There's an assumption you're not questioning.",
+        "first_step": "Write down the 3 things you're most certain are correct about this bug. One of them is probably wrong."
+      }
+    ],
+    "encouragement": "You've been in this codebase long enough to solve this — the answer is closer than it feels right now."
+  },
+
+  "POST /session/end": {
+    "session_id": "demo-session-001",
+    "duration_minutes": 52,
+    "focus_score": 78,
+    "interventions_total": 1,
+    "interventions_accepted": 1,
+    "replay_events": [
+      {"ts": "2025-04-01T10:00:00", "state": "deep_work", "score": 85.0, "window": "VS Code"},
+      {"ts": "2025-04-01T10:22:00", "state": "stuck",     "score": 38.0, "window": "VS Code"},
+      {"ts": "2025-04-01T10:35:00", "state": "deep_work", "score": 79.0, "window": "VS Code"},
+      {"ts": "2025-04-01T10:48:00", "state": "fatigue",   "score": 55.0, "window": "Chrome"},
+      {"ts": "2025-04-01T10:52:00", "state": "deep_work", "score": 72.0, "window": "VS Code"}
+    ],
+    "what_flow_learned": "Your post-intervention recovery is strong — you accept breaks and return focused. Ultradian period estimated at 52 minutes."
+  },
+
+  "GET /user/patterns": {
+    "ultradian_cycle_minutes": 52,
+    "peak_focus_hours": [9, 10, 16],
+    "weekly_trends": [
+      {"label": "Mon", "value": 78},
+      {"label": "Tue", "value": 82},
+      {"label": "Wed", "value": 69},
+      {"label": "Thu", "value": 75},
+      {"label": "Fri", "value": 71},
+      {"label": "Sat", "value": 60},
+      {"label": "Sun", "value": 55}
+    ],
+    "hourly_quality": [
+      {"label": "9am",  "value": 88},
+      {"label": "10am", "value": 92},
+      {"label": "11am", "value": 79},
+      {"label": "12pm", "value": 60},
+      {"label": "2pm",  "value": 74},
+      {"label": "3pm",  "value": 68},
+      {"label": "4pm",  "value": 81},
+      {"label": "5pm",  "value": 65}
+    ]
+  },
+
+  "GET /export/focus-dna": {
+    "user_name": "Amaan Khan",
+    "peak_hours_formatted": ["9:00", "10:00", "16:00"],
+    "cycle_length_minutes": 52,
+    "weekly_focus_score": 74.0,
+    "best_focus_day": "Tuesday",
+    "total_sessions_this_week": 7,
+    "avg_session_quality": 4.1,
+    "gemini_insight": "Your Tuesday 10am sessions score 23% higher than your weekly average — block that window next week.",
+    "card_subtitle": "Week summary  •  7 sessions completed"
+  },
+
+  "GET /team/summary": {
+    "team_name": "Error 011 Demo Corp",
+    "average_focus_score": 74,
+    "active_sessions_count": 5,
+    "total_employees": 8,
+    "employees": [
+      {"id": "e1", "display_name": "Employee 1", "current_status": "In Flow",  "focus_score": 88, "burnout_risk": "Low"},
+      {"id": "e2", "display_name": "Employee 2", "current_status": "In Flow",  "focus_score": 76, "burnout_risk": "Low"},
+      {"id": "e3", "display_name": "Employee 3", "current_status": "Break",    "focus_score": 62, "burnout_risk": "Medium"},
+      {"id": "e4", "display_name": "Employee 4", "current_status": "In Flow",  "focus_score": 71, "burnout_risk": "Low"},
+      {"id": "e5", "display_name": "Employee 5", "current_status": "Offline",  "focus_score": 45, "burnout_risk": "High"},
+      {"id": "e6", "display_name": "Employee 6", "current_status": "In Flow",  "focus_score": 83, "burnout_risk": "Low"},
+      {"id": "e7", "display_name": "Employee 7", "current_status": "Offline",  "focus_score": 55, "burnout_risk": "Medium"},
+      {"id": "e8", "display_name": "Employee 8", "current_status": "In Flow",  "focus_score": 79, "burnout_risk": "Low"}
+    ]
+  },
+
+  "GET /admin/dashboard": {
+    "total_employees": 8,
+    "active_right_now": 5,
+    "avg_focus_score": 74,
+    "burnout_flags_count": 2,
+    "best_meeting_window": "14:00 – 15:00",
+    "trend_7_days": [
+      {"day": "Mon", "avg_score": 78},
+      {"day": "Tue", "avg_score": 82},
+      {"day": "Wed", "avg_score": 69},
+      {"day": "Thu", "avg_score": 75},
+      {"day": "Fri", "avg_score": 71},
+      {"day": "Sat", "avg_score": 60},
+      {"day": "Sun", "avg_score": 55}
+    ],
+    "burnout_flags": [
+      {"employee_id": "e5", "display_name": "Priya K.", "risk_level": "high",   "sessions_this_week": 1, "avg_focus_score": 38},
+      {"employee_id": "e7", "display_name": "Rahul M.", "risk_level": "medium", "sessions_this_week": 3, "avg_focus_score": 51}
+    ],
+    "state_distribution": {
+      "deep_work": 3,
+      "stuck": 1,
+      "fatigue": 1,
+      "passive": 0
+    }
+  },
+
+  "GET /calendar/context": {
+    "has_upcoming_events": true,
+    "warning_level": "caution",
+    "next_event": {
+      "title": "Sprint Planning",
+      "start_time": "2025-04-01T14:00:00+05:30",
+      "minutes_until": 72,
+      "duration_minutes": 60
+    },
+    "events": [
+      {
+        "title": "Sprint Planning",
+        "start_time": "2025-04-01T14:00:00+05:30",
+        "minutes_until": 72,
+        "duration_minutes": 60
+      }
+    ],
+    "recommendation": "You have a meeting in about 72 minutes. Consider a session under 45 minutes to leave buffer time."
+  },
+
+  "POST /biometric/ingest": {
+    "status": "ok",
+    "reading_id": "bio-demo-001",
+    "fatigue_signal": 0.31
+  }
+}
