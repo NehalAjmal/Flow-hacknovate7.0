@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     gemini_api_key: str
     gemini_model: str = "gemini-2.5-flash"
 
+    # Google OAuth — Web client ID from Google Cloud Console
+    google_client_id: str
+
     # Token expiry
     access_token_expire_minutes: int = 30
 

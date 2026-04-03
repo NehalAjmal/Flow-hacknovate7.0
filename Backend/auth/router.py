@@ -1,4 +1,4 @@
-import os
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from google.oauth2 import id_token
@@ -7,6 +7,7 @@ from google.auth.transport import requests as google_requests
 from db_models.base import get_db
 from db_models.user import User
 from db_models.team import Team
+from config import settings
 
 from auth.schemas import (
     RegisterRequest, LoginRequest,
@@ -17,17 +18,10 @@ from auth.utils import get_password_hash, verify_password, create_access_token
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
-
+# ── Helper ─────────────────────────────────────────────────────────────────────
 
 def _resolve_team(db: Session, account_type: str, company_code: Optional[str] = None):
-    """
-    Maps incoming account_type → (role, team_id).
-    Raises HTTPException if company_code is missing or invalid.
-    """
-    from typing import Optional  # local to avoid circular at module level
-
     if account_type in ("company_employee", "admin"):
         if not company_code:
             raise HTTPException(
@@ -39,10 +33,10 @@ def _resolve_team(db: Session, account_type: str, company_code: Optional[str] = 
             raise HTTPException(status_code=404, detail="Invalid company code")
         role = "employee" if account_type == "company_employee" else "admin"
         return role, team.id
-
     return "solo", None
 
 
+# ── /register ──────────────────────────────────────────────────────────────────
 
 @router.post(
     "/register",
@@ -58,7 +52,7 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
     new_user = User(
         full_name=payload.full_name,
         email=payload.email,
-        password_hash=get_password_hash(payload.password),  # correct column name
+        password_hash=get_password_hash(payload.password),
         age=payload.age,
         sex=payload.sex,
         role=role,
@@ -79,6 +73,7 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
     )
 
 
+# ── /login ─────────────────────────────────────────────────────────────────────
 
 @router.post(
     "/login",
@@ -88,8 +83,6 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
 def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
 
-    # Deliberate: same error for "not found" and "wrong password" to avoid
-    # leaking whether an email is registered.
     if not user or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -118,7 +111,7 @@ def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
         id_info = id_token.verify_oauth2_token(
             payload.token,
             google_requests.Request(),
-            GOOGLE_CLIENT_ID,
+            settings.google_client_id,
         )
         email     = id_info["email"]
         full_name = id_info.get("name", "")
@@ -129,13 +122,24 @@ def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
 
     if user:
         pass
+
     else:
-        role, team_id = _resolve_team(db, payload.account_type or "solo", payload.company_code)
+        if not payload.password:
+            raise HTTPException(
+                status_code=400,
+                detail="Password is required when registering via Google",
+            )
+
+        role, team_id = _resolve_team(
+            db,
+            payload.account_type or "solo",
+            payload.company_code,
+        )
 
         user = User(
             full_name=full_name,
             email=email,
-            password_hash=get_password_hash(payload.password),  # user-defined password
+            password_hash=get_password_hash(payload.password),
             role=role,
             team_id=team_id,
         )
