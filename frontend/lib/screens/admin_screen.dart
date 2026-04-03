@@ -8,8 +8,8 @@ class AdminScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     
-    // MOCK STATE
-    final int burnoutRiskCount = 2; // Change this to 0 to see the card turn normal
+    // FIX: Changed final to const to satisfy the linter
+    const int burnoutRiskCount = 2; 
 
     return Padding(
       padding: const EdgeInsets.all(32.0),
@@ -53,8 +53,8 @@ class AdminScreen extends StatelessWidget {
               // The Reactive Burnout Risk Card
               Expanded(
                 child: FlowDataCard(
-                  backgroundColor: burnoutRiskCount > 0 ? theme.colorScheme.error.withValues(alpha:0.08) : null,
-                  borderColor: burnoutRiskCount > 0 ? theme.colorScheme.error.withValues(alpha:0.5) : null,
+                  backgroundColor: burnoutRiskCount > 0 ? theme.colorScheme.error.withValues(alpha: 0.08) : null,
+                  borderColor: burnoutRiskCount > 0 ? theme.colorScheme.error.withValues(alpha: 0.5) : null,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -88,7 +88,7 @@ class AdminScreen extends StatelessWidget {
           // ROW 2: The Anonymized Table
           Expanded(
             child: FlowDataCard(
-              padding: EdgeInsets.zero, // We remove padding here to let the table touch the edges
+              padding: EdgeInsets.zero,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -112,7 +112,7 @@ class AdminScreen extends StatelessWidget {
                         top: BorderSide(color: theme.dividerColor),
                         bottom: BorderSide(color: theme.dividerColor),
                       ),
-                      color: theme.dividerColor.withValues(alpha:0.2),
+                      color: theme.dividerColor.withValues(alpha: 0.2),
                     ),
                     child: Row(
                       children: [
@@ -125,14 +125,13 @@ class AdminScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // Scrollable Table Body (Prevents Overflow!)
+                  // Scrollable Table Body
                   Expanded(
                     child: ListView.builder(
-                      itemCount: 15, // Mock number of employees
+                      itemCount: 15,
                       itemBuilder: (context, index) {
-                        // Mock data generation
                         final isEven = index % 2 == 0;
-                        final isWarning = index == 2 || index == 7; // Inject some warnings
+                        final isWarning = index == 2 || index == 7; 
                         
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),

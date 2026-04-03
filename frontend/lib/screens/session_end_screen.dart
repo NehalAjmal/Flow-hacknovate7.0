@@ -1,8 +1,23 @@
 import 'package:flutter/material.dart';
 import '../widgets/flow_data_card.dart';
+import 'app_shell.dart'; // REQUIRED FOR NAVIGATION
 
 class SessionEndScreen extends StatelessWidget {
   const SessionEndScreen({super.key});
+
+  // Helper method for smooth exit
+  void _returnToDashboard(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const AppShell(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+      (route) => false, // Clears the stack so we don't build up a massive memory leak
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,15 +25,12 @@ class SessionEndScreen extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      // For standalone viewing, we add an AppBar back button
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.close_rounded, color: theme.textTheme.bodyLarge?.color),
-          onPressed: () {
-            // Navigator.pop(context); // Will route back to dashboard in prod
-          },
+          onPressed: () => _returnToDashboard(context), // WIRED
         ),
       ),
       body: Padding(
@@ -32,7 +44,6 @@ class SessionEndScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
 
-            // ROW 1: Summary Metrics
             Row(
               children: [
                 Expanded(child: _buildMetricCard("FOCUS SCORE", "82", "Top 10% this week", theme, isHighlight: true)),
@@ -44,12 +55,10 @@ class SessionEndScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // ROW 2: Timeline & AI Insights
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Left: Replay Timeline
                   Expanded(
                     flex: 3,
                     child: FlowDataCard(
@@ -76,13 +85,11 @@ class SessionEndScreen extends StatelessWidget {
                   
                   const SizedBox(width: 24),
 
-                  // Right: What FLOW Learned
                   Expanded(
                     flex: 2,
                     child: FlowDataCard(
-                      // Subtle wash to indicate AI insight
-                      backgroundColor: theme.primaryColor.withValues(alpha:0.04),
-                      borderColor: theme.primaryColor.withValues(alpha:0.2),
+                      backgroundColor: theme.primaryColor.withValues(alpha: 0.04),
+                      borderColor: theme.primaryColor.withValues(alpha: 0.2),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -132,9 +139,7 @@ class SessionEndScreen extends StatelessWidget {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                 elevation: 0,
                               ),
-                              onPressed: () {
-                                // Navigator.pop(context);
-                              },
+                              onPressed: () => _returnToDashboard(context), // WIRED
                               child: const Text("Return to Dashboard", style: TextStyle(fontWeight: FontWeight.w600)),
                             ),
                           ),
@@ -153,7 +158,6 @@ class SessionEndScreen extends StatelessWidget {
 
   Widget _buildMetricCard(String title, String value, String subtext, ThemeData theme, {bool isHighlight = false, bool isWarning = false}) {
     final Color valueColor = isWarning ? theme.colorScheme.error : (isHighlight ? theme.primaryColor : (theme.textTheme.displayLarge?.color ?? Colors.white));
-    
     return FlowDataCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -173,38 +177,18 @@ class SessionEndScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Time Column
-          SizedBox(
-            width: 70,
-            child: Text(time, style: theme.textTheme.labelSmall?.copyWith(fontSize: 11, color: theme.textTheme.labelSmall?.color?.withValues(alpha:0.7))),
-          ),
-          
-          // Graphic Column (Node + Line)
+          SizedBox(width: 70, child: Text(time, style: theme.textTheme.labelSmall?.copyWith(fontSize: 11, color: theme.textTheme.labelSmall?.color?.withValues(alpha: 0.7)))),
           Column(
             children: [
               Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha:0.15),
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color.withValues(alpha:0.5), width: 1),
-                ),
+                width: 28, height: 28,
+                decoration: BoxDecoration(color: color.withValues(alpha: 0.15), shape: BoxShape.circle, border: Border.all(color: color.withValues(alpha: 0.5), width: 1)),
                 child: Icon(icon, size: 14, color: color),
               ),
-              if (!isLast)
-                Expanded(
-                  child: Container(
-                    width: 2,
-                    color: theme.dividerColor,
-                    margin: const EdgeInsets.symmetric(vertical: 4),
-                  ),
-                ),
+              if (!isLast) Expanded(child: Container(width: 2, color: theme.dividerColor, margin: const EdgeInsets.symmetric(vertical: 4))),
             ],
           ),
           const SizedBox(width: 16),
-          
-          // Content Column
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(bottom: 24.0),

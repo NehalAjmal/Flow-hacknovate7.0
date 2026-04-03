@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import '../widgets/flow_data_card.dart';
 import '../core/theme.dart';
 
@@ -8,240 +9,131 @@ class TeamScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final troughColor = FlowTheme.stateColor(context, SessionState.trough);
-    final driftColor  = FlowTheme.stateColor(context, SessionState.drift);
 
-    return Padding(
-      padding: const EdgeInsets.all(32.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // TOP BAR: Title & Active Count
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Stack(
+      children: [
+        // LAYER 1: The Network Grid
+        Positioned.fill(
+          child: CustomPaint(
+            painter: _NetworkGridPainter(color: theme.dividerColor.withValues(alpha: 0.3)),
+          ),
+        ),
+        
+        // LAYER 2: Spatial Nodes
+        Padding(
+          padding: const EdgeInsets.all(48.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                "Team Cognitive Aggregate",
-                style: theme.textTheme.headlineMedium,
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: theme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Row(
+              _buildHeader(theme),
+              Expanded(
+                child: Stack(
                   children: [
-                    Container(width: 6, height: 6, decoration: BoxDecoration(color: theme.primaryColor, shape: BoxShape.circle)),
-                    const SizedBox(width: 8),
-                    Text("12 Active Members", style: theme.textTheme.bodyMedium?.copyWith(color: theme.primaryColor, fontWeight: FontWeight.w600)),
+                    // Mapping "Nodes" to random spatial positions
+                    const _TeamNode(name: "Amaan", pos: Offset(0.2, 0.3), status: "Deep Work", isActive: true),
+                    const _TeamNode(name: "Sarah", pos: Offset(0.7, 0.2), status: "Focus", isActive: true),
+                    const _TeamNode(name: "Laraib", pos: Offset(0.5, 0.6), status: "Trough", isActive: false),
+                    const _TeamNode(name: "Aleena", pos: Offset(0.8, 0.7), status: "Deep Work", isActive: true),
                   ],
                 ),
-              )
+              ),
+              _buildTeamStats(theme),
             ],
-          ),
-          const SizedBox(height: 24),
-
-          // ROW 1: Top Aggregate Stats
-          Row(
-            children: [
-              Expanded(child: _buildStatCard("TEAM AVG FOCUS", "78", "+4 vs yesterday", true, theme)),
-              const SizedBox(width: 16),
-              Expanded(
-                child: FlowDataCard(
-                  backgroundColor: theme.primaryColor.withValues(alpha: 0.05),
-                  borderColor: theme.primaryColor.withValues(alpha: 0.3),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.event_available_rounded, size: 16, color: theme.primaryColor),
-                          const SizedBox(width: 8),
-                          Text("BEST MEETING WINDOW", style: theme.textTheme.labelSmall?.copyWith(color: theme.primaryColor)),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text("2:00 PM", style: theme.textTheme.displayLarge?.copyWith(color: theme.primaryColor)),
-                      const SizedBox(height: 4),
-                      Text("High alignment · Low interruption risk", style: theme.textTheme.bodyMedium?.copyWith(color: theme.primaryColor.withValues(alpha: 0.8))),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(child: _buildStatCard("BURNOUT RISK", "Low", "No flags in 48h", true, theme)),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // ROW 2: Live Distribution
-          Expanded(
-            flex: 3,
-            child: FlowDataCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("CURRENT TEAM DISTRIBUTION", style: theme.textTheme.labelSmall),
-                  const SizedBox(height: 24),
-                  Expanded(
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _buildDistributionPillar("Deep Work", 8, 12, theme.primaryColor, theme),
-                        const SizedBox(width: 16),
-                        _buildDistributionPillar("Light Task", 2, 12, theme.primaryColor.withValues(alpha: 0.05), theme),
-                        const SizedBox(width: 16),
-                        _buildDistributionPillar("Trough/Break", 1, 12, troughColor, theme),
-                        const SizedBox(width: 16),
-                        _buildDistributionPillar("Drift", 1, 12, driftColor, theme),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // ROW 3: Anonymized Live Strips
-          Expanded(
-            flex: 4,
-            child: FlowDataCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("ANONYMIZED LIVE STATES", style: theme.textTheme.labelSmall),
-                      Text("Last updated: Just now", style: theme.textTheme.labelSmall?.copyWith(color: theme.dividerColor)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        _buildAnonymousStrip("Member 1", 0.8, theme.primaryColor, "Deep Work (42m)", theme),
-                        _buildAnonymousStrip("Member 2", 0.9, theme.primaryColor, "Deep Work (12m)", theme),
-                        _buildAnonymousStrip("Member 3", 0.3, troughColor, "Approaching Trough", theme),
-                        _buildAnonymousStrip("Member 4", 0.1, driftColor, "Intervention Active", theme),
-                        _buildAnonymousStrip("Member 5", 0.5, theme.primaryColor.withValues(alpha: 0.5), "Light Task", theme),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatCard(String title, String value, String subtext, bool isPositive, ThemeData theme) {
-    return FlowDataCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(title, style: theme.textTheme.labelSmall),
-          const SizedBox(height: 8),
-          Text(value, style: theme.textTheme.displayLarge),
-          const SizedBox(height: 4),
-          Text(subtext, style: theme.textTheme.bodyMedium?.copyWith(color: isPositive ? theme.primaryColor : theme.textTheme.labelSmall?.color)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDistributionPillar(String label, int count, int total, Color color, ThemeData theme) {
-    final heightFactor = count / total;
-
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.dividerColor),
-        ),
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                alignment: Alignment.bottomCenter,
-                children: [
-                  // Background Track
-                  Container(
-                    width: 40,
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  // Active Fill
-                  FractionallySizedBox(
-                    heightFactor: heightFactor > 0 ? heightFactor : 0.05,
-                    child: Container(
-                      width: 40,
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text(count.toString(), style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 4),
-            Text(label, style: theme.textTheme.labelSmall, textAlign: TextAlign.center),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAnonymousStrip(String label, double strength, Color color, String stateStr, ThemeData theme) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 80,
-          child: Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: theme.textTheme.labelSmall?.color)),
-        ),
-        Expanded(
-          child: Container(
-            height: 10,
-            decoration: BoxDecoration(
-              color: theme.dividerColor,
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: strength,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        SizedBox(
-          width: 140,
-          child: Text(
-            stateStr,
-            style: theme.textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w500),
-            textAlign: TextAlign.right,
           ),
         ),
       ],
     );
   }
+
+  Widget _buildHeader(ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("DEPARTMENT TELEMETRY", style: theme.textTheme.labelLarge),
+        const SizedBox(height: 8),
+        Text("Engineering Node Map", style: theme.textTheme.displayMedium),
+      ],
+    );
+  }
+
+  Widget _buildTeamStats(ThemeData theme) {
+    return Row(
+      children: [
+        _buildMiniInsight("74%", "AVG ALIGNMENT", theme),
+        const SizedBox(width: 48),
+        _buildMiniInsight("12", "ACTIVE NODES", theme),
+        const SizedBox(width: 48),
+        _buildMiniInsight("2.4h", "COLLECTIVE FLOW", theme),
+      ],
+    );
+  }
+
+  Widget _buildMiniInsight(String val, String label, ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(val, style: theme.textTheme.headlineMedium?.copyWith(color: theme.primaryColor)),
+        Text(label, style: theme.textTheme.labelSmall),
+      ],
+    );
+  }
+}
+
+class _TeamNode extends StatelessWidget {
+  final String name;
+  final Offset pos;
+  final String status;
+  final bool isActive;
+
+  const _TeamNode({required this.name, required this.pos, required this.status, required this.isActive});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final color = isActive ? theme.primaryColor : FlowTheme.textSecondaryDark;
+
+    return Align(
+      alignment: Alignment(pos.dx * 2 - 1, pos.dy * 2 - 1),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 80, height: 80,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: color.withValues(alpha: 0.1),
+              border: Border.all(color: color.withValues(alpha: 0.5), width: 2),
+              boxShadow: isActive ? [
+                BoxShadow(color: color.withValues(alpha: 0.2), blurRadius: 20, spreadRadius: 5)
+              ] : [],
+            ),
+            child: Center(
+              child: Text(name[0], style: theme.textTheme.headlineMedium?.copyWith(color: color)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(name, style: theme.textTheme.bodyLarge),
+          Text(status, style: theme.textTheme.labelSmall?.copyWith(color: color)),
+        ],
+      ),
+    );
+  }
+}
+
+class _NetworkGridPainter extends CustomPainter {
+  final Color color;
+  _NetworkGridPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color..strokeWidth = 1;
+    for (double i = 0; i < size.width; i += 60) {
+      canvas.drawLine(Offset(i, 0), Offset(i, size.height), paint);
+    }
+    for (double i = 0; i < size.height; i += 60) {
+      canvas.drawLine(Offset(0, i), Offset(size.width, i), paint);
+    }
+  }
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
