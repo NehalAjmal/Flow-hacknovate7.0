@@ -67,6 +67,10 @@ def start_session(db: DBSession, user_id: str, task: str):
 
     # 🔥 START ULTRADIAN CLOCK
     ultradian_engine.start()
+    try:
+        fatigue = fatigue_service.get_state().get("fatigue_score", 0.0)
+    except:
+        fatigue = 0.0
 
     _live_sessions[session.id] = {
         "state": "deep_work",
