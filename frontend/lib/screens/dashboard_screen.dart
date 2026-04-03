@@ -115,8 +115,7 @@ class _DashboardScreenState extends State<DashboardScreen>
           ],
         ),
         MeetingCountdownPill(
-          nextMeetingTime:
-              DateTime.now().add(const Duration(minutes: 14)),
+          nextMeetingTime: DateTime.now().add(const Duration(minutes: 14)),
           meetingTitle: "Team standup",
         ),
       ],
@@ -149,8 +148,7 @@ class _DashboardScreenState extends State<DashboardScreen>
             height: 40,
             decoration: BoxDecoration(
                 color: driftColor, borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.compare_arrows_rounded,
-                color: Colors.white),
+            child: const Icon(Icons.compare_arrows_rounded, color: Colors.white),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -176,12 +174,10 @@ class _DashboardScreenState extends State<DashboardScreen>
             onPressed: () {},
             style: ElevatedButton.styleFrom(
               backgroundColor: driftColor,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               minimumSize: Size.zero,
             ),
-            child: const Text("Return to task",
-                style: TextStyle(fontSize: 11)),
+            child: const Text("Return to task", style: TextStyle(fontSize: 11)),
           )
         ],
       ),
@@ -189,134 +185,128 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   // ─── ROW 1: HERO + STATS ──────────────────────────────────────────────────
+  // ✅ FIX: Wrapped in IntrinsicHeight so CrossAxisAlignment.stretch works
+  //         inside SingleChildScrollView without unbounded height crash.
   Widget _buildRow1(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 3,
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("FOCUS SCORE",
-                              style:
-                                  Theme.of(context).textTheme.labelMedium),
-                          const SizedBox(height: 4),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              CountUpText(
-                                target: 82,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .displayLarge
-                                    ?.copyWith(
-                                        color: Theme.of(context)
-                                            .primaryColor),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(
-                                    bottom: 8, left: 2),
-                                child: Text(
-                                  "%",
-                                  style: TextStyle(
-                                      fontSize: 24,
-                                      color:
-                                          Theme.of(context).primaryColor,
-                                      fontWeight: FontWeight.w700),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 3,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("FOCUS SCORE",
+                                style: Theme.of(context).textTheme.labelMedium),
+                            const SizedBox(height: 4),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                CountUpText(
+                                  target: 82,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .displayLarge
+                                      ?.copyWith(
+                                          color: Theme.of(context).primaryColor),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      FocusRing(
-                        score: 82,
-                        color: Theme.of(context).primaryColor,
-                        trackColor: Theme.of(context).dividerColor,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text("ULTRADIAN RHYTHM",
-                              style:
-                                  Theme.of(context).textTheme.labelSmall),
-                          Text(
-                            "Cycle 2 / Peak",
-                            style: Theme.of(context)
-                                .textTheme
-                                .labelSmall
-                                ?.copyWith(
-                                    color:
-                                        Theme.of(context).primaryColor),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          _buildRhythmSegment(context, isTrough: true),
-                          _buildRhythmSegment(context, isPeak: true),
-                          _buildRhythmSegment(context, isPeak: true),
-                          _buildRhythmSegment(context, isCurrent: true),
-                          _buildRhythmSegment(context, isUpcoming: true),
-                          _buildRhythmSegment(context, isUpcoming: true),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                          child: _buildStatPill(
-                              context, 47, "CURRENT CYCLE", "min",
-                              isPrimary: true)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: _buildStatPill(
-                              context, 13, "NEXT BREAK", "min",
-                              isFatigue: true, prefix: '~')),
-                    ],
-                  ),
-                ],
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(bottom: 8, left: 2),
+                                  child: Text(
+                                    "%",
+                                    style: TextStyle(
+                                        fontSize: 24,
+                                        color: Theme.of(context).primaryColor,
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        FocusRing(
+                          score: 82,
+                          color: Theme.of(context).primaryColor,
+                          trackColor: Theme.of(context).dividerColor,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text("ULTRADIAN RHYTHM",
+                                style: Theme.of(context).textTheme.labelSmall),
+                            Text(
+                              "Cycle 2 / Peak",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                      color: Theme.of(context).primaryColor),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            _buildRhythmSegment(context, isTrough: true),
+                            _buildRhythmSegment(context, isPeak: true),
+                            _buildRhythmSegment(context, isPeak: true),
+                            _buildRhythmSegment(context, isCurrent: true),
+                            _buildRhythmSegment(context, isUpcoming: true),
+                            _buildRhythmSegment(context, isUpcoming: true),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                            child: _buildStatPill(
+                                context, 47, "CURRENT CYCLE", "min",
+                                isPrimary: true)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                            child: _buildStatPill(
+                                context, 13, "NEXT BREAK", "min",
+                                isFatigue: true, prefix: '~')),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          flex: 2,
-          child: Column(
-            children: [
-              Expanded(
-                  child: _buildHeroCard(
-                      context, "SESSIONS TODAY", "3", "2h 14m total focus",
-                      isGreen: true)),
-              const SizedBox(height: 12),
-              Expanded(
-                  child: _buildHeroCard(
-                      context, "STREAK", "7 🔥", "days in a row",
-                      isOrange: true)),
-              const SizedBox(height: 12),
-              Expanded(
-                child: Card(
+          const SizedBox(width: 14),
+          // ✅ FIX: replaced Expanded children (unbounded) with fixed-height hero cards
+          Expanded(
+            flex: 2,
+            child: Column(
+              children: [
+                _buildHeroCard(context, "SESSIONS TODAY", "3",
+                    "2h 14m total focus", isGreen: true),
+                const SizedBox(height: 12),
+                _buildHeroCard(context, "STREAK", "7 🔥", "days in a row",
+                    isOrange: true),
+                const SizedBox(height: 12),
+                Card(
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20)),
                   child: Padding(
@@ -328,9 +318,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Text("EYE FATIGUE",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelMedium),
+                                style:
+                                    Theme.of(context).textTheme.labelMedium),
                             CountUpText(
                               target: 34,
                               prefix: '0.',
@@ -340,9 +329,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                                   color: Theme.of(context).primaryColor),
                             ),
                             Text("EAR · Normal",
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .labelSmall),
+                                style:
+                                    Theme.of(context).textTheme.labelSmall),
                           ],
                         ),
                         const SizedBox(width: 16),
@@ -352,8 +340,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               ClipRRect(
-                                borderRadius:
-                                    BorderRadius.circular(100),
+                                borderRadius: BorderRadius.circular(100),
                                 child: LinearProgressIndicator(
                                   value: 0.34,
                                   minHeight: 8,
@@ -364,9 +351,8 @@ class _DashboardScreenState extends State<DashboardScreen>
                               ),
                               const SizedBox(height: 4),
                               Text("threshold 0.25",
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .labelSmall),
+                                  style:
+                                      Theme.of(context).textTheme.labelSmall),
                             ],
                           ),
                         )
@@ -374,157 +360,126 @@ class _DashboardScreenState extends State<DashboardScreen>
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   // ─── ROW 2: CALENDAR + APPS ───────────────────────────────────────────────
+  // ✅ FIX: Wrapped in IntrinsicHeight; removed Expanded(timeline) and Spacer()
   Widget _buildRow2(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("Today's schedule",
-                          style:
-                              Theme.of(context).textTheme.headlineSmall),
-                      Text(
-                        "View all",
-                        style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(context).primaryColor,
-                            fontFamily: 'DM Mono',
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Row(
-                    children: [
-                      _buildCalDay(context, "Mon", "30"),
-                      _buildCalDay(context, "Tue", "31"),
-                      _buildCalDay(context, "Wed", "1"),
-                      _buildCalDay(context, "Thu", "2"),
-                      _buildCalDay(context, "Fri", "3", hasEvent: true),
-                      _buildCalDay(context, "Sat", "4",
-                          isActive: true, hasEvent: true),
-                      _buildCalDay(context, "Sun", "5"),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: Column(
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildTimelineItem(
-                            context,
-                            "📌",
+                        Text("Today's schedule",
+                            style:
+                                Theme.of(context).textTheme.headlineSmall),
+                        Text(
+                          "View all",
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(context).primaryColor,
+                              fontFamily: 'DM Mono',
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      children: [
+                        _buildCalDay(context, "Mon", "30"),
+                        _buildCalDay(context, "Tue", "31"),
+                        _buildCalDay(context, "Wed", "1"),
+                        _buildCalDay(context, "Thu", "2"),
+                        _buildCalDay(context, "Fri", "3", hasEvent: true),
+                        _buildCalDay(context, "Sat", "4",
+                            isActive: true, hasEvent: true),
+                        _buildCalDay(context, "Sun", "5"),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    // ✅ FIX: was Expanded(child: Column(...)) — removed Expanded
+                    Column(
+                      children: [
+                        _buildTimelineItem(context, "📌",
                             "Debug auth module",
-                            "09:00 — ongoing · FLOW session",
-                            true,
-                            false),
-                        _buildTimelineItem(
-                            context,
-                            "📅",
-                            "Team standup",
-                            "11:00 — 11:30 · Google Meet",
-                            false,
-                            true),
-                        _buildTimelineItem(
-                            context,
-                            "💤",
+                            "09:00 — ongoing · FLOW session", true, false),
+                        _buildTimelineItem(context, "📅", "Team standup",
+                            "11:00 — 11:30 · Google Meet", false, true),
+                        _buildTimelineItem(context, "💤",
                             "Afternoon deep work",
-                            "14:00 — recommended window",
-                            false,
-                            false,
+                            "14:00 — recommended window", false, false,
                             isLast: true),
                       ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("App focus map",
-                          style:
-                              Theme.of(context).textTheme.headlineSmall),
-                      _buildTag(context, "Live", true),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  _buildAppRow(
-                      context,
-                      "💻",
-                      "VS Code",
-                      "47m",
-                      0.82,
-                      const Color(0xFFE8F0EA),
-                      Theme.of(context).primaryColor),
-                  _buildAppRow(
-                      context,
-                      "🌐",
-                      "Chrome",
-                      "12m",
-                      0.21,
-                      const Color(0xFFFFF3E8),
-                      Theme.of(context).colorScheme.secondary),
-                  _buildAppRow(
-                      context,
-                      "💬",
-                      "Slack",
-                      "8m",
-                      0.14,
-                      const Color(0xFFF0E8F5),
-                      Theme.of(context).colorScheme.error),
-                  _buildAppRow(
-                      context,
-                      "📋",
-                      "Notion",
-                      "5m",
-                      0.09,
-                      const Color(0xFFE8EEF5),
-                      Theme.of(context).primaryColor),
-                  const Spacer(),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text("DRIFT SCORE",
-                          style:
-                              Theme.of(context).textTheme.labelSmall),
-                      _buildTag(context, "LOW · 12%", true),
-                    ],
-                  )
-                ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("App focus map",
+                            style:
+                                Theme.of(context).textTheme.headlineSmall),
+                        _buildTag(context, "Live", true),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _buildAppRow(context, "💻", "VS Code", "47m", 0.82,
+                        const Color(0xFFE8F0EA),
+                        Theme.of(context).primaryColor),
+                    _buildAppRow(context, "🌐", "Chrome", "12m", 0.21,
+                        const Color(0xFFFFF3E8),
+                        Theme.of(context).colorScheme.secondary),
+                    _buildAppRow(context, "💬", "Slack", "8m", 0.14,
+                        const Color(0xFFF0E8F5),
+                        Theme.of(context).colorScheme.error),
+                    _buildAppRow(context, "📋", "Notion", "5m", 0.09,
+                        const Color(0xFFE8EEF5),
+                        Theme.of(context).primaryColor),
+                    // ✅ FIX: Spacer() → SizedBox (Spacer crashes in Column inside scroll)
+                    const SizedBox(height: 12),
+                    const Divider(),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text("DRIFT SCORE",
+                            style: Theme.of(context).textTheme.labelSmall),
+                        _buildTag(context, "LOW · 12%", true),
+                      ],
+                    )
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -533,25 +488,23 @@ class _DashboardScreenState extends State<DashboardScreen>
     return Row(
       children: [
         Expanded(
-            child: _buildBiometricCard(
-                context, "Heart Rate", 72, "BPM", "↓ calm",
+            child: _buildBiometricCard(context, "Heart Rate", 72, "BPM",
+                "↓ calm",
                 isDrift: true,
                 heights: [0.4, 0.6, 0.5, 0.45, 0.48, 0.42, 0.44])),
         const SizedBox(width: 14),
         Expanded(
-            child: _buildBiometricCard(
-                context, "HRV", 54, "ms", "↑ high",
+            child: _buildBiometricCard(context, "HRV", 54, "ms", "↑ high",
                 heights: [0.55, 0.7, 0.8, 0.75, 0.85, 0.82, 0.88])),
         const SizedBox(width: 14),
         Expanded(
           child: Card(
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text("QUICK ACTIONS",
                       style: Theme.of(context).textTheme.labelMedium),
@@ -563,8 +516,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       child: const Text("＋ New session"),
                     ),
@@ -577,20 +529,18 @@ class _DashboardScreenState extends State<DashboardScreen>
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12)),
-                        padding:
-                            const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         side: BorderSide(
                             color: Theme.of(context)
                                 .colorScheme
                                 .primaryContainer),
-                        backgroundColor: Theme.of(context)
-                            .colorScheme
-                            .primaryContainer,
+                        backgroundColor:
+                            Theme.of(context).colorScheme.primaryContainer,
                       ),
                       child: Text(
                         "View active →",
-                        style: TextStyle(
-                            color: Theme.of(context).primaryColor),
+                        style:
+                            TextStyle(color: Theme.of(context).primaryColor),
                       ),
                     ),
                   ),
@@ -611,12 +561,8 @@ class _DashboardScreenState extends State<DashboardScreen>
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: isGreen
-            ? (isDark
-                ? FlowTheme.primaryTintDark
-                : FlowTheme.primaryTintLight)
-            : (isDark
-                ? FlowTheme.fatigueBgDark
-                : FlowTheme.fatigueBgLight),
+            ? (isDark ? FlowTheme.primaryTintDark : FlowTheme.primaryTintLight)
+            : (isDark ? FlowTheme.fatigueBgDark : FlowTheme.fatigueBgLight),
         borderRadius: BorderRadius.circular(100),
       ),
       child: Text(
@@ -624,9 +570,7 @@ class _DashboardScreenState extends State<DashboardScreen>
         style: Theme.of(context).textTheme.labelLarge?.copyWith(
             color: isGreen
                 ? (isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight)
-                : (isDark
-                    ? FlowTheme.fatigueDark
-                    : FlowTheme.fatigueLight)),
+                : (isDark ? FlowTheme.fatigueDark : FlowTheme.fatigueLight)),
       ),
     );
   }
@@ -664,11 +608,9 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildStatPill(
-      BuildContext context, int target, String label, String unit,
-      {bool isPrimary = false,
-      bool isFatigue = false,
-      String prefix = ''}) {
+  Widget _buildStatPill(BuildContext context, int target, String label,
+      String unit,
+      {bool isPrimary = false, bool isFatigue = false, String prefix = ''}) {
     final theme = Theme.of(context);
     Color bgColor = theme.colorScheme.primaryContainer;
     Color valColor = theme.primaryColor;
@@ -713,13 +655,14 @@ class _DashboardScreenState extends State<DashboardScreen>
     );
   }
 
-  Widget _buildHeroCard(
-      BuildContext context, String label, String value, String sub,
+  Widget _buildHeroCard(BuildContext context, String label, String value,
+      String sub,
       {bool isGreen = false, bool isOrange = false}) {
     List<Color> gradientColors = isGreen
         ? [const Color(0xFF4F6F57), const Color(0xFF6B8F71)]
         : [const Color(0xFF8B5E3A), const Color(0xFFC4845A)];
     return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: gradientColors),
@@ -828,8 +771,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                       border: Border.all(color: dotBorder, width: 2),
                       shape: BoxShape.circle),
                   alignment: Alignment.center,
-                  child: Text(emoji,
-                      style: const TextStyle(fontSize: 14)),
+                  child: Text(emoji, style: const TextStyle(fontSize: 14)),
                 ),
                 if (!isLast)
                   Expanded(
@@ -868,11 +810,9 @@ class _DashboardScreenState extends State<DashboardScreen>
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                  color: iconBg,
-                  borderRadius: BorderRadius.circular(9)),
+                  color: iconBg, borderRadius: BorderRadius.circular(9)),
               alignment: Alignment.center,
-              child: Text(emoji,
-                  style: const TextStyle(fontSize: 16))),
+              child: Text(emoji, style: const TextStyle(fontSize: 16))),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -883,8 +823,7 @@ class _DashboardScreenState extends State<DashboardScreen>
                     Text(name,
                         style: const TextStyle(
                             fontSize: 13, fontWeight: FontWeight.w600)),
-                    Text(time,
-                        style: Theme.of(context).textTheme.labelSmall),
+                    Text(time, style: Theme.of(context).textTheme.labelSmall),
                   ],
                 ),
                 const SizedBox(height: 6),
@@ -909,12 +848,10 @@ class _DashboardScreenState extends State<DashboardScreen>
       BuildContext context, String title, int target, String unit, String sub,
       {bool isDrift = false, required List<double> heights}) {
     final theme = Theme.of(context);
-    final highlightColor =
-        isDrift ? theme.colorScheme.error : theme.primaryColor;
+    final highlightColor = isDrift ? theme.colorScheme.error : theme.primaryColor;
 
     return Card(
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -946,26 +883,99 @@ class _DashboardScreenState extends State<DashboardScreen>
                 )
               ],
             ),
-            const Spacer(),
+            // ✅ FIX: Spacer() → SizedBox (Spacer not valid in non-Flex scroll context)
+            const SizedBox(height: 16),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: heights
                   .map((h) => Expanded(
                         child: Container(
                           height: 48 * h,
-                          margin:
-                              const EdgeInsets.symmetric(horizontal: 1.5),
+                          margin: const EdgeInsets.symmetric(horizontal: 1.5),
                           decoration: BoxDecoration(
                             color: theme.primaryColor.withValues(
-                                alpha: h > 0.6
-                                    ? 1.0
-                                    : (h > 0.45 ? 0.7 : 0.3)),
+                                alpha: h > 0.6 ? 1.0 : (h > 0.45 ? 0.7 : 0.3)),
                             borderRadius: const BorderRadius.vertical(
                                 top: Radius.circular(4)),
                           ),
                         ),
                       ))
                   .toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSessionGoalCard(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("SESSION GOAL", style: theme.textTheme.labelMedium),
+                Icon(Icons.flag_rounded,
+                    color: isDark
+                        ? FlowTheme.primaryDark
+                        : FlowTheme.primaryLight,
+                    size: 18),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? FlowTheme.primaryTintDark
+                    : FlowTheme.primaryTintLight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.check_circle_outline_rounded,
+                    color: isDark
+                        ? FlowTheme.primaryDark
+                        : FlowTheme.primaryLight,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Fix JWT token refresh & write unit tests",
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: 0.4,
+                      minHeight: 5,
+                      backgroundColor: theme.dividerColor,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text("40%", style: theme.textTheme.labelSmall),
+              ],
             ),
           ],
         ),

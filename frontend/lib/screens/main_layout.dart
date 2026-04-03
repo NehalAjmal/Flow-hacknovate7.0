@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
+import 'dashboard_screen.dart';
+import 'intent_screen.dart';
+import 'active_session_screen.dart';
+import 'patterns_screen.dart';
+import 'team_screen.dart';
 
 class MainLayout extends StatefulWidget {
   final ThemeMode currentThemeMode;
@@ -18,12 +23,13 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    Center(child: Text("Dashboard Screen", style: TextStyle(fontSize: 24))),
-    Center(child: Text("Intent Screen", style: TextStyle(fontSize: 24))),
-    Center(child: Text("Active Session", style: TextStyle(fontSize: 24))),
-    Center(child: Text("Patterns Screen", style: TextStyle(fontSize: 24))),
-    Center(child: Text("Team Screen", style: TextStyle(fontSize: 24))),
+  // ✅ FIX: replaced placeholder Text widgets with actual screen classes
+  late final List<Widget> _screens = [
+    const DashboardScreen(),
+    IntentScreen(onStartSession: () => _switchScreen(2)),
+    const ActiveSessionScreen(),
+    const PatternsScreen(),
+    const TeamScreen(),
   ];
 
   void _switchScreen(int index) => setState(() => _currentIndex = index);

@@ -4,7 +4,8 @@ import '../core/theme.dart';
 class IntentScreen extends StatefulWidget {
   final VoidCallback? onStartSession;
 
-  const IntentScreen({Key? key, this.onStartSession}) : super(key: key);
+  // ✅ FIX: use_super_parameters
+  const IntentScreen({super.key, this.onStartSession});
 
   @override
   State<IntentScreen> createState() => _IntentScreenState();
@@ -68,9 +69,10 @@ class _IntentScreenState extends State<IntentScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 20),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                         ),
-                        child: Row(
+                        // ✅ FIX: prefer_const_constructors
+                        child: const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             Icon(Icons.play_circle_fill_rounded, size: 22),
                             SizedBox(width: 8),
                             Text("Begin focus session", style: TextStyle(fontSize: 16)),
@@ -171,9 +173,9 @@ class _IntentScreenState extends State<IntentScreen> {
             TextField(
               controller: _intentController,
               maxLines: 4,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: "e.g. Fix the JWT token refresh bug in the auth module and write unit tests for edge cases…",
-                contentPadding: const EdgeInsets.all(20),
+                contentPadding: EdgeInsets.all(20),
               ),
             ),
             const SizedBox(height: 10),
@@ -249,9 +251,10 @@ class _IntentScreenState extends State<IntentScreen> {
         ),
         borderRadius: BorderRadius.circular(28),
       ),
-      child: Column(
+      // ✅ FIX: prefer_const_constructors
+      child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Text("OPTIMAL WINDOW", style: TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'DM Mono', letterSpacing: 1.5)),
           SizedBox(height: 8),
           Text("Right now ✓", style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),

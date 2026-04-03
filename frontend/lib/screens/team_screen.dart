@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 
 class TeamScreen extends StatelessWidget {
-  const TeamScreen({Key? key}) : super(key: key);
+  // ✅ FIX: use_super_parameters
+  const TeamScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +193,7 @@ class TeamScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: List.generate(bars.length, (index) {
                   final h = bars[index];
-                  final isTrough = index == 4; // 55% peak dip
+                  final isTrough = index == 4;
                   final color = isTrough ? theme.colorScheme.secondary : theme.primaryColor;
                   final opacity = h > 0.7 ? 0.9 : (h > 0.4 ? 0.5 : 0.3);
 
@@ -203,7 +204,8 @@ class TeamScreen extends StatelessWidget {
                         heightFactor: h,
                         child: Container(
                           decoration: BoxDecoration(
-                            color: color.withOpacity(opacity),
+                            // ✅ FIX: withOpacity → withValues
+                            color: color.withValues(alpha: opacity),
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                           ),
                         ),

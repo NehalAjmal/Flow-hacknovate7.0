@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 
 class AdminScreen extends StatelessWidget {
-  const AdminScreen({Key? key}) : super(key: key);
+  const AdminScreen({super.key}); // ✅ FIX: use_super_parameters
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +100,7 @@ class AdminScreen extends StatelessWidget {
             "BURNOUT RISK FLAGS",
             "2",
             "Employees flagged this week",
-            const [Color(0xFF5A1E28), Color(0xFF9E3D4A)], // Rose / Drift gradient
+            const [Color(0xFF5A1E28), Color(0xFF9E3D4A)],
           ),
         ),
         const SizedBox(width: 14),
@@ -249,7 +249,8 @@ class AdminScreen extends StatelessWidget {
                               heightFactor: bars[index],
                               child: Container(
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).primaryColor.withOpacity(0.8),
+                                  // ✅ FIX: withOpacity → withValues
+                                  color: Theme.of(context).primaryColor.withValues(alpha: 0.8),
                                   borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                                 ),
                               ),
@@ -335,7 +336,7 @@ class AdminScreen extends StatelessWidget {
             const Divider(),
             _buildTableRow(context, "Employee 2", "76", "9", false),
             const Divider(),
-            _buildTableRow(context, "Employee 3", "42", "2", true), // Burnout flagged
+            _buildTableRow(context, "Employee 3", "42", "2", true),
             const Divider(),
             _buildTableRow(context, "Employee 4", "91", "14", false),
             const Divider(),
