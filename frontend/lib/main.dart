@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'screens/auth/login_screen.dart'; // Ensure this path matches where you saved the file
+import 'core/theme.dart';
+import 'screens/login_screen.dart';
+
+// Global notifier for theme mode. Defaults to Dark Mode.
+final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(ThemeMode.dark);
 
 void main() {
   runApp(const FlowApp());
@@ -10,16 +14,18 @@ class FlowApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'FLOW Cognitive Alignment',
-      debugShowCheckedModeBanner: false, // Hides the debug banner
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        primaryColor: const Color(0xFF1D9E75), // FLOW Green
-        scaffoldBackgroundColor: const Color(0xFF121212),
-        useMaterial3: true,
-      ),
-      home: const LoginScreen(), // This points to your new login page
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: themeNotifier,
+      builder: (_, ThemeMode currentMode, __) {
+        return MaterialApp(
+          title: 'FLOW',
+          debugShowCheckedModeBanner: false,
+          theme: FlowTheme.lightTheme,
+          darkTheme: FlowTheme.darkTheme,
+          themeMode: currentMode, // Listens to the toggle!
+          home: const LoginScreen(), 
+        );
+      },
     );
   }
 }
