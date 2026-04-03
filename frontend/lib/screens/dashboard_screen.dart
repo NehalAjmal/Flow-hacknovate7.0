@@ -24,7 +24,7 @@ class DashboardScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: theme.primaryColor.withOpacity(0.1),
+                  color: theme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Row(
@@ -93,8 +93,8 @@ class DashboardScreen extends StatelessWidget {
                 Expanded(
                   flex: 1,
                   child: FlowDataCard(
-                    backgroundColor: theme.primaryColor.withOpacity(0.05),
-                    borderColor: theme.primaryColor.withOpacity(0.3),
+                    backgroundColor: theme.primaryColor.withValues(alpha: 0.05),
+                    borderColor: theme.primaryColor.withValues(alpha: 0.3),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.spaceBetween, // FIX: Safe dynamic distribution
@@ -105,7 +105,7 @@ class DashboardScreen extends StatelessWidget {
                           children: [
                             Text("90 min deep work", style: theme.textTheme.headlineMedium?.copyWith(color: theme.primaryColor)),
                             const SizedBox(height: 4),
-                            Text("Peak window · 2h free", style: theme.textTheme.bodyMedium?.copyWith(color: theme.primaryColor.withOpacity(0.8))),
+                            Text("Peak window · 2h free", style: theme.textTheme.bodyMedium?.copyWith(color: theme.primaryColor.withValues(alpha: 0.8))),
                           ],
                         ),
                         SizedBox(
@@ -153,7 +153,7 @@ class DashboardScreen extends StatelessWidget {
                             gradient: LinearGradient(
                               colors: [
                                 theme.primaryColor, 
-                                theme.primaryColor.withOpacity(0.8),
+                                theme.primaryColor.withValues(alpha: 0.8),
                                 const Color(0xFFEF9F27), // Amber Break
                                 theme.primaryColor,
                                 theme.dividerColor, // Future unworked time

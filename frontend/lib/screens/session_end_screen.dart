@@ -81,8 +81,8 @@ class SessionEndScreen extends StatelessWidget {
                     flex: 2,
                     child: FlowDataCard(
                       // Subtle wash to indicate AI insight
-                      backgroundColor: theme.primaryColor.withOpacity(0.04),
-                      borderColor: theme.primaryColor.withOpacity(0.2),
+                      backgroundColor: theme.primaryColor.withValues(alpha:0.04),
+                      borderColor: theme.primaryColor.withValues(alpha:0.2),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -176,7 +176,7 @@ class SessionEndScreen extends StatelessWidget {
           // Time Column
           SizedBox(
             width: 70,
-            child: Text(time, style: theme.textTheme.labelSmall?.copyWith(fontSize: 11, color: theme.textTheme.labelSmall?.color?.withOpacity(0.7))),
+            child: Text(time, style: theme.textTheme.labelSmall?.copyWith(fontSize: 11, color: theme.textTheme.labelSmall?.color?.withValues(alpha:0.7))),
           ),
           
           // Graphic Column (Node + Line)
@@ -186,9 +186,9 @@ class SessionEndScreen extends StatelessWidget {
                 width: 28,
                 height: 28,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha:0.15),
                   shape: BoxShape.circle,
-                  border: Border.all(color: color.withOpacity(0.5), width: 1),
+                  border: Border.all(color: color.withValues(alpha:0.5), width: 1),
                 ),
                 child: Icon(icon, size: 14, color: color),
               ),

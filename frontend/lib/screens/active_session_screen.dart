@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../widgets/flow_data_card.dart';
 import '../widgets/focus_ring.dart';
@@ -96,7 +95,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
             children: [
               Text(
                 "CURRENT TASK",
-                style: theme.textTheme.labelSmall?.copyWith(color: theme.textTheme.labelSmall?.color?.withOpacity(0.6)),
+                style: theme.textTheme.labelSmall?.copyWith(color: theme.textTheme.labelSmall?.color?.withValues(alpha:0.6)),
               ),
               const SizedBox(height: 8),
               Text(
@@ -114,10 +113,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           decoration: BoxDecoration(
-            color: isDrifting ? theme.colorScheme.error.withOpacity(0.1) : theme.primaryColor.withOpacity(0.1),
+            color: isDrifting ? theme.colorScheme.error.withValues(alpha: 0.1) : theme.primaryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(99),
             border: Border.all(
-              color: isDrifting ? theme.colorScheme.error.withOpacity(0.5) : theme.primaryColor.withOpacity(0.5),
+              color: isDrifting ? theme.colorScheme.error.withValues(alpha:0.5) : theme.primaryColor.withValues(alpha:0.5),
               width: 1,
             ),
           ),
@@ -131,7 +130,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: (isDrifting ? theme.colorScheme.error : theme.primaryColor).withOpacity(0.4),
+                      color: (isDrifting ? theme.colorScheme.error : theme.primaryColor).withValues(alpha:0.4),
                       blurRadius: 6,
                       spreadRadius: 2,
                     )
@@ -178,7 +177,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
               Container(
                 height: 6,
                 decoration: BoxDecoration(
-                  color: theme.primaryColor.withOpacity(0.2),
+                  color: theme.primaryColor.withValues(alpha:0.2),
                   borderRadius: BorderRadius.circular(3),
                 ),
                 child: FractionallySizedBox(
@@ -265,8 +264,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch, 
       children: [
         FlowDataCard(
-          backgroundColor: theme.colorScheme.error.withOpacity(0.08),
-          borderColor: theme.colorScheme.error.withOpacity(0.4),
+          backgroundColor: theme.colorScheme.error.withValues(alpha:0.08),
+          borderColor: theme.colorScheme.error.withValues(alpha:0.4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -304,7 +303,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen> {
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 20),
-                    side: BorderSide(color: theme.colorScheme.error.withOpacity(0.5)),
+                    side: BorderSide(color: theme.colorScheme.error.withValues(alpha:0.5)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _toggleDriftState, 

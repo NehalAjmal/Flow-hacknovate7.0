@@ -30,7 +30,7 @@ class FlowDataCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             baseColor,
-            baseColor.withOpacity(0.85),
+            baseColor.withValues(alpha:0.85),
           ],
         ),
         borderRadius: BorderRadius.circular(20.0), 

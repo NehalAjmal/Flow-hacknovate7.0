@@ -8,6 +8,8 @@ class TeamScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final troughColor = FlowTheme.stateColor(context, SessionState.trough);
+    final driftColor  = FlowTheme.stateColor(context, SessionState.drift);
 
     return Padding(
       padding: const EdgeInsets.all(32.0),
@@ -25,7 +27,7 @@ class TeamScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: theme.primaryColor.withOpacity(0.1),
+                  color: theme.primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(99),
                 ),
                 child: Row(
@@ -47,8 +49,8 @@ class TeamScreen extends StatelessWidget {
               const SizedBox(width: 16),
               Expanded(
                 child: FlowDataCard(
-                  backgroundColor: theme.primaryColor.withOpacity(0.05),
-                  borderColor: theme.primaryColor.withOpacity(0.3),
+                  backgroundColor: theme.primaryColor.withValues(alpha: 0.05),
+                  borderColor: theme.primaryColor.withValues(alpha: 0.3),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -63,7 +65,7 @@ class TeamScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       Text("2:00 PM", style: theme.textTheme.displayLarge?.copyWith(color: theme.primaryColor)),
                       const SizedBox(height: 4),
-                      Text("High alignment · Low interruption risk", style: theme.textTheme.bodyMedium?.copyWith(color: theme.primaryColor.withOpacity(0.8))),
+                      Text("High alignment · Low interruption risk", style: theme.textTheme.bodyMedium?.copyWith(color: theme.primaryColor.withValues(alpha: 0.8))),
                     ],
                   ),
                 ),
@@ -89,11 +91,11 @@ class TeamScreen extends StatelessWidget {
                       children: [
                         _buildDistributionPillar("Deep Work", 8, 12, theme.primaryColor, theme),
                         const SizedBox(width: 16),
-                        _buildDistributionPillar("Light Task", 2, 12, theme.primaryColor.withOpacity(0.5), theme),
+                        _buildDistributionPillar("Light Task", 2, 12, theme.primaryColor.withValues(alpha: 0.05), theme),
                         const SizedBox(width: 16),
-                        _buildDistributionPillar("Trough/Break", 1, 12, FlowTheme.warningAmber, theme),
+                        _buildDistributionPillar("Trough/Break", 1, 12, troughColor, theme),
                         const SizedBox(width: 16),
-                        _buildDistributionPillar("Drift", 1, 12, theme.colorScheme.error, theme),
+                        _buildDistributionPillar("Drift", 1, 12, driftColor, theme),
                       ],
                     ),
                   ),
@@ -124,9 +126,9 @@ class TeamScreen extends StatelessWidget {
                       children: [
                         _buildAnonymousStrip("Member 1", 0.8, theme.primaryColor, "Deep Work (42m)", theme),
                         _buildAnonymousStrip("Member 2", 0.9, theme.primaryColor, "Deep Work (12m)", theme),
-                        _buildAnonymousStrip("Member 3", 0.3, FlowTheme.warningAmber, "Approaching Trough", theme),
-                        _buildAnonymousStrip("Member 4", 0.1, theme.colorScheme.error, "Intervention Active", theme),
-                        _buildAnonymousStrip("Member 5", 0.5, theme.primaryColor.withOpacity(0.5), "Light Task", theme),
+                        _buildAnonymousStrip("Member 3", 0.3, troughColor, "Approaching Trough", theme),
+                        _buildAnonymousStrip("Member 4", 0.1, driftColor, "Intervention Active", theme),
+                        _buildAnonymousStrip("Member 5", 0.5, theme.primaryColor.withValues(alpha: 0.5), "Light Task", theme),
                       ],
                     ),
                   ),
@@ -157,7 +159,7 @@ class TeamScreen extends StatelessWidget {
 
   Widget _buildDistributionPillar(String label, int count, int total, Color color, ThemeData theme) {
     final heightFactor = count / total;
-    
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -182,7 +184,7 @@ class TeamScreen extends StatelessWidget {
                   ),
                   // Active Fill
                   FractionallySizedBox(
-                    heightFactor: heightFactor > 0 ? heightFactor : 0.05, // Minimum height for visibility
+                    heightFactor: heightFactor > 0 ? heightFactor : 0.05,
                     child: Container(
                       width: 40,
                       decoration: BoxDecoration(

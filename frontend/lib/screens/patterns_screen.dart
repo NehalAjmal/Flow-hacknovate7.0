@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/flow_data_card.dart';
-import '../core/theme.dart'; // Needed for warningAmber
+import '../core/theme.dart';
 
 class PatternsScreen extends StatelessWidget {
   const PatternsScreen({super.key});
@@ -8,6 +8,7 @@ class PatternsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final troughColor = FlowTheme.stateColor(context, SessionState.trough);
 
     return Padding(
       padding: const EdgeInsets.all(32.0),
@@ -45,15 +46,15 @@ class PatternsScreen extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        _buildHourlyBar("8AM", 0.3, theme.primaryColor.withOpacity(0.4), theme),
+                        _buildHourlyBar("8AM", 0.3, theme.primaryColor.withValues(alpha: 0.4), theme),
                         _buildHourlyBar("9AM", 0.7, theme.primaryColor, theme),
                         _buildHourlyBar("10AM", 0.9, theme.primaryColor, theme),
                         _buildHourlyBar("11AM", 0.85, theme.primaryColor, theme),
-                        _buildHourlyBar("12PM", 0.4, theme.primaryColor.withOpacity(0.6), theme),
-                        _buildHourlyBar("1PM", 0.15, FlowTheme.warningAmber, theme), // Trough
-                        _buildHourlyBar("2PM", 0.5, theme.primaryColor.withOpacity(0.8), theme),
+                        _buildHourlyBar("12PM", 0.4, theme.primaryColor.withValues(alpha: 0.6), theme),
+                        _buildHourlyBar("1PM", 0.15, troughColor, theme), // Trough
+                        _buildHourlyBar("2PM", 0.5, theme.primaryColor.withValues(alpha: 0.8), theme),
                         _buildHourlyBar("3PM", 0.65, theme.primaryColor, theme),
-                        _buildHourlyBar("4PM", 0.55, theme.primaryColor.withOpacity(0.8), theme),
+                        _buildHourlyBar("4PM", 0.55, theme.primaryColor.withValues(alpha: 0.8), theme),
                         _buildHourlyBar("5PM", 0.2, theme.dividerColor, theme),
                       ],
                     ),
@@ -83,7 +84,7 @@ class PatternsScreen extends StatelessWidget {
                             size: Size.infinite,
                             painter: _TrendLinePainter(
                               lineColor: theme.primaryColor,
-                              fillColor: theme.primaryColor.withOpacity(0.1),
+                              fillColor: theme.primaryColor.withValues(alpha: 0.1),
                             ),
                           ),
                         ),
@@ -102,7 +103,7 @@ class PatternsScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                
+
                 // Learned Parameters List
                 Expanded(
                   flex: 4,
@@ -204,9 +205,9 @@ class PatternsScreen extends StatelessWidget {
           Expanded(
             flex: 1,
             child: Text(
-              value, 
+              value,
               style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: FontWeight.w600, 
+                fontWeight: FontWeight.w600,
                 color: isHighlight ? theme.primaryColor : theme.textTheme.bodyLarge?.color,
               ),
             ),
@@ -230,15 +231,13 @@ class _TrendLinePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Mock 7-day data points (0.0 to 1.0)
     final points = [0.4, 0.6, 0.5, 0.8, 0.7, 0.9, 0.85];
-    
+
     final path = Path();
     final fillPath = Path();
-    
+
     final widthStep = size.width / (points.length - 1);
 
-    // Start coordinates
     path.moveTo(0, size.height - (points[0] * size.height));
     fillPath.moveTo(0, size.height);
     fillPath.lineTo(0, size.height - (points[0] * size.height));
@@ -246,13 +245,12 @@ class _TrendLinePainter extends CustomPainter {
     for (int i = 1; i < points.length; i++) {
       final x = i * widthStep;
       final y = size.height - (points[i] * size.height);
-      
-      // Smooth bezier curves
+
       final prevX = (i - 1) * widthStep;
       final prevY = size.height - (points[i - 1] * size.height);
-      
+
       final controlPointX = prevX + (x - prevX) / 2;
-      
+
       path.cubicTo(controlPointX, prevY, controlPointX, y, x, y);
       fillPath.cubicTo(controlPointX, prevY, controlPointX, y, x, y);
     }

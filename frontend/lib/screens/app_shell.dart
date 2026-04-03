@@ -117,9 +117,9 @@ class _AppShellState extends State<AppShell> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: isSelected ? theme.primaryColor.withOpacity(0.1) : Colors.transparent,
+            color: isSelected ? theme.primaryColor.withValues(alpha: 0.1) : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
-            border: isSelected ? Border.all(color: theme.primaryColor.withOpacity(0.5)) : null,
+            border: isSelected ? Border.all(color: theme.primaryColor.withValues(alpha:0.5)) : null,
           ),
           child: Icon(
             icon,

@@ -27,7 +27,7 @@ class AdminScreen extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                 decoration: BoxDecoration(
-                  color: theme.textTheme.labelSmall?.color?.withOpacity(0.1),
+                  color: theme.textTheme.labelSmall?.color?.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                   border: Border.all(color: theme.dividerColor),
                 ),
@@ -53,8 +53,8 @@ class AdminScreen extends StatelessWidget {
               // The Reactive Burnout Risk Card
               Expanded(
                 child: FlowDataCard(
-                  backgroundColor: burnoutRiskCount > 0 ? theme.colorScheme.error.withOpacity(0.08) : null,
-                  borderColor: burnoutRiskCount > 0 ? theme.colorScheme.error.withOpacity(0.5) : null,
+                  backgroundColor: burnoutRiskCount > 0 ? theme.colorScheme.error.withValues(alpha:0.08) : null,
+                  borderColor: burnoutRiskCount > 0 ? theme.colorScheme.error.withValues(alpha:0.5) : null,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -75,7 +75,7 @@ class AdminScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         burnoutRiskCount > 0 ? "Requires immediate attention" : "No risks detected", 
-                        style: theme.textTheme.bodyMedium?.copyWith(color: burnoutRiskCount > 0 ? theme.colorScheme.error.withOpacity(0.8) : theme.textTheme.labelSmall?.color),
+                        style: theme.textTheme.bodyMedium?.copyWith(color: burnoutRiskCount > 0 ? theme.colorScheme.error.withValues(alpha: 0.8) : theme.textTheme.labelSmall?.color),
                       ),
                     ],
                   ),
@@ -112,7 +112,7 @@ class AdminScreen extends StatelessWidget {
                         top: BorderSide(color: theme.dividerColor),
                         bottom: BorderSide(color: theme.dividerColor),
                       ),
-                      color: theme.dividerColor.withOpacity(0.2),
+                      color: theme.dividerColor.withValues(alpha:0.2),
                     ),
                     child: Row(
                       children: [
@@ -136,7 +136,7 @@ class AdminScreen extends StatelessWidget {
                         
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-                          color: isEven ? Colors.transparent : theme.dividerColor.withOpacity(0.1),
+                          color: isEven ? Colors.transparent : theme.dividerColor.withValues(alpha: 0.1),
                           child: Row(
                             children: [
                               Expanded(flex: 2, child: Text("ND-${800 + index}", style: theme.textTheme.bodyMedium?.copyWith(fontFeatures: [const FontFeature.tabularFigures()]))),
