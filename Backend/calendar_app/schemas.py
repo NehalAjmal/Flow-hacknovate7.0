@@ -1,14 +1,20 @@
+# calendar_app/schemas.py
+# FIX: Python 3.9 needs Optional[X] instead of X | None
+
+from typing import Optional, List
 from pydantic import BaseModel
+
 
 class CalendarEvent(BaseModel):
     title: str
-    start_time: str         # ISO format datetime string
-    minutes_until: int      # How many minutes from now this event starts
-    duration_minutes: int   # How long the event lasts
+    start_time: str
+    minutes_until: int
+    duration_minutes: int
+
 
 class CalendarContext(BaseModel):
     has_upcoming_events: bool
-    warning_level: str      # "none" | "caution" | "warning" | "block"
-    next_event: CalendarEvent | None
-    events: list[CalendarEvent]
-    recommendation: str     # Human-readable advice for the session start screen
+    warning_level: str
+    next_event: Optional[CalendarEvent]
+    events: List[CalendarEvent]
+    recommendation: str
