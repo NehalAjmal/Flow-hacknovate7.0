@@ -6,10 +6,10 @@ class RegisterRequest(BaseModel):
     full_name:    str
     email:        EmailStr
     password:     str
-    age:          Optional[int]  = None
-    sex:          Optional[str]  = None
-    account_type: str            = "solo"   
-    company_code: Optional[str]  = None
+    age:          Optional[int] = None
+    sex:          Optional[str] = None
+    account_type: str           = "solo"
+    company_code: Optional[str] = None
 
     @field_validator("account_type")
     @classmethod
@@ -27,13 +27,15 @@ class LoginRequest(BaseModel):
 
 class GoogleAuthRequest(BaseModel):
     token:        str
-    password:     str                   
+    password:     str
+    age:          Optional[int] = None   # collected on register screen
+    sex:          Optional[str] = None   # collected on register screen
     account_type: Optional[str] = "solo"
     company_code: Optional[str] = None
 
 
 class RegisterResponse(BaseModel):
-    user_id:     str          
+    user_id:     str
     token:       str
     role:        str
     team_id:     Optional[str] = None

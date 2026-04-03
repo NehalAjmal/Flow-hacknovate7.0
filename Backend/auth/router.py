@@ -24,10 +24,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 def _resolve_team(db: Session, account_type: str, company_code: Optional[str] = None):
     if account_type in ("company_employee", "admin"):
         if not company_code:
-            raise HTTPException(
-                status_code=400,
-                detail="company_code is required for this account type",
-            )
+            raise HTTPException(status_code=400, detail="company_code is required for this account type")
         team = db.query(Team).filter(Team.company_code == company_code).first()
         if not team:
             raise HTTPException(status_code=404, detail="Invalid company code")
@@ -38,11 +35,7 @@ def _resolve_team(db: Session, account_type: str, company_code: Optional[str] = 
 
 # ── /register ──────────────────────────────────────────────────────────────────
 
-@router.post(
-    "/register",
-    response_model=RegisterResponse,
-    status_code=status.HTTP_201_CREATED,
-)
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():
         raise HTTPException(status_code=400, detail="Email is already registered")
@@ -75,19 +68,12 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
 
 # ── /login ─────────────────────────────────────────────────────────────────────
 
-@router.post(
-    "/login",
-    response_model=LoginResponse,
-    status_code=status.HTTP_200_OK,
-)
+@router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
 def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
 
     if not user or not verify_password(payload.password, user.password_hash):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-        )
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
 
     token = create_access_token(data={"sub": user.id, "role": user.role})
 
@@ -100,19 +86,12 @@ def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
     )
 
 
+# ── /google ────────────────────────────────────────────────────────────────────
 
-@router.post(
-    "/google",
-    response_model=RegisterResponse,
-    status_code=status.HTTP_200_OK,
-)
+@router.post("/google", response_model=RegisterResponse, status_code=status.HTTP_200_OK)
 def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     try:
-        id_info = id_token.verify_oauth2_token(
-            payload.token,
-            google_requests.Request(),
-            settings.google_client_id,
-        )
+        id_info   = id_token.verify_oauth2_token(payload.token, google_requests.Request(), settings.google_client_id)
         email     = id_info["email"]
         full_name = id_info.get("name", "")
     except (ValueError, KeyError):
@@ -121,25 +100,21 @@ def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == email).first()
 
     if user:
+        # Existing user — just issue a fresh token, no updates
         pass
-
     else:
+        # New user — password + baselines required
         if not payload.password:
-            raise HTTPException(
-                status_code=400,
-                detail="Password is required when registering via Google",
-            )
+            raise HTTPException(status_code=400, detail="Password is required when registering via Google")
 
-        role, team_id = _resolve_team(
-            db,
-            payload.account_type or "solo",
-            payload.company_code,
-        )
+        role, team_id = _resolve_team(db, payload.account_type or "solo", payload.company_code)
 
         user = User(
             full_name=full_name,
             email=email,
             password_hash=get_password_hash(payload.password),
+            age=payload.age,       # ← now saved
+            sex=payload.sex,       # ← now saved
             role=role,
             team_id=team_id,
         )
