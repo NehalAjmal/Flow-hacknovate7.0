@@ -7,5 +7,5 @@ pkill -f uvicorn
 sleep 1
 
 # Start the server
-cd /Users/nehalajmal/Flow/Backend
+cd /Users/nehalajmal/Flow-hacknovate7.0/Backend
 python3.11 -m uvicorn main:app --reload --port 8002

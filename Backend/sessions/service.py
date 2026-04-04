@@ -2,6 +2,7 @@ from typing import Optional
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session as DBSession
 
+from db_models.user import User
 from db_models.session import Session
 from llm.cache import get_intervention
 
@@ -276,7 +277,10 @@ def end_session(db: DBSession, session_id: str):
     learning_data = _prepare_learning_data(log)
 
     patterns = pattern_learner.update(learning_data)
-
+    user = db.query(User).filter(User.id == session.user_id).first()
+    if user:
+        user.pattern_model = patterns
+    db.commit()
 
     return {
         "session_id": session_id,
