@@ -13,7 +13,9 @@ class FatigueService:
     def __init__(self):
         self.running = False
         self.thread = None
-        self.detector = None  # lazy init
+        self.detector = None
+
+        self.cap = None  # 🔥 camera handle
 
         self.state = {
             "fatigue_score": 0.0,
@@ -34,21 +36,21 @@ class FatigueService:
         self.fatigue_score = 0.0
 
     # ─────────────────────────────
-    # INITIALIZE MEDIAPIPE (SAFE)
+    # INIT DETECTOR
     # ─────────────────────────────
     def _init_detector(self):
         if self.detector is not None:
             return
 
         MODEL_PATH = os.path.join(
-            os.path.dirname(__file__),  # points to ml_models folder
+            os.path.dirname(__file__),
             "face_landmarker.task"
         )
 
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(
                 f"❌ Model not found at {MODEL_PATH}\n"
-                f"Download it and place in ml_models/"
+                f"Download and place in ml_models/"
             )
 
         base_options = python.BaseOptions(
@@ -63,33 +65,72 @@ class FatigueService:
         )
 
         self.detector = vision.FaceLandmarker.create_from_options(options)
-        print("✅ MediaPipe FaceLandmarker initialized")
+        print("✅ MediaPipe initialized")
 
     # ─────────────────────────────
-    # PUBLIC METHODS
+    # START
     # ─────────────────────────────
     def start(self):
         if self.running:
             return
 
-        self._init_detector()  # initialize safely
+        print("🚀 Starting fatigue service...")
+
+        self._init_detector()
+
+        # reset state
+        self.baseline_ear = None
+        self.ear_history = []
+        self.closed_frames = 0
+        self.fatigue_score = 0.0
 
         self.running = True
+
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
+
         print("✅ Fatigue service started")
 
+    # ─────────────────────────────
+    # STOP (🔥 IMPORTANT FIX)
+    # ─────────────────────────────
+    def stop(self):
+        if not self.running:
+            return
+
+        print("🛑 Stopping fatigue service...")
+
+        self.running = False
+
+        if self.thread:
+            self.thread.join(timeout=2)
+
+        if self.cap:
+            self.cap.release()
+            self.cap = None
+
+        print("🛑 Fatigue service stopped")
+
+    # ─────────────────────────────
+    # GET STATE
+    # ─────────────────────────────
     def get_state(self):
         return self.state
 
     # ─────────────────────────────
-    # CORE LOOP
+    # MAIN LOOP
     # ─────────────────────────────
     def _run(self):
-        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)  # Windows fix
+        self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+
+        if not self.cap.isOpened():
+            print("❌ Camera failed to open")
+            return
+
+        print("📸 Camera opened")
 
         while self.running:
-            ret, frame = cap.read()
+            ret, frame = self.cap.read()
             if not ret:
                 continue
 
@@ -120,6 +161,7 @@ class FatigueService:
                     self.ear_history.append(ear)
                     if len(self.ear_history) > self.calibration_frames:
                         self.baseline_ear = np.mean(self.ear_history)
+                        print("✅ Calibration complete")
                     continue
 
                 ear_ratio = ear / self.baseline_ear
@@ -135,9 +177,11 @@ class FatigueService:
                 if self.closed_frames > 20:
                     self.fatigue_score += 0.02
 
+                # decay
                 self.fatigue_score *= 0.98
                 self.fatigue_score = min(self.fatigue_score, 1.0)
 
+                # state
                 if self.fatigue_score < 0.3:
                     fatigue_state = "normal"
                 elif self.fatigue_score < 0.6:
@@ -152,7 +196,12 @@ class FatigueService:
 
             time.sleep(0.03)
 
-        cap.release()
+        # cleanup
+        if self.cap:
+            self.cap.release()
+            self.cap = None
+
+        print("📸 Camera released")
 
     # ─────────────────────────────
     # HELPERS
@@ -170,5 +219,5 @@ class FatigueService:
         ])
 
 
-# 🔥 SINGLETON INSTANCE (SAFE)
+# 🔥 SINGLETON INSTANCE
 fatigue_service = FatigueService()
