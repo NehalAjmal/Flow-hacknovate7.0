@@ -17,8 +17,9 @@ dependencies:
   window_manager: ^0.4.0 
   
   # Network requests to FastAPI Backend
-  http: ^1.2.0
+  http: ^1.6.0
   provider: ^6.1.5+1
+  shared_preferences: ^2.2.2
 
 dev_dependencies:
   flutter_test:

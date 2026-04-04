@@ -1,11 +1,60 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
-class AdminScreen extends StatelessWidget {
-  const AdminScreen({super.key}); // ✅ FIX: use_super_parameters
+import '../core/theme.dart';
+import '../core/models.dart'; // Make sure this points to the models we created
+
+class AdminScreen extends StatefulWidget {
+  const AdminScreen({super.key});
+
+  @override
+  State<AdminScreen> createState() => _AdminScreenState();
+}
+
+class _AdminScreenState extends State<AdminScreen> {
+  bool _isLoading = true;
+  AdminDashboardData? _adminData;
+  final String apiUrl = "http://127.0.0.1:8000"; 
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAdminData();
+  }
+
+  Future<void> _fetchAdminData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token') ?? '';
+
+      final response = await http.get(
+        Uri.parse('$apiUrl/admin/dashboard'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        setState(() {
+          _adminData = AdminDashboardData.fromJson(jsonDecode(response.body));
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print("Network Error: $e");
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return Scaffold(
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
@@ -64,7 +113,7 @@ class AdminScreen extends StatelessWidget {
         ),
         ElevatedButton.icon(
           onPressed: () {
-            // Action: Send Team Break Alert
+            // Action: Send Team Break Alert API Call
           },
           icon: const Icon(Icons.notifications_active_rounded, size: 18),
           label: const Text("Send Team Break Alert"),
@@ -81,31 +130,31 @@ class AdminScreen extends StatelessWidget {
   Widget _buildHeroRow(BuildContext context) {
     return Row(
       children: [
-        // Focus Score Card
+        // Focus Score Card (LIVE BINDING)
         Expanded(
           child: _buildGradientHeroCard(
             context,
             "TEAM FOCUS SCORE",
-            "71",
-            "↑ +4 vs yesterday",
+            "${_adminData?.avgFocusScore ?? 0}",
+            "↑ +4 vs yesterday", // Can make this dynamic later
             const [Color(0xFF4F6F57), Color(0xFF6B8F71)],
           ),
         ),
         const SizedBox(width: 14),
         
-        // Burnout Risk Card (Alert)
+        // Burnout Risk Card (LIVE BINDING)
         Expanded(
           child: _buildGradientHeroCard(
             context,
             "BURNOUT RISK FLAGS",
-            "2",
+            "${_adminData?.burnoutFlagsCount ?? 0}",
             "Employees flagged this week",
             const [Color(0xFF5A1E28), Color(0xFF9E3D4A)],
           ),
         ),
         const SizedBox(width: 14),
         
-        // Best Meeting Window
+        // Best Meeting Window (LIVE BINDING)
         Expanded(
           child: Card(
             child: Padding(
@@ -116,7 +165,7 @@ class AdminScreen extends StatelessWidget {
                 children: [
                   Text("BEST MEETING WINDOW", style: Theme.of(context).textTheme.labelMedium),
                   const SizedBox(height: 6),
-                  Text("14:30", style: TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: Theme.of(context).primaryColor, letterSpacing: -2, height: 1)),
+                  Text(_adminData?.bestMeetingWindow ?? "--:--", style: TextStyle(fontSize: 38, fontWeight: FontWeight.w800, color: Theme.of(context).primaryColor, letterSpacing: -2, height: 1)),
                   const SizedBox(height: 6),
                   Text("Optimal slot in next 4 hours", style: Theme.of(context).textTheme.bodySmall),
                 ],
@@ -150,6 +199,9 @@ class AdminScreen extends StatelessWidget {
 
   // ─── LIVE STATE GRID ─────────────────────────────────────────────────────
   Widget _buildLiveStateGrid(BuildContext context) {
+    // LIVE BINDING: Map backend dict to the UI
+    final dist = _adminData?.stateDistribution ?? {};
+    
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -166,11 +218,11 @@ class AdminScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildStateCount(context, "Deep Work", "2", Theme.of(context).primaryColor)),
-                Expanded(child: _buildStateCount(context, "Shallow Work", "1", Theme.of(context).textTheme.bodyMedium!.color!)),
-                Expanded(child: _buildStateCount(context, "Break", "0", Theme.of(context).colorScheme.primaryContainer)),
-                Expanded(child: _buildStateCount(context, "Trough", "1", Theme.of(context).colorScheme.secondary)),
-                Expanded(child: _buildStateCount(context, "Offline", "2", Theme.of(context).dividerColor)),
+                Expanded(child: _buildStateCount(context, "Deep Work", "${dist['DEEP_WORK'] ?? 0}", Theme.of(context).primaryColor)),
+                Expanded(child: _buildStateCount(context, "Shallow Work", "${dist['SHALLOW_WORK'] ?? 0}", Theme.of(context).textTheme.bodyMedium!.color!)),
+                Expanded(child: _buildStateCount(context, "Break", "${dist['BREAK'] ?? 0}", Theme.of(context).colorScheme.primaryContainer)),
+                Expanded(child: _buildStateCount(context, "Fatigue", "${dist['FATIGUE'] ?? 0}", Theme.of(context).colorScheme.secondary)),
+                Expanded(child: _buildStateCount(context, "Offline", "${dist['OFFLINE'] ?? 0}", Theme.of(context).dividerColor)),
               ],
             )
           ],
@@ -222,8 +274,17 @@ class AdminScreen extends StatelessWidget {
 
   // ─── PERFORMANCE TREND ───────────────────────────────────────────────────
   Widget _buildPerformanceTrend(BuildContext context) {
-    final bars = [0.65, 0.70, 0.68, 0.75, 0.82, 0.71, 0.85];
-    final days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    // LIVE BINDING: Map backend trend array to graph
+    final trendList = _adminData?.trend7Days ?? [];
+    
+    // Fallback if DB is empty
+    List<double> bars = [0.65, 0.70, 0.68, 0.75, 0.82, 0.71, 0.85];
+    List<String> days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+
+    if (trendList.isNotEmpty) {
+      days = trendList.map((t) => t.day.substring(0, 1)).toList(); // Get first letter
+      bars = trendList.map((t) => t.avgScore / 100.0).toList(); // Convert 85 -> 0.85
+    }
     
     return Card(
       child: Padding(
@@ -246,10 +307,9 @@ class AdminScreen extends StatelessWidget {
                         children: [
                           Flexible(
                             child: FractionallySizedBox(
-                              heightFactor: bars[index],
+                              heightFactor: bars[index].clamp(0.0, 1.0), // Prevent overflow crashes
                               child: Container(
                                 decoration: BoxDecoration(
-                                  // ✅ FIX: withOpacity → withValues
                                   color: Theme.of(context).primaryColor.withValues(alpha: 0.8),
                                   borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                                 ),
@@ -316,6 +376,9 @@ class AdminScreen extends StatelessWidget {
 
   // ─── EMPLOYEE TABLE (ANONYMIZED) ─────────────────────────────────────────
   Widget _buildEmployeeTable(BuildContext context) {
+    // LIVE BINDING: Generate the list from the burnoutFlags array
+    final flags = _adminData?.burnoutFlags ?? [];
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -332,15 +395,29 @@ class AdminScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildTableRow(context, "ID", "Focus Score", "Sessions", "Burnout Flag", isHeader: true),
             const Divider(),
-            _buildTableRow(context, "Employee 1", "88", "12", false),
-            const Divider(),
-            _buildTableRow(context, "Employee 2", "76", "9", false),
-            const Divider(),
-            _buildTableRow(context, "Employee 3", "42", "2", true),
-            const Divider(),
-            _buildTableRow(context, "Employee 4", "91", "14", false),
-            const Divider(),
-            _buildTableRow(context, "Employee 5", "58", "6", false),
+            
+            // Generate live rows or fall back to mock data
+            if (flags.isNotEmpty) ...[
+              ...flags.map((flag) => Column(
+                children: [
+                  _buildTableRow(
+                    context, 
+                    flag.displayName, 
+                    "${flag.avgFocusScore}", 
+                    "${flag.sessionsThisWeek}", 
+                    flag.riskLevel == 'high' || flag.riskLevel == 'medium'
+                  ),
+                  const Divider(),
+                ],
+              ))
+            ] else ...[
+              // Mock fallback if DB array is empty
+              _buildTableRow(context, "Employee 1", "88", "12", false),
+              const Divider(),
+              _buildTableRow(context, "Employee 2", "76", "9", false),
+              const Divider(),
+              _buildTableRow(context, "Employee 3", "42", "2", true),
+            ]
           ],
         ),
       ),

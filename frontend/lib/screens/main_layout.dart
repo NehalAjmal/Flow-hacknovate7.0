@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../core/app_state.dart';
+import '../core/theme.dart';
 import 'dashboard_screen.dart';
 import 'intent_screen.dart';
 import 'active_session_screen.dart';
 import 'patterns_screen.dart';
-import 'team_screen.dart';
+import 'admin_screen.dart'; // ✅ Correct import!
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -21,27 +23,27 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   Widget build(BuildContext context) {
-    // SCREENS ARRAY
-   // SCREENS ARRAY
+    
+    // SCREENS ARRAY: No 'const' on the array itself to prevent compiler crashes
     final List<Widget> screens = [
-      const DashboardScreen(key: ValueKey('dash')),
+      const DashboardScreen(key: ValueKey('dash')), 
       
-      // ─── UPDATE THIS LINE ───
       IntentScreen(
         key: const ValueKey('intent'), 
         onStartSession: () {
-          context.read<AppState>().startSession(); // Forces the red screen to clear!
-          _switchScreen(2);
+          context.read<AppState>().startSession(); 
+          _switchScreen(2); // Jump to Active Session
         }
       ),
-      // ───────────────────────
+      
       const ActiveSessionScreen(key: ValueKey('active')),
       const PatternsScreen(key: ValueKey('patterns')),
-      const TeamScreen(key: ValueKey('team')),
+      
+      // ✅ FIX: Changed to AdminScreen to match your class name!
+      const AdminScreen(key: ValueKey('admin')),
     ];
 
     // ─── BULLETPROOF COLOR EXTRACTION ───
-    // We extract directly from the active theme to avoid "undefined" errors
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     
@@ -55,6 +57,7 @@ class _MainLayoutState extends State<MainLayout> {
     return Scaffold(
       body: Row(
         children: [
+          // ─── SIDEBAR NAVIGATION ───
           Container(
             width: 72,
             decoration: BoxDecoration(
@@ -64,6 +67,7 @@ class _MainLayoutState extends State<MainLayout> {
             child: Column(
               children: [
                 const SizedBox(height: 20),
+                // Logo / Home Button
                 GestureDetector(
                   onTap: () => _switchScreen(0),
                   child: Container(
@@ -73,14 +77,17 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                 ),
                 const SizedBox(height: 16),
+                
+                // Navigation Icons
                 _buildNavItem(Icons.grid_view_rounded, 0, primaryColor, primaryTint, text3Color),
                 _buildNavItem(Icons.adjust_rounded, 1, primaryColor, primaryTint, text3Color),
                 _buildNavItem(Icons.access_time_rounded, 2, primaryColor, primaryTint, text3Color, isNotif: true, notifColor: driftColor),
                 _buildNavItem(Icons.show_chart_rounded, 3, primaryColor, primaryTint, text3Color),
-                _buildNavItem(Icons.people_alt_rounded, 4, primaryColor, primaryTint, text3Color),
+                _buildNavItem(Icons.people_alt_rounded, 4, primaryColor, primaryTint, text3Color), // Routes to Admin
+                
                 const Spacer(),
                 
-                // WIRED TO PROVIDER FOR GLOBAL THEME TOGGLE
+                // Theme Toggle (Wired to AppState Provider)
                 GestureDetector(
                   onTap: () => context.read<AppState>().toggleTheme(),
                   child: Container(
@@ -90,6 +97,8 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                 ),
                 const SizedBox(height: 8),
+                
+                // User Avatar Placeholder
                 GestureDetector(
                   onTap: () {},
                   child: Container(
@@ -112,12 +121,11 @@ class _MainLayoutState extends State<MainLayout> {
               ],
             ),
           ),
-          // ─── THE CRASH-PROOF INDEXED STACK ───
+          
+          // ─── MAIN CONTENT AREA (INDEXED STACK) ───
           Expanded(
             child: IndexedStack(
               index: _currentIndex,
-              // TickerMode freezes the animations (like the pulsing ring) 
-              // on screens that are currently hidden in the background!
               children: screens.asMap().entries.map((entry) {
                 return TickerMode(
                   enabled: _currentIndex == entry.key,
@@ -131,6 +139,7 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
+  // ─── NAV ITEM BUILDER ───
   Widget _buildNavItem(IconData icon, int index, Color primaryColor, Color primaryTint, Color text3Color,
       {bool isNotif = false, Color? notifColor}) {
     final isActive = _currentIndex == index;
@@ -147,6 +156,7 @@ class _MainLayoutState extends State<MainLayout> {
           alignment: Alignment.center,
           children: [
             Icon(icon, color: isActive ? primaryColor : text3Color, size: 20),
+            // Active Indicator Line
             if (isActive)
               Positioned(
                 left: 0,
@@ -158,6 +168,7 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                 ),
               ),
+            // Notification Dot (e.g., for Active Session drift)
             if (isNotif)
               Positioned(
                 top: 8, right: 8,
