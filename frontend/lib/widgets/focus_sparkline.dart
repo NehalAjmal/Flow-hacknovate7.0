@@ -28,8 +28,9 @@ class FocusSparkline extends StatefulWidget {
   State<FocusSparkline> createState() => _FocusSparklineState();
 }
 
+// ✅ FIX: Changed SingleTickerProviderStateMixin to TickerProviderStateMixin
 class _FocusSparklineState extends State<FocusSparkline>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _entryCtrl;
   late Animation<double>   _entryAnim;
   late AnimationController _dotCtrl;

@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
 
 class TeamScreen extends StatelessWidget {
-  // ✅ FIX: use_super_parameters
   const TeamScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent, // ✅ Lets the AppShell mesh show through
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
         child: Column(
@@ -19,13 +18,18 @@ class TeamScreen extends StatelessWidget {
             const SizedBox(height: 14),
             _buildTeamNodesCard(context),
             const SizedBox(height: 14),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(child: _buildTeamFocusWindow(context)),
-                const SizedBox(width: 14),
-                Expanded(child: _buildCollectiveDrift(context)),
-              ],
+            
+            // ✅ THE FIX: IntrinsicHeight safely allows the cards to match heights 
+            // without forcing them to stretch into infinity and crashing!
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(child: _buildTeamFocusWindow(context)),
+                  const SizedBox(width: 14),
+                  Expanded(child: _buildCollectiveDrift(context)),
+                ],
+              ),
             )
           ],
         ),
@@ -36,7 +40,6 @@ class TeamScreen extends StatelessWidget {
   // ─── TOP BAR ─────────────────────────────────────────────────────────────
   Widget _buildTopBar(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -47,7 +50,7 @@ class TeamScreen extends StatelessWidget {
             Text(
               "DEPARTMENT TELEMETRY",
               style: theme.textTheme.labelMedium?.copyWith(
-                color: isDark ? FlowTheme.text3Dark : FlowTheme.text3Light,
+                color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6), // ✅ Dynamic Color
               ),
             ),
             const SizedBox(height: 2),
@@ -57,13 +60,13 @@ class TeamScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           decoration: BoxDecoration(
-            color: isDark ? FlowTheme.primaryTintDark : FlowTheme.primaryTintLight,
+            color: theme.primaryColor.withValues(alpha: 0.15), // ✅ Dynamic Color
             borderRadius: BorderRadius.circular(100),
           ),
           child: Text(
             "ERR011",
             style: theme.textTheme.labelLarge?.copyWith(
-              color: isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight,
+              color: theme.primaryColor,
             ),
           ),
         ),
@@ -105,6 +108,8 @@ class TeamScreen extends StatelessWidget {
   // ─── TEAM NODES ──────────────────────────────────────────────────────────
   Widget _buildTeamNodesCard(BuildContext context) {
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Theme.of(context).dividerColor)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -137,12 +142,12 @@ class TeamScreen extends StatelessWidget {
 
   Widget _buildTeamNode(BuildContext context, String name, String initial, String status, String focusScore, List<Color> avatarGradient, bool isInFlow) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
 
     final borderColor = isInFlow ? theme.primaryColor : theme.colorScheme.secondary;
+    // ✅ Dynamic Background Colors
     final bgColor = isInFlow 
-        ? (isDark ? FlowTheme.primaryTintDark : FlowTheme.primaryTintLight)
-        : (isDark ? FlowTheme.fatigueBgDark : FlowTheme.fatigueBgLight);
+        ? theme.primaryColor.withValues(alpha: 0.1)
+        : theme.colorScheme.secondary.withValues(alpha: 0.1);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
@@ -180,6 +185,8 @@ class TeamScreen extends StatelessWidget {
     final theme = Theme.of(context);
 
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: theme.dividerColor)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -204,7 +211,6 @@ class TeamScreen extends StatelessWidget {
                         heightFactor: h,
                         child: Container(
                           decoration: BoxDecoration(
-                            // ✅ FIX: withOpacity → withValues
                             color: color.withValues(alpha: opacity),
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
                           ),
@@ -227,6 +233,8 @@ class TeamScreen extends StatelessWidget {
     final theme = Theme.of(context);
     
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: theme.dividerColor)),
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -277,16 +285,16 @@ class TeamScreen extends StatelessWidget {
 
   Widget _buildTag(BuildContext context, String text, {bool isGreen = false, bool isOrange = false, bool isRose = false}) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     
-    Color bgColor = theme.colorScheme.primaryContainer;
+    // ✅ Dynamic Colors
+    Color bgColor = theme.primaryColor.withValues(alpha: 0.15);
     Color textColor = theme.primaryColor;
 
     if (isOrange) {
-      bgColor = isDark ? FlowTheme.fatigueBgDark : FlowTheme.fatigueBgLight;
+      bgColor = theme.colorScheme.secondary.withValues(alpha: 0.15);
       textColor = theme.colorScheme.secondary;
     } else if (isRose) {
-      bgColor = isDark ? FlowTheme.driftBgDark : FlowTheme.driftBgLight;
+      bgColor = theme.colorScheme.error.withValues(alpha: 0.15);
       textColor = theme.colorScheme.error;
     }
 

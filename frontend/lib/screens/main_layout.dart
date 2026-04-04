@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
+import 'package:provider/provider.dart';
+import '../core/app_state.dart';
 import 'dashboard_screen.dart';
 import 'intent_screen.dart';
 import 'active_session_screen.dart';
@@ -7,14 +8,7 @@ import 'patterns_screen.dart';
 import 'team_screen.dart';
 
 class MainLayout extends StatefulWidget {
-  final ThemeMode currentThemeMode;
-  final Function(ThemeMode) onThemeModeChanged;
-
-  const MainLayout({
-    super.key,
-    required this.currentThemeMode,
-    required this.onThemeModeChanged,
-  });
+  const MainLayout({super.key});
 
   @override
   State<MainLayout> createState() => _MainLayoutState();
@@ -23,32 +17,40 @@ class MainLayout extends StatefulWidget {
 class _MainLayoutState extends State<MainLayout> {
   int _currentIndex = 0;
 
-  // ✅ FIX: replaced placeholder Text widgets with actual screen classes
-  late final List<Widget> _screens = [
-    const DashboardScreen(),
-    IntentScreen(onStartSession: () => _switchScreen(2)),
-    const ActiveSessionScreen(),
-    const PatternsScreen(),
-    const TeamScreen(),
-  ];
-
   void _switchScreen(int index) => setState(() => _currentIndex = index);
-
-  void _toggleTheme() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    widget.onThemeModeChanged(isDark ? ThemeMode.light : ThemeMode.dark);
-  }
 
   @override
   Widget build(BuildContext context) {
+    // SCREENS ARRAY
+   // SCREENS ARRAY
+    final List<Widget> screens = [
+      const DashboardScreen(key: ValueKey('dash')),
+      
+      // ─── UPDATE THIS LINE ───
+      IntentScreen(
+        key: const ValueKey('intent'), 
+        onStartSession: () {
+          context.read<AppState>().startSession(); // Forces the red screen to clear!
+          _switchScreen(2);
+        }
+      ),
+      // ───────────────────────
+      const ActiveSessionScreen(key: ValueKey('active')),
+      const PatternsScreen(key: ValueKey('patterns')),
+      const TeamScreen(key: ValueKey('team')),
+    ];
+
+    // ─── BULLETPROOF COLOR EXTRACTION ───
+    // We extract directly from the active theme to avoid "undefined" errors
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final surfaceColor = isDark ? FlowTheme.surfaceDark : FlowTheme.surfaceLight;
-    final borderColor = isDark ? FlowTheme.borderDark : FlowTheme.borderLight;
-    final primaryColor = isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight;
-    final primaryTint = isDark ? FlowTheme.primaryTintDark : FlowTheme.primaryTintLight;
-    final text3Color = isDark ? FlowTheme.text3Dark : FlowTheme.text3Light;
-    final driftColor = isDark ? FlowTheme.driftDark : FlowTheme.driftLight;
+    
+    final surfaceColor = theme.cardColor;
+    final borderColor = theme.dividerColor;
+    final primaryColor = theme.primaryColor;
+    final primaryTint = primaryColor.withValues(alpha: isDark ? 0.1 : 0.15);
+    final text3Color = theme.textTheme.bodyMedium?.color ?? Colors.grey;
+    final driftColor = theme.colorScheme.error;
 
     return Scaffold(
       body: Row(
@@ -77,8 +79,10 @@ class _MainLayoutState extends State<MainLayout> {
                 _buildNavItem(Icons.show_chart_rounded, 3, primaryColor, primaryTint, text3Color),
                 _buildNavItem(Icons.people_alt_rounded, 4, primaryColor, primaryTint, text3Color),
                 const Spacer(),
+                
+                // WIRED TO PROVIDER FOR GLOBAL THEME TOGGLE
                 GestureDetector(
-                  onTap: _toggleTheme,
+                  onTap: () => context.read<AppState>().toggleTheme(),
                   child: Container(
                     width: 44, height: 44,
                     decoration: BoxDecoration(color: primaryTint, borderRadius: BorderRadius.circular(13)),
@@ -108,8 +112,19 @@ class _MainLayoutState extends State<MainLayout> {
               ],
             ),
           ),
+          // ─── THE CRASH-PROOF INDEXED STACK ───
           Expanded(
-            child: IndexedStack(index: _currentIndex, children: _screens),
+            child: IndexedStack(
+              index: _currentIndex,
+              // TickerMode freezes the animations (like the pulsing ring) 
+              // on screens that are currently hidden in the background!
+              children: screens.asMap().entries.map((entry) {
+                return TickerMode(
+                  enabled: _currentIndex == entry.key,
+                  child: entry.value,
+                );
+              }).toList(),
+            ),
           ),
         ],
       ),
