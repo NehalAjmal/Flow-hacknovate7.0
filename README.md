@@ -17,12 +17,12 @@ Flow-hacknovate7.0/
 ## 🚀 Installation & Setup
 
 ### **1. Global Configuration**
-Create a file named `.env` in the **root directory** (`Flow-hacknovate7.0/`) and paste the following template. **Note:** Replace `YOURPWD` with your actual MySQL root password.
+Create a file named `.env` in the **root directory** (`Flow-hacknovate7.0/`) and paste the following template. **Note:** Replace `YOURPWD` with your actual MySQL root password and `your_api` with your actual Gemini api key.
 
 ```env
 JWT_SECRET_KEY=9cd55c27863892dc733d7f0a708a4c5b67c6d2dc6c463c80b9b65d9e8a4103a4
 DATABASE_URL=mysql+pymysql://root:YOURPWD@localhost/flow_db
-GEMINI_API_KEY=AIzaSyD4YwmLcKSMw251v34VWCuLIhBYrbfoBeI
+GEMINI_API_KEY=your_api
 GOOGLE_CLIENT_ID="107877434537-gajs6tph673aaoi9p6obkh232og8kutf.apps.googleusercontent.com"
 ```
 
