@@ -390,8 +390,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final theme = Theme.of(context);
     Color bgColor = theme.dividerColor;
     Border? border;
-    if (isTrough) bgColor = theme.colorScheme.secondary.withValues(alpha: 0.6);
-    else if (isPeak) bgColor = theme.primaryColor;
+    if (isTrough) {
+      bgColor = theme.colorScheme.secondary.withValues(alpha: 0.6);
+    } else if (isPeak) bgColor = theme.primaryColor;
     else if (isCurrent) { bgColor = theme.brightness == Brightness.dark ? FlowTheme.primaryStrongDark : FlowTheme.primaryStrongLight; border = Border.all(color: theme.primaryColor, width: 2); }
     return Expanded(child: Container(height: 32, margin: const EdgeInsets.symmetric(horizontal: 1), decoration: BoxDecoration(color: bgColor, borderRadius: BorderRadius.circular(4), border: border)));
   }

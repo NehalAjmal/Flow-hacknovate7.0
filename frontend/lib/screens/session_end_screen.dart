@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/theme.dart';
 import '../widgets/count_up_text.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/focus_sparkline.dart';

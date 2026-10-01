@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // ✅ Added Provider
 import 'core/theme.dart';
 import 'core/app_state.dart';            // ✅ Added AppState Brain
-import 'screens/main_layout.dart';
 import 'screens/login_screen.dart';
 
 void main() {
