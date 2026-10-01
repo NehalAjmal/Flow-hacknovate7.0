@@ -54,10 +54,18 @@ def compute_focus_score(kpm, switches, idle, minutes, state):
 
 # ── START SESSION ─────────────────────────────────────────
 
-def start_session(db: DBSession, user_id: str, task: str):
+def start_session(
+    db: DBSession,
+    user_id: str,
+    task_description: str,
+    declared_difficulty: str,
+    planned_duration_min: int,
+):
     session = Session(
         user_id=user_id,
-        task_description=task,
+        task_description=task_description,
+        declared_difficulty=declared_difficulty,
+        planned_duration_min=planned_duration_min,
         start_time=datetime.now(timezone.utc),
         signal_log=[],
     )
@@ -244,7 +252,11 @@ def _prepare_learning_data(signal_log):
 
 # ── END SESSION ─────────────────────────
 
-def end_session(db: DBSession, session_id: str):
+def end_session(
+    db: DBSession,
+    session_id: str,
+    self_rated_quality: Optional[int] = None,
+):
     session = db.query(Session).filter(Session.id == session_id).first()
     if not session:
         return {"error": "not found"}
@@ -255,6 +267,7 @@ def end_session(db: DBSession, session_id: str):
     scores = [entry.get("score", 75) for entry in log]
 
     session.focus_score = int(sum(scores) / len(scores)) if scores else 75
+    session.self_rated_quality = self_rated_quality
 
     db.commit()
     _live_sessions.pop(session_id, None)
