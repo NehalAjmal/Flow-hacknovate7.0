@@ -211,6 +211,10 @@ def ingest_signal(
     if not session:
         return None  # truly unknown session → router returns 404
 
+    if session.end_time is not None:
+        # Session already ended — ignore stale agent ticks (agent exits on 404)
+        return None
+
     if not live:
         # Server restarted mid-session: rebuild state instead of erroring out
         live = _rehydrate_live(db, session)

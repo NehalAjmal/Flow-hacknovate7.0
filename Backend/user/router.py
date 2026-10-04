@@ -15,7 +15,8 @@ def get_dashboard(
     current_user: User = Depends(get_current_user),
     db: DBSession = Depends(get_db)
 ):
-    now = datetime.now(timezone.utc)
+    # naive UTC — matches what MySQL returns and what the SQL filters expect
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     start_of_today = now.replace(hour=0, minute=0, second=0, microsecond=0)
     start_of_yesterday = start_of_today - timedelta(days=1)
 
@@ -105,8 +106,9 @@ def get_patterns(
     points_dict = {d: [] for d in days_map.values()}
     
     # Only compute from the last 7 days to avoid flatlining the entire map historically
-    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
-    
+    # naive UTC — MySQL returns naive datetimes and aware/naive comparison raises
+    week_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
+
     for s in sessions:
         if s.start_time and s.start_time >= week_ago and s.focus_score:
             dt = s.start_time
