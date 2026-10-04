@@ -19,3 +19,7 @@ frontend/android/local.properties
 
 # zcode workspace state
 .zcode/
+# iOS ephemeral/regenerated flutter files
+frontend/ios/Flutter/ephemeral/
+frontend/ios/Flutter/Generated.xcconfig
+frontend/ios/Flutter/flutter_export_environment.sh
