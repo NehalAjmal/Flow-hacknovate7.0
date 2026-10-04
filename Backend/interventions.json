@@ -75,5 +75,27 @@
     ],
     "action_label": null,
     "duration_seconds": null
+  },
+
+  "neutral": {
+    "title": "Steady state",
+    "messages": [
+      "Your focus is holding steady — not peak, not drifting. A good moment to re-read your declared intention and sharpen it.",
+      "FLOW is seeing moderate engagement. If this task matters, a small push now can tip you back into deep work.",
+      "Steady but shallow. Try closing extra tabs or silencing notifications for the next 15 minutes and see if your score climbs."
+    ],
+    "action_label": "Sharpen your intent",
+    "duration_seconds": null
+  },
+
+  "distracted": {
+    "title": "Your attention is scattering",
+    "messages": [
+      "Frequent app switching detected. Pick one window, set a 10-minute timer, and stay with it.",
+      "Your drift score is climbing — lots of context switching is burning your working memory. Park the side threads in a note and return to the main task.",
+      "You're jumping between contexts faster than you can load them. Choose the single next action for your declared task and do only that."
+    ],
+    "action_label": "Refocus",
+    "duration_seconds": null
   }
 }

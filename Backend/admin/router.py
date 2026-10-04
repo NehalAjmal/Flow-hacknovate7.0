@@ -22,9 +22,8 @@ def admin_dashboard(
     Returns team aggregate data — no individual session details.
     """
     if not current_user.team_id:
-        # Admin has no team — return demo data so screen isn't blank
-        from .service import _demo_dashboard
-        return _demo_dashboard()
+        # Admin has no team (solo account) — dashboard handles it with real zeros
+        return get_admin_dashboard(db=db, team_id=None)
 
     return get_admin_dashboard(db=db, team_id=current_user.team_id)
 

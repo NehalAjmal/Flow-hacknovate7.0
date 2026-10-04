@@ -4,6 +4,7 @@
 # Privacy rule: admins see counts and averages, never individual signal logs.
 
 from datetime import datetime, timezone, timedelta
+from typing import Optional
 from sqlalchemy.orm import Session as DBSession
 from sqlalchemy import func
 
@@ -12,7 +13,20 @@ from db_models.session import Session
 from .schemas import AdminDashboardResponse, BurnoutFlag, TrendPoint
 
 
-def get_admin_dashboard(db: DBSession, team_id: str) -> AdminDashboardResponse:
+def _empty_dashboard() -> AdminDashboardResponse:
+    return AdminDashboardResponse(
+        total_employees=0,
+        active_right_now=0,
+        avg_focus_score=0,
+        burnout_flags_count=0,
+        best_meeting_window="--:--",
+        trend_7_days=[],
+        burnout_flags=[],
+        state_distribution={}
+    )
+
+
+def get_admin_dashboard(db: DBSession, team_id: Optional[str]) -> AdminDashboardResponse:
     """
     Build the full admin dashboard payload for a team.
     All data is aggregate — no individual session details exposed.
@@ -20,6 +34,10 @@ def get_admin_dashboard(db: DBSession, team_id: str) -> AdminDashboardResponse:
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     week_ago = now - timedelta(days=7)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    # Admin without a team (solo account) — show honest zeros, no fake demo data
+    if not team_id:
+        return _empty_dashboard()
 
     # All employees in this team
     employees = db.query(User).filter(
@@ -30,17 +48,7 @@ def get_admin_dashboard(db: DBSession, team_id: str) -> AdminDashboardResponse:
     total_employees = len(employees)
 
     if total_employees == 0:
-        # Instead of fake demo data, return zeros safely
-        return AdminDashboardResponse(
-            total_employees=0,
-            active_right_now=0,
-            avg_focus_score=0,
-            burnout_flags_count=0,
-            best_meeting_window="--:--",
-            trend_7_days=[],
-            burnout_flags=[],
-            state_distribution={}
-        )
+        return _empty_dashboard()
 
     employee_ids = [e.id for e in employees]
 

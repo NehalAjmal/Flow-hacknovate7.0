@@ -98,10 +98,13 @@ def receive_signal(
         active_window=payload.active_window,
         timestamp=payload.timestamp,
     )
+    if live is None:
+        raise HTTPException(status_code=404, detail="Session not found")
     return {
         "status": "ok",
         "state": live["state"],
         "focus_score": round(live["focus_score"], 1),
+        "intervention": live["intervention"],
         "should_intervene": live["intervention"] is not None,
     }
 
@@ -109,13 +112,16 @@ def receive_signal(
 @router.get("/status")
 def get_status(
     session_id: str,
+    db: DBSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
     Flutter polls this every 8 seconds during an active session.
     Returns full state for the active session UI.
     """
-    status = service.get_session_status(session_id)
+    status = service.get_session_status(db=db, session_id=session_id)
+    if status is None:
+        raise HTTPException(status_code=404, detail="Session not found")
     return status
 
 
@@ -174,7 +180,8 @@ def pre_check(
 
     return {
         "recommendation": recommendation,
-        "suggested_duration_min": int(params.get("ultradian_period", 50)),
+        # learner exports ultradian_cycle_minutes; seeded demo data uses ultradian_period
+        "suggested_duration_min": int(params.get("ultradian_cycle_minutes") or params.get("ultradian_period") or 50),
         "warnings": [],   # calendar warnings added here once calendar_google is connected
     }
 

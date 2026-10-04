@@ -53,7 +53,8 @@ def get_dashboard(
     # 3. Rhythm Position (Using user's ML learned ultradian cycle)
     pattern = current_user.pattern_model or {}
     params = pattern.get("parameters", {})
-    cycle_length = int(params.get("ultradian_period", 90)) # Default 90 min if not learned yet
+    # learner exports ultradian_cycle_minutes; seeded demo data uses ultradian_period
+    cycle_length = int(params.get("ultradian_cycle_minutes") or params.get("ultradian_period") or 90)
 
     # Calculate how deep into their current cycle they are based on today's work
     if todays_sessions:
@@ -92,7 +93,8 @@ def get_patterns(
     # 1. Get learned patterns from ML (or defaults)
     pattern = current_user.pattern_model or {}
     params = pattern.get("parameters", {})
-    cycle_minutes = int(params.get("ultradian_period", 90))
+    # learner exports ultradian_cycle_minutes; seeded demo data uses ultradian_period
+    cycle_minutes = int(params.get("ultradian_cycle_minutes") or params.get("ultradian_period") or 90)
     peak_hours = pattern.get("peak_hours", [9, 10, 14]) 
 
     # 2. Fetch real sessions
