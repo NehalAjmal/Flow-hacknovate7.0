@@ -121,7 +121,7 @@ class FatigueService:
     # MAIN LOOP
     # ─────────────────────────────
     def _run(self):
-        self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        self.cap = cv2.VideoCapture(0)
 
         if not self.cap.isOpened():
             print("❌ Camera failed to open")

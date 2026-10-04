@@ -2,6 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
+import '../core/app_state.dart';
 
 enum InterruptType { fatigue, drift, ultradianBreak, userRequested }
 
@@ -17,11 +22,17 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
   int _selectedMinutes = 5;
   bool _timerStarted = false;
   int _secondsLeft = 0;
-  Timer? _countdownTimer;
+  late Timer? _countdownTimer;
   late AnimationController _breatheCtrl;
   late Animation<double> _breatheAnim;
   late AnimationController _entryCtrl;
   late Animation<double> _entryAnim;
+
+  // AI State
+  bool _isLoadingAI = false;
+  List<dynamic>? _aiSuggestions;
+  String? _aiEncouragement;
+  bool _showingAI = false;
 
   @override
   void initState() {
@@ -81,6 +92,51 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
     final m = seconds ~/ 60;
     final s = seconds % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _fetchAISuggestions() async {
+    setState(() {
+      _showingAI = true;
+      _isLoadingAI = true;
+    });
+
+    try {
+      final activeId = context.read<AppState>().activeSessionId;
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token') ?? '';
+      
+      final payload = {
+        "task_declared": "Current Focus", // Could pass from AppState
+        "difficulty": "Moderate",
+        "stuck_duration_minutes": 5, 
+        "active_window": "VS Code",
+        "session_duration_minutes": 45,
+        "session_id": activeId ?? "demo_session"
+      };
+
+      final String apiUrl = "http://127.0.0.1:8002";
+      final res = await http.post(
+        Uri.parse('$apiUrl/session/stuck'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json'
+        },
+        body: jsonEncode(payload),
+      );
+
+      if (res.statusCode == 200 && mounted) {
+        final data = jsonDecode(res.body);
+        setState(() {
+          _aiSuggestions = data['suggestions'];
+          _aiEncouragement = data['encouragement'];
+          _isLoadingAI = false;
+        });
+      } else {
+        setState(() => _isLoadingAI = false);
+      }
+    } catch(e) {
+      setState(() => _isLoadingAI = false);
+    }
   }
 
   _InterruptCopy get _copyConfig {
@@ -177,59 +233,161 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
                     const SizedBox(height: 16),
                     Text(copy.message, style: theme.textTheme.bodyMedium?.copyWith(height: 1.6)),
                     const SizedBox(height: 40),
-                    if (!_timerStarted) ...[
-                      Text('HOW LONG?', style: theme.textTheme.labelSmall),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [5, 10, 15, 20].map((min) {
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: _DurationButton(
-                              label: '$min min',
-                              isSelected: _selectedMinutes == min,
-                              baseColor: copy.color,
-                              theme: theme,
-                              onTap: () => setState(() => _selectedMinutes = min),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                      const SizedBox(height: 32),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: copy.color,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 20),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    
+                    if (_showingAI) ...[
+                      // AI View
+                      if (_isLoadingAI)
+                        const Center(child: Padding(
+                           padding: EdgeInsets.symmetric(vertical: 40),
+                           child: CircularProgressIndicator(),
+                        ))
+                      else if (_aiSuggestions != null) ...[
+                        Text(_aiEncouragement ?? "Try these strategies:", style: theme.textTheme.bodyLarge?.copyWith(fontStyle: FontStyle.italic)),
+                        const SizedBox(height: 24),
+                        ..._aiSuggestions!.map((s) => Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: theme.dividerColor),
                           ),
-                          onPressed: _startBreak,
-                          child: const Text('Start Break', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(s['strategy'] ?? '', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              const SizedBox(height: 4),
+                              Text(s['explanation'] ?? '', style: theme.textTheme.bodyMedium),
+                              const SizedBox(height: 12),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: theme.primaryColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.directions_run, size: 16, color: theme.primaryColor),
+                                    const SizedBox(width: 8),
+                                    Expanded(child: Text(s['first_step'] ?? '', style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.w600))),
+                                  ],
+                                ),
+                              )
+                            ],
+                          )
+                        )),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            onPressed: () => setState(() => _showingAI = false),
+                            child: const Text('Back to Timer'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      Center(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: Text('Dismiss and resume session', style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
+                      ] else ...[
+                        const Text("Failed to load suggestions. Check Gemini API Key.", style: TextStyle(color: Colors.red)),
+                         SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 20),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            onPressed: () => setState(() => _showingAI = false),
+                            child: const Text('Back'),
+                          ),
                         ),
-                      ),
+                      ]
                     ] else ...[
-                      Text('BREAK IN PROGRESS', style: theme.textTheme.labelSmall),
-                      const SizedBox(height: 24),
-                      OutlinedButton.icon(
-                        icon: const Icon(Icons.stop_rounded, size: 18),
-                        label: const Text('End break early'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: copy.color,
-                          side: BorderSide(color: copy.color.withValues(alpha: 0.5)),
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                       if (!_timerStarted) ...[
+                        Text('HOW LONG?', style: theme.textTheme.labelSmall),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [5, 10, 15, 20].map((min) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 10),
+                              child: _DurationButton(
+                                label: '$min min',
+                                isSelected: _selectedMinutes == min,
+                                baseColor: copy.color,
+                                theme: theme,
+                                onTap: () => setState(() => _selectedMinutes = min),
+                              ),
+                            );
+                          }).toList(),
                         ),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
+                        const SizedBox(height: 32),
+                        
+                        if (widget.type == InterruptType.drift) ...[
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Back to task', style: TextStyle(fontWeight: FontWeight.w600)),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: copy.color,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 20),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  ),
+                                  onPressed: _fetchAISuggestions,
+                                  child: const Text("I'm stuck — help me", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                                ),
+                              ),
+                            ]
+                          )
+                        ] else ...[
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: copy.color,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 20),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                              ),
+                              onPressed: _startBreak,
+                              child: const Text('Start Break', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Center(
+                            child: TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text('Dismiss and resume session', style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
+                            ),
+                          ),
+                        ]
+                      ] else ...[
+                        Text('BREAK IN PROGRESS', style: theme.textTheme.labelSmall),
+                        const SizedBox(height: 24),
+                        OutlinedButton.icon(
+                          icon: const Icon(Icons.stop_rounded, size: 18),
+                          label: const Text('End break early'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: copy.color,
+                            side: BorderSide(color: copy.color.withValues(alpha: 0.5)),
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ]
                   ],
                 ),
               ),

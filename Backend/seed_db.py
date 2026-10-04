@@ -3,6 +3,7 @@ import random
 import json
 from datetime import datetime, timedelta, timezone
 
+from auth.utils import get_password_hash
 from db_models.base import SessionLocal
 from db_models.user import User
 from db_models.session import Session
@@ -33,7 +34,7 @@ def seed_database():
             id=str(uuid.uuid4()),
             email="admin@flow.com",
             full_name="Nehal Ajmal (Lead)",
-            password_hash="hashed_dummy_password", 
+            password_hash=get_password_hash("password"), 
             role="admin",
             team_id="team_error_011",
             # We pass the dict directly; SQLAlchemy handles the JSON column
@@ -48,7 +49,7 @@ def seed_database():
                 id=str(uuid.uuid4()),
                 email=f"employee{i}@flow.com",
                 full_name=f"Demo Employee {i}",
-                password_hash="hashed_dummy_password",
+                password_hash=get_password_hash("password"),
                 role="employee",
                 team_id="team_error_011",
                 pattern_model={"parameters": {"ultradian_period": random.choice([75, 90, 110])}},
@@ -96,7 +97,7 @@ def seed_database():
 
         db.commit()
         print("✅ Database successfully populated!")
-        print("👉 Login: admin@flow.com | Pass: hashed_dummy_password")
+        print("👉 Login: admin@flow.com | Pass: password")
 
     except Exception as e:
         print(f"❌ Error seeding database: {e}")

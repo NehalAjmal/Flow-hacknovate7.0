@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiService {
-  static const String base = 'http://localhost:8000';
+  static const String base = 'http://127.0.0.1:8002';
 
   static Future<Map<String, dynamic>> ping() async {
     try {

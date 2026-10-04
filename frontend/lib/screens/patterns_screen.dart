@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:math';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PatternsScreen extends StatefulWidget {
   const PatternsScreen({super.key});
@@ -227,6 +230,23 @@ class _PatternsScreenState extends State<PatternsScreen> {
 
   Widget _buildInsightsCard(BuildContext context) {
     final theme = Theme.of(context);
+    final String apiUrl = "http://127.0.0.1:8002"; 
+
+    Future<String?> fetchFocusDna() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('auth_token') ?? '';
+        final res = await http.get(Uri.parse('$apiUrl/export/focus-dna'), headers: {'Authorization': 'Bearer $token'});
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          return data['gemini_insight'];
+        }
+      } catch (e) {
+        return null;
+      }
+      return null;
+    }
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: theme.dividerColor, width: 1)),
@@ -235,24 +255,40 @@ class _PatternsScreenState extends State<PatternsScreen> {
         child: Column(
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text("AI insights this week", style: theme.textTheme.headlineSmall),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: theme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(100)),
-                  child: Text("↑ 3 new", style: theme.textTheme.labelLarge?.copyWith(color: theme.primaryColor, fontSize: 10)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
+               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+               children: [
+                 Text("AI insights this week", style: theme.textTheme.headlineSmall),
+                 Container(
+                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                   decoration: BoxDecoration(color: theme.primaryColor.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(100)),
+                   child: Text("↑ AI Sync", style: theme.textTheme.labelLarge?.copyWith(color: theme.primaryColor, fontSize: 10)),
+                 ),
+               ],
+             ),
+             const SizedBox(height: 14),
+             
+             // Dynamic Gemini Block
+             FutureBuilder<String?>(
+               future: fetchFocusDna(),
+               builder: (context, snapshot) {
+                 if (snapshot.connectionState == ConnectionState.waiting) {
+                   return const Padding(
+                     padding: EdgeInsets.symmetric(vertical: 20),
+                     child: Center(child: CircularProgressIndicator()),
+                   );
+                 } else if (snapshot.hasData && snapshot.data != null) {
+                   return _buildInsightItem(context, "🧠", "FLOW Core AI Insight", snapshot.data!, "Focus DNA", "orange");
+                 } else {
+                   // Fallback if API key is dead or no network
+                   return _buildInsightItem(context, "🧠", "FLOW Core AI Insight", "API Key suspended or network error. Please set a valid Gemini API key in backend .env to generate insights.", "Error", "rose");
+                 }
+               },
+             ),
+             
+            const SizedBox(height: 8),
             _buildInsightItem(context, "🌅", "Morning dominance confirmed", "87% avg focus score 9–11 AM · 7 consecutive days", "Pattern", "green"),
             const SizedBox(height: 8),
             _buildInsightItem(context, "😴", "Post-lunch dip at 13:30", "Consistent trough, avg 41% focus · schedule breaks here", "Warning", "orange"),
-            const SizedBox(height: 8),
-            _buildInsightItem(context, "📱", "Slack causes 68% of drifts", "Avg 8.3 context switches per session via Slack", "Action needed", "rose"),
-            const SizedBox(height: 8),
-            _buildInsightItem(context, "💪", "Deep work up 23% this week", "2h 14m avg daily vs 1h 49m last week", "Progress", "green"),
           ],
         ),
       ),

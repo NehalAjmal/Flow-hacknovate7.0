@@ -2,7 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:provider/provider.dart';
+import '../core/app_state.dart';
 import '../core/theme.dart';
 import '../core/models.dart';
 import '../widgets/count_up_text.dart';
@@ -24,7 +25,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   BiometricData? _bioData;
 
   // Change to 10.0.2.2 if you are running on an Android Emulator
-  final String apiUrl = "http://127.0.0.1:8000"; 
+  final String apiUrl = "http://127.0.0.1:8002"; 
 
   @override
   void initState() {
@@ -46,9 +47,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         'Authorization': 'Bearer $token',
       };
 
+      final String? activeId = mounted ? Provider.of<AppState>(context, listen: false).activeSessionId : null;
+      final String biometricUrl = activeId != null ? '$apiUrl/biometric/latest?session_id=$activeId' : '$apiUrl/biometric/latest';
+
       final responses = await Future.wait([
         http.get(Uri.parse('$apiUrl/user/dashboard'), headers: headers),
-        http.get(Uri.parse('$apiUrl/biometric/latest?session_id=demo'), headers: headers),
+        http.get(Uri.parse(biometricUrl), headers: headers),
       ]);
 
       if (responses[0].statusCode == 200 && responses[1].statusCode == 200) {
@@ -62,6 +66,116 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       }
     } catch (e) {
       print("Network Error: $e");
+    }
+  }
+
+  bool _isSessionActive = false;
+  String? _activeSessionId;
+
+  Future<void> _startSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token') ?? '';
+
+      final response = await http.post(
+        Uri.parse('$apiUrl/session/start'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          "task_description": "Hackathon Deep Work",
+          "declared_difficulty": "moderate",
+          "planned_duration_min": 60
+        }),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _isSessionActive = true;
+          _activeSessionId = data['session_id'] ?? data['id'];
+        });
+        if (mounted) {
+          context.read<AppState>().startSession(_activeSessionId);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Session Started! Background tracker active.")));
+        }
+        _fetchLiveData();
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Failed to start: ${response.statusCode}")));
+        }
+      }
+    } catch (e) {
+      print("Error starting session: $e");
+    }
+  }
+
+  Future<void> _endSession() async {
+    if (_activeSessionId == null) {
+      // Just toggle UI if they forcefully end
+      setState(() => _isSessionActive = false);
+      return;
+    }
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token') ?? '';
+
+      final response = await http.post(
+        Uri.parse('$apiUrl/session/end'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          "session_id": _activeSessionId,
+          "self_rated_quality": 4
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _isSessionActive = false;
+          _activeSessionId = null;
+        });
+        if (mounted) {
+          context.read<AppState>().setActiveSession(null);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Session Ended successfully.")));
+        }
+        _fetchLiveData();
+      }
+    } catch (e) {
+      print("Error ending session: $e");
+    }
+  }
+
+  Future<void> _resetFocus() async {
+    if (_activeSessionId != null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('auth_token') ?? '';
+
+        await http.post(
+          Uri.parse('$apiUrl/session/respond'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            "session_id": _activeSessionId,
+            "response": "accepted"
+          }),
+        );
+      } catch (e) {}
+    }
+    
+    setState(() {
+       _isLoading = true;
+    });
+    await _fetchLiveData();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Focus reset applied. ML Pipeline adjusted.")));
     }
   }
 
@@ -141,7 +255,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               ],
             ),
           ),
-          ElevatedButton(onPressed: () {}, style: ElevatedButton.styleFrom(backgroundColor: driftColor), child: const Text("Reset Focus"))
+          ElevatedButton(onPressed: _resetFocus, style: ElevatedButton.styleFrom(backgroundColor: driftColor), child: const Text("Reset Focus"))
         ],
       ),
     );
@@ -373,7 +487,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 children: [
                   Text("QUICK ACTIONS", style: Theme.of(context).textTheme.labelMedium),
                   const SizedBox(height: 12),
-                  SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () {}, style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12)), child: const Text("＋ New session"))),
+                  SizedBox(width: double.infinity, child: ElevatedButton(onPressed: _isSessionActive ? _endSession : _startSession, style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12)), child: Text(_isSessionActive ? "－ End session" : "＋ New session"))),
                   const SizedBox(height: 8),
                   SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () {}, style: OutlinedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12), side: BorderSide(color: Theme.of(context).colorScheme.primaryContainer), backgroundColor: Theme.of(context).colorScheme.primaryContainer), child: Text("View active →", style: TextStyle(color: Theme.of(context).primaryColor)))),
                 ],

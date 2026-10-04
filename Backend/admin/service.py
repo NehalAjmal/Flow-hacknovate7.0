@@ -17,7 +17,7 @@ def get_admin_dashboard(db: DBSession, team_id: str) -> AdminDashboardResponse:
     Build the full admin dashboard payload for a team.
     All data is aggregate — no individual session details exposed.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     week_ago = now - timedelta(days=7)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
@@ -30,9 +30,17 @@ def get_admin_dashboard(db: DBSession, team_id: str) -> AdminDashboardResponse:
     total_employees = len(employees)
 
     if total_employees == 0:
-        # Demo fallback — return realistic-looking data so the admin screen
-        # isn't blank during the demo when there's only one real user
-        return _demo_dashboard()
+        # Instead of fake demo data, return zeros safely
+        return AdminDashboardResponse(
+            total_employees=0,
+            active_right_now=0,
+            avg_focus_score=0,
+            burnout_flags_count=0,
+            best_meeting_window="--:--",
+            trend_7_days=[],
+            burnout_flags=[],
+            state_distribution={}
+        )
 
     employee_ids = [e.id for e in employees]
 
@@ -83,7 +91,7 @@ def get_admin_dashboard(db: DBSession, team_id: str) -> AdminDashboardResponse:
         day_end   = day_start + timedelta(days=1)
         day_sessions = [
             s for s in week_sessions
-            if s.start_time and day_start <= s.start_time < day_end and s.focus_score
+            if s.start_time and day_start <= s.start_time.replace(tzinfo=None) < day_end and s.focus_score
         ]
         day_scores = [s.focus_score for s in day_sessions]
         day_avg = int(sum(day_scores) / len(day_scores)) if day_scores else 0
@@ -117,47 +125,3 @@ def get_admin_dashboard(db: DBSession, team_id: str) -> AdminDashboardResponse:
         state_distribution=state_distribution,
     )
 
-
-def _demo_dashboard() -> AdminDashboardResponse:
-    """
-    Returns realistic-looking demo data when there are no real team members.
-    Used during hackathon demo when only one user exists.
-    """
-    return AdminDashboardResponse(
-        total_employees=8,
-        active_right_now=5,
-        avg_focus_score=74,
-        burnout_flags_count=2,
-        best_meeting_window="14:00 – 15:00",
-        trend_7_days=[
-            TrendPoint(day="Mon", avg_score=78),
-            TrendPoint(day="Tue", avg_score=82),
-            TrendPoint(day="Wed", avg_score=69),
-            TrendPoint(day="Thu", avg_score=75),
-            TrendPoint(day="Fri", avg_score=71),
-            TrendPoint(day="Sat", avg_score=60),
-            TrendPoint(day="Sun", avg_score=55),
-        ],
-        burnout_flags=[
-            BurnoutFlag(
-                employee_id="demo_1",
-                display_name="Priya K.",
-                risk_level="high",
-                sessions_this_week=1,
-                avg_focus_score=38,
-            ),
-            BurnoutFlag(
-                employee_id="demo_2",
-                display_name="Rahul M.",
-                risk_level="medium",
-                sessions_this_week=3,
-                avg_focus_score=51,
-            ),
-        ],
-        state_distribution={
-            "deep_work": 3,
-            "stuck":     1,
-            "fatigue":   1,
-            "passive":   0,
-        },
-    )

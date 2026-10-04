@@ -4,3 +4,18 @@ venv/
 ENV/
 __pycache__/
 *.pyc
+
+# logs
+*.log
+
+# flutter / dart build artifacts
+frontend/.dart_tool/
+frontend/build/
+frontend/windows/flutter/ephemeral/
+frontend/linux/flutter/ephemeral/
+
+# machine-specific flutter paths
+frontend/android/local.properties
+
+# zcode workspace state
+.zcode/

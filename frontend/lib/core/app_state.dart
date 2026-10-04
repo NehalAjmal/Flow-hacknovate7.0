@@ -16,12 +16,18 @@ class AppState extends ChangeNotifier {
   int focusScore = 82;
   String currentTask = "Debugging auth module";
   
-  // The culprit variable! Now managed globally.
+  String? activeSessionId;
   bool isDrifting = false;
 
   // Resets the screen to Green when a new session starts
-  void startSession() {
+  void startSession(String? id) {
+    activeSessionId = id;
     isDrifting = false;
+    notifyListeners();
+  }
+
+  void setActiveSession(String? id) {
+    activeSessionId = id;
     notifyListeners();
   }
 

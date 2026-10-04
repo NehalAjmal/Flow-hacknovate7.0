@@ -44,9 +44,9 @@ def get_dashboard(
 
     if yesterdays_sessions:
         y_scores = [s.focus_score for s in yesterdays_sessions if s.focus_score]
-        yesterday_score = int(sum(y_scores) / len(y_scores)) if y_scores else 75
+        yesterday_score = int(sum(y_scores) / len(y_scores)) if y_scores else today_score
     else:
-        yesterday_score = 68 # Safe baseline for the hackathon demo to show a green "+7"
+        yesterday_score = today_score # Zero delta if no past data
 
     delta = today_score - yesterday_score
 
@@ -98,28 +98,41 @@ def get_patterns(
     # 2. Fetch real sessions
     sessions = db.query(Session).filter(Session.user_id == current_user.id).all()
 
-    # 3. Hackathon Magic Demo Data Fallback
-    # If they have less than 5 sessions, give them a beautiful populated chart for the judges
-    if len(sessions) < 5:
-        weekly_trends = [
-            ChartPoint(label="Mon", value=72),
-            ChartPoint(label="Tue", value=85),
-            ChartPoint(label="Wed", value=78),
-            ChartPoint(label="Thu", value=92), # Peak day
-            ChartPoint(label="Fri", value=65),
-            ChartPoint(label="Sat", value=40),
-            ChartPoint(label="Sun", value=55),
-        ]
-        hourly_quality = [
-            ChartPoint(label="9 AM", value=88),
-            ChartPoint(label="11 AM", value=70),
-            ChartPoint(label="2 PM", value=85),
-            ChartPoint(label="5 PM", value=45),
-        ]
-    else:
-        # (For post-hackathon: Add real SQLAlchemy aggregation math here)
-        weekly_trends = [] 
-        hourly_quality = []
+    # Compute weekly trends
+    days_map = {0:"Mon", 1:"Tue", 2:"Wed", 3:"Thu", 4:"Fri", 5:"Sat", 6:"Sun"}
+    points_dict = {d: [] for d in days_map.values()}
+    
+    # Only compute from the last 7 days to avoid flatlining the entire map historically
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    
+    for s in sessions:
+        if s.start_time and s.start_time >= week_ago and s.focus_score:
+            dt = s.start_time
+            day_str = days_map[dt.weekday()]
+            points_dict[day_str].append(s.focus_score)
+            
+    weekly_trends = []
+    for day_str in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]:
+        scores = points_dict[day_str]
+        avg = int(sum(scores)/len(scores)) if scores else 0
+        weekly_trends.append(ChartPoint(label=day_str, value=avg))
+
+    # Compute hourly quality 
+    hourly_dict = {h: [] for h in range(9, 18)}
+    for s in sessions:
+        if s.start_time and s.focus_score:
+            h = s.start_time.hour
+            if h in hourly_dict:
+                hourly_dict[h].append(s.focus_score)
+                
+    hourly_quality = []
+    for h in sorted(hourly_dict.keys()):
+        scores = hourly_dict[h]
+        if scores:
+            avg = int(sum(scores)/len(scores))
+            ampm = "AM" if h < 12 else "PM"
+            lbl_h = h if h <= 12 else h - 12
+            hourly_quality.append(ChartPoint(label=f"{lbl_h} {ampm}", value=avg))
 
     return PatternsResponse(
         ultradian_cycle_minutes=cycle_minutes,

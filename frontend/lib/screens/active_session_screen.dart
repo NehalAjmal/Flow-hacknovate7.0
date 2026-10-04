@@ -5,6 +5,9 @@ import '../core/app_state.dart';
 import '../widgets/focus_sparkline.dart';
 import '../widgets/meeting_countdown_pill.dart';
 import 'interrupt_screen.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ActiveSessionScreen extends StatefulWidget {
   final VoidCallback? onEndSession;
@@ -16,11 +19,13 @@ class ActiveSessionScreen extends StatefulWidget {
 
 class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     with SingleTickerProviderStateMixin {
-  int _secondsElapsed = 47 * 60 + 12;
+  int _secondsElapsed = 0;
   bool _isPaused = false;
   late Timer _timer;
+  late Timer _statusTimer;
   late AnimationController _blinkController;
-  final List<double> _focusHistory = [72, 65, 78, 80, 76, 82, 85, 88];
+  final List<double> _focusHistory = [];
+  final String apiUrl = "http://127.0.0.1:8002"; 
 
   @override
   void initState() {
@@ -29,6 +34,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       if (!_isPaused && mounted) {
         setState(() => _secondsElapsed++);
       }
+    });
+
+    _statusTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
+      if (!_isPaused) _pollStatus();
     });
 
     _blinkController = AnimationController(
@@ -44,9 +53,46 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   @override
   void dispose() {
     _timer.cancel();
+    _statusTimer.cancel();
     _blinkController.stop(); 
     _blinkController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pollStatus() async {
+    final activeId = context.read<AppState>().activeSessionId;
+    if (activeId == null) return;
+    
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token') ?? '';
+
+      final res = await http.get(
+        Uri.parse('$apiUrl/session/status?session_id=$activeId'),
+        headers: {'Authorization': 'Bearer $token'},
+      );
+
+      if (res.statusCode == 200 && mounted) {
+        final data = jsonDecode(res.body);
+        final double currentScore = (data['focus_score'] ?? 0).toDouble();
+        
+        setState(() {
+            _focusHistory.add(currentScore);
+            if (_focusHistory.length > 20) _focusHistory.removeAt(0);
+        });
+
+        // Update the global state
+        final double currentEar = (data['signals']?['ear'] ?? 0).toDouble();
+        final bool isDrifting = data['intervention'] != null;
+
+        context.read<AppState>().updateTelemetry(
+          bpm: 74, // Keep static or from biometrics (which logic fetches it implicitly)
+          ear: currentEar,
+          drift: isDrifting
+        );
+        context.read<AppState>().focusScore = currentScore.toInt();
+      }
+    } catch(e) {}
   }
 
   void _togglePause() => setState(() => _isPaused = !_isPaused);

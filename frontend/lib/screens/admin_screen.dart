@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/theme.dart';
 import '../core/models.dart'; // Make sure this points to the models we created
@@ -16,7 +17,7 @@ class AdminScreen extends StatefulWidget {
 class _AdminScreenState extends State<AdminScreen> {
   bool _isLoading = true;
   AdminDashboardData? _adminData;
-  final String apiUrl = "http://127.0.0.1:8000"; 
+  final String apiUrl = "http://127.0.0.1:8002"; 
 
   @override
   void initState() {
@@ -45,7 +46,7 @@ class _AdminScreenState extends State<AdminScreen> {
         });
       }
     } catch (e) {
-      print("Network Error: $e");
+      debugPrint("Network Error: $e");
     }
   }
 
@@ -112,8 +113,18 @@ class _AdminScreenState extends State<AdminScreen> {
           ],
         ),
         ElevatedButton.icon(
-          onPressed: () {
-            // Action: Send Team Break Alert API Call
+          onPressed: () async {
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              final token = prefs.getString('auth_token') ?? '';
+              final response = await http.post(
+                Uri.parse('$apiUrl/admin/send-break-alert'),
+                headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
+              );
+              if (response.statusCode == 200 && mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Break alert issued to the team network.")));
+              }
+            } catch(e) { debugPrint(e.toString()); }
           },
           icon: const Icon(Icons.notifications_active_rounded, size: 18),
           label: const Text("Send Team Break Alert"),
@@ -411,12 +422,10 @@ class _AdminScreenState extends State<AdminScreen> {
                 ],
               ))
             ] else ...[
-              // Mock fallback if DB array is empty
-              _buildTableRow(context, "Employee 1", "88", "12", false),
-              const Divider(),
-              _buildTableRow(context, "Employee 2", "76", "9", false),
-              const Divider(),
-              _buildTableRow(context, "Employee 3", "42", "2", true),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: Text("No flagged team members.", style: TextStyle(color: Colors.grey))),
+              )
             ]
           ],
         ),

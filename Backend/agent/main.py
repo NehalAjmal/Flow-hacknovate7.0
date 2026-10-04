@@ -3,13 +3,6 @@
 # FLOW Activity Agent — runs on the user's machine during a session.
 # Captures keystrokes, window switches, idle time every 30 seconds
 # and POSTs to the backend /session/signal endpoint.
-#
-# FIXES from original:
-#   1. URL was /ingest_signal — correct is /session/signal
-#   2. SESSION_ID was hardcoded "abc123" — now passed via command line
-#   3. No auth token — now reads JWT from .agent_token file
-#   4. SEND_INTERVAL was 5s — spec says 30s
-#   5. Port was 8000 — server runs on 8002
 
 import sys
 import time
@@ -25,22 +18,25 @@ from tracker import KeystrokeTracker, WindowTracker
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 
-BACKEND_URL   = "http://localhost:8002"
+# Pointing exactly to your local server for the demo
+BACKEND_URL   = "http://127.0.0.1:8002"
 SEND_INTERVAL = 30   # seconds — matches spec
 
-# Session ID is passed as a command line argument when the Flutter app
-# launches the agent subprocess after calling POST /session/start.
-# Usage: python agent/main.py <session_id> <jwt_token>
-if len(sys.argv) >= 3:
+# Safe Session ID and JWT handling
+SESSION_ID = "demo_session_001"
+JWT_TOKEN = None
+
+if len(sys.argv) >= 2:
     SESSION_ID = sys.argv[1]
-    JWT_TOKEN  = sys.argv[2]
-elif len(sys.argv) == 2:
-    SESSION_ID = sys.argv[1]
-    JWT_TOKEN  = None
+    # Safely read from file if it exists, otherwise check command line
+    token_file = Path(".agent_token")
+    if token_file.exists():
+        JWT_TOKEN = token_file.read_text().strip()
+    elif len(sys.argv) >= 3:
+        JWT_TOKEN = sys.argv[2]
 else:
-    # Fallback for manual testing — you can hardcode these temporarily
-    SESSION_ID = input("Enter session_id: ").strip()
-    JWT_TOKEN  = input("Enter JWT token: ").strip()
+    # Quick fallback for easy local testing
+    SESSION_ID = input("Enter session_id (or press Enter to use default 'demo_123'): ").strip() or "demo_123"
 
 HEADERS = {"Authorization": f"Bearer {JWT_TOKEN}"} if JWT_TOKEN else {}
 
@@ -59,10 +55,11 @@ def track_windows():
         time.sleep(0.5)
 
 
-# ── MOUSE DISTANCE (simple delta tracking) ───────────────────────────────────
+# ── MOUSE DISTANCE (Thread Safe) ──────────────────────────────────────────────
 
 _last_mouse_pos = None
 _mouse_distance = 0
+_mouse_lock = threading.Lock() # Added lock to prevent race conditions
 
 try:
     from pynput import mouse as pynput_mouse
@@ -72,26 +69,29 @@ try:
         if _last_mouse_pos:
             dx = x - _last_mouse_pos[0]
             dy = y - _last_mouse_pos[1]
-            _mouse_distance += int((dx**2 + dy**2) ** 0.5)
+            with _mouse_lock:
+                _mouse_distance += int((dx**2 + dy**2) ** 0.5)
         _last_mouse_pos = (x, y)
 
     mouse_listener = pynput_mouse.Listener(on_move=on_move)
     mouse_listener.start()
 except Exception:
-    pass  # mouse tracking optional
+    print("⚠️ Mouse tracking unavailable (pynput missing). Continuing without it.")
+    pass 
 
 
 def get_and_reset_mouse_distance():
     global _mouse_distance
-    val = _mouse_distance
-    _mouse_distance = 0
+    with _mouse_lock:
+        val = _mouse_distance
+        _mouse_distance = 0
     return val
 
 
 # ── MAIN LOOP ─────────────────────────────────────────────────────────────────
 
 def run():
-    print(f"\n⚡ FLOW Agent Started")
+    print(f"\n⚡ FLOW Agent Started (Local Mode)")
     print(f"   Session : {SESSION_ID}")
     print(f"   Backend : {BACKEND_URL}")
     print(f"   Interval: {SEND_INTERVAL}s\n")
@@ -108,56 +108,64 @@ def run():
         last_keystroke_time = time.time()
         _orig_on_press(key)
 
-    keyboard_tracker.listener._handlers[0] = on_press_with_idle
+    try:
+        # Note: Depending on pynput version, this internal array might differ
+        keyboard_tracker.listener._handlers[0] = on_press_with_idle
+    except AttributeError:
+        pass # Failsafe if pynput internals change
 
-    while True:
-        time.sleep(SEND_INTERVAL)
+    try:
+        while True:
+            time.sleep(SEND_INTERVAL)
 
-        try:
-            keystrokes    = keyboard_tracker.get_and_reset()
-            switches      = window_tracker.get_and_reset()
-            active_window = window_tracker.last_window or "Unknown"
-            mouse_dist    = get_and_reset_mouse_distance()
+            try:
+                keystrokes    = keyboard_tracker.get_and_reset()
+                switches      = window_tracker.get_and_reset()
+                active_window = window_tracker.last_window or "Unknown"
+                mouse_dist    = get_and_reset_mouse_distance()
 
-            # Idle = seconds since last keystroke, capped at SEND_INTERVAL
-            idle_seconds  = min(SEND_INTERVAL, int(time.time() - last_keystroke_time))
+                # Idle = seconds since last keystroke, capped at SEND_INTERVAL
+                idle_seconds  = min(SEND_INTERVAL, int(time.time() - last_keystroke_time))
 
-            payload = {
-                "session_id":       SESSION_ID,
-                "keystroke_count":  keystrokes,
-                "window_switches":  switches,
-                "idle_seconds":     idle_seconds,
-                "mouse_distance_px": mouse_dist,
-                "active_window":    active_window,
-                "timestamp":        datetime.now().isoformat(),
-            }
+                payload = {
+                    "session_id":       SESSION_ID,
+                    "keystroke_count":  keystrokes,
+                    "window_switches":  switches,
+                    "idle_seconds":     idle_seconds,
+                    "mouse_distance_px": mouse_dist,
+                    "active_window":    active_window,
+                    "timestamp":        datetime.now().isoformat(),
+                }
 
-            print(f"📡 [{datetime.now().strftime('%H:%M:%S')}] "
-                  f"keys={keystrokes} switches={switches} "
-                  f"idle={idle_seconds}s window='{active_window[:30]}'")
+                print(f"📡 [{datetime.now().strftime('%H:%M:%S')}] "
+                      f"keys={keystrokes} switches={switches} "
+                      f"idle={idle_seconds}s window='{active_window[:30]}'")
 
-            res = requests.post(
-                f"{BACKEND_URL}/session/signal",
-                json=payload,
-                headers=HEADERS,
-                timeout=5,
-            )
+                res = requests.post(
+                    f"{BACKEND_URL}/session/signal",
+                    json=payload,
+                    headers=HEADERS,
+                    timeout=5,
+                )
 
-            if res.status_code == 200:
-                data = res.json()
-                state = data.get("state", "unknown")
-                score = data.get("focus_score", 0)
-                intervene = data.get("should_intervene", False)
-                print(f"   ✅ State: {state} | Score: {score}"
-                      + (" | 🔔 INTERVENE" if intervene else ""))
-            else:
-                print(f"   ⚠️  Backend error {res.status_code}: {res.text[:80]}")
+                if res.status_code == 200:
+                    data = res.json()
+                    state = data.get("state", "unknown")
+                    score = data.get("focus_score", 0)
+                    intervene = data.get("should_intervene", False)
+                    print(f"   ✅ State: {state} | Score: {score}"
+                          + (" | 🔔 INTERVENE" if intervene else ""))
+                else:
+                    print(f"   ⚠️  Backend error {res.status_code}: {res.text[:80]}")
 
-        except requests.exceptions.ConnectionError:
-            print("   ❌ Cannot reach backend — is the server running?")
-        except Exception as e:
-            print(f"   ❌ Error: {e}")
+            except requests.exceptions.ConnectionError:
+                print("   ❌ Cannot reach backend — is the local server running on port 8002?")
+            except Exception as e:
+                print(f"   ❌ Error: {e}")
 
+    except KeyboardInterrupt:
+        print("\n🛑 FLOW Agent shutting down gracefully... Good luck with the Demo!")
+        sys.exit(0)
 
 if __name__ == "__main__":
     run()

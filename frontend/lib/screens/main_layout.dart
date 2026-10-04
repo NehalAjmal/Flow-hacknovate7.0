@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_state.dart';
+// import '../core/theme.dart';
 import 'dashboard_screen.dart';
 import 'intent_screen.dart';
 import 'active_session_screen.dart';
@@ -30,7 +31,7 @@ class _MainLayoutState extends State<MainLayout> {
       IntentScreen(
         key: const ValueKey('intent'), 
         onStartSession: () {
-          context.read<AppState>().startSession(); 
+          context.read<AppState>().startSession(null); 
           _switchScreen(2); // Jump to Active Session
         }
       ),

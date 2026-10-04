@@ -115,7 +115,7 @@ def ingest_biometric(
 
 @router.get("/latest", response_model=LatestBiometricResponse)
 def get_latest_biometric(
-    session_id: str,
+    session_id: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: DBSession = Depends(get_db),
 ):
@@ -125,15 +125,11 @@ def get_latest_biometric(
     from the ML friend's engine output.
     """
     # Try DB first
-    reading = (
-        db.query(BiometricReading)
-        .filter(
-            BiometricReading.session_id == session_id,
-            BiometricReading.user_id == current_user.id,
-        )
-        .order_by(BiometricReading.recorded_at.desc())
-        .first()
-    )
+    query = db.query(BiometricReading).filter(BiometricReading.user_id == current_user.id)
+    if session_id:
+        query = query.filter(BiometricReading.session_id == session_id)
+        
+    reading = query.order_by(BiometricReading.recorded_at.desc()).first()
 
     if reading:
         fatigue_signal = _compute_fatigue_signal(
