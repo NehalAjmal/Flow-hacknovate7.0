@@ -86,7 +86,10 @@ echo "================================================="
 trap 'echo -e "\n🛑 Terminating FLOW..."; kill $BACKEND_PID $FRONTEND_PID 2>/dev/null; exit' SIGINT SIGTERM
 
 # Exit loudly if either process dies while running
-wait -n "$BACKEND_PID" "$FRONTEND_PID"
+# (portable loop — macOS ships bash 3.2 without `wait -n`)
+while kill -0 "$BACKEND_PID" 2>/dev/null && kill -0 "$FRONTEND_PID" 2>/dev/null; do
+  sleep 5
+done
 echo "❌ One of the FLOW processes exited unexpectedly — check backend.log / frontend.log"
 kill "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null
 exit 1
