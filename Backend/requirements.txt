@@ -1,50 +1,24 @@
-﻿annotated-doc==0.0.4
-annotated-types==0.7.0
-anyio==4.13.0
-bcrypt==5.0.0
-certifi==2026.2.25
-cffi==2.0.0
-charset-normalizer==3.4.7
-click==8.3.1
-colorama==0.4.6
-cryptography==46.0.6
-dnspython==2.8.0
-dotenv==0.9.9
-email-validator==2.3.0
+# FLOW backend — direct dependencies (pins match the tested venv)
 fastapi==0.135.2
-google-ai-generativelanguage==0.6.15
-google-api-core==2.25.2
-google-api-python-client==2.193.0
-google-auth==2.49.1
-google-auth-httplib2==0.3.1
-google-genai==0.8.0
-googleapis-common-protos==1.74.0
-greenlet==3.3.2
-grpcio==1.80.0
-grpcio-status==1.71.2
-h11==0.16.0
-httplib2==0.31.2
-idna==3.11
-passlib==1.7.4
-pillow==12.2.0
-proto-plus==1.27.2
-protobuf==5.29.6
-pyasn1==0.6.3
-pyasn1_modules==0.4.2
-pycparser==3.0
+uvicorn==0.42.0
+SQLAlchemy==2.0.48
+PyMySQL==1.1.2
 pydantic==2.12.5
 pydantic-settings==2.13.1
-pydantic_core==2.41.5
-PyJWT==2.12.1
-PyMySQL==1.1.2
-pyparsing==3.3.2
 python-dotenv==1.2.2
+PyJWT==2.12.1
+bcrypt==5.0.0
+google-genai==0.8.0
 requests==2.33.1
-SQLAlchemy==2.0.48
-starlette==1.0.0
-tqdm==4.67.3
-typing-inspection==0.4.2
-typing_extensions==4.15.0
-uritemplate==4.2.0
-urllib3==2.6.3
-uvicorn==0.42.0
+
+# ML / vision
+numpy==2.2.6
+opencv-contrib-python==4.13.0.92
+mediapipe==0.10.33
+
+# desktop activity agent
+pynput==1.8.1
+pywin32==311; sys_platform == "win32"
+pyobjc-core==12.1; sys_platform == "darwin"
+pyobjc-framework-Cocoa==12.1; sys_platform == "darwin"
+pyobjc-framework-Quartz==12.1; sys_platform == "darwin"
