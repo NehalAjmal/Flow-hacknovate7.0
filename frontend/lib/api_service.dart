@@ -78,11 +78,11 @@ class ApiService {
     required String email,
     required String password,
   }) async =>
-      post('/auth/login', body: {'email': email, 'password': password}, auth: false)
+      await post('/auth/login', body: {'email': email, 'password': password}, auth: false)
           as Map<String, dynamic>;
 
   static Future<Map<String, dynamic>> register(Map<String, dynamic> payload) async =>
-      post('/auth/register', body: payload, auth: false) as Map<String, dynamic>;
+      await post('/auth/register', body: payload, auth: false) as Map<String, dynamic>;
 
   // ─── SESSIONS ─────────────────────────────────────────────────────────────
   static Future<Map<String, dynamic>> startSession({
@@ -90,54 +90,54 @@ class ApiService {
     required String difficulty,
     required int plannedMinutes,
   }) async =>
-      post('/session/start', body: {
+      await post('/session/start', body: {
         'task_description': taskDescription,
         'declared_difficulty': difficulty,
         'planned_duration_min': plannedMinutes,
       }) as Map<String, dynamic>;
 
   static Future<Map<String, dynamic>> endSession(String sessionId, {int? selfRatedQuality}) async =>
-      post('/session/end', body: {
+      await post('/session/end', body: {
         'session_id': sessionId,
         'self_rated_quality': selfRatedQuality,
       }) as Map<String, dynamic>;
 
   static Future<Map<String, dynamic>> respond(String sessionId, String response) async =>
-      post('/session/respond', body: {'session_id': sessionId, 'response': response})
+      await post('/session/respond', body: {'session_id': sessionId, 'response': response})
           as Map<String, dynamic>;
 
   static Future<Map<String, dynamic>> status(String sessionId) async =>
-      get('/session/status', query: {'session_id': sessionId}) as Map<String, dynamic>;
+      await get('/session/status', query: {'session_id': sessionId}) as Map<String, dynamic>;
 
   static Future<Map<String, dynamic>> preCheck() async =>
-      get('/session/pre-check') as Map<String, dynamic>;
+      await get('/session/pre-check') as Map<String, dynamic>;
 
   /// Gemini-backed "I'm stuck" suggestions (60s timeout — LLM latency).
   static Future<Map<String, dynamic>> stuck(Map<String, dynamic> payload) async =>
-      post('/session/stuck', body: payload, ai: true) as Map<String, dynamic>;
+      await post('/session/stuck', body: payload, ai: true) as Map<String, dynamic>;
 
   // ─── USER / BIOMETRIC ─────────────────────────────────────────────────────
   static Future<Map<String, dynamic>> userDashboard() async =>
-      get('/user/dashboard') as Map<String, dynamic>;
+      await get('/user/dashboard') as Map<String, dynamic>;
 
   static Future<Map<String, dynamic>> userPatterns() async =>
-      get('/user/patterns') as Map<String, dynamic>;
+      await get('/user/patterns') as Map<String, dynamic>;
 
-  static Future<Map<String, dynamic>> biometricLatest({String? sessionId}) async => get(
+  static Future<Map<String, dynamic>> biometricLatest({String? sessionId}) async => await get(
         '/biometric/latest',
         query: sessionId != null ? {'session_id': sessionId} : null,
       ) as Map<String, dynamic>;
 
   // ─── ADMIN ────────────────────────────────────────────────────────────────
   static Future<Map<String, dynamic>> adminDashboard() async =>
-      get('/admin/dashboard') as Map<String, dynamic>;
+      await get('/admin/dashboard') as Map<String, dynamic>;
 
   static Future<Map<String, dynamic>> sendBreakAlert() async =>
-      post('/admin/send-break-alert') as Map<String, dynamic>;
+      await post('/admin/send-break-alert') as Map<String, dynamic>;
 
   // ─── EXPORT ───────────────────────────────────────────────────────────────
   static Future<Map<String, dynamic>> focusDna() async =>
-      post('/export/focus-dna', ai: true) as Map<String, dynamic>;
+      await post('/export/focus-dna', ai: true) as Map<String, dynamic>;
 }
 
 class ApiException implements Exception {

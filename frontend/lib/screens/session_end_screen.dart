@@ -3,7 +3,6 @@ import '../core/models.dart';
 import '../widgets/count_up_text.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/focus_sparkline.dart';
-import 'main_layout.dart';
 
 class SessionEndScreen extends StatelessWidget {
   final SessionEndData result;
@@ -71,10 +70,10 @@ class SessionEndScreen extends StatelessWidget {
                     ),
                     ElevatedButton.icon(
                       onPressed: () {
-                        Navigator.of(context).pushAndRemoveUntil(
-                          MaterialPageRoute(builder: (_) => const MainLayout()),
-                          (route) => false,
-                        );
+                        // SessionEndScreen was pushed over MainLayout — just pop back.
+                        // (Pushing a fresh MainLayout here would sit on top of the
+                        // root route and break auth-driven home swaps like logout.)
+                        Navigator.of(context).pop();
                       },
                       icon: const Icon(Icons.grid_view_rounded, size: 18),
                       label: const Text("Return to Dashboard"),

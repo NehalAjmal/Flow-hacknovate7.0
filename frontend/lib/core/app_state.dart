@@ -27,11 +27,12 @@ class AppState extends ChangeNotifier {
   bool get isLoggedIn => userId != null;
   bool get isAdmin => userRole == 'admin';
 
-  /// Best display name: stored name, else the part before the email, else "there".
+  /// Best display name: stored name, else the part before the email.
+  /// Callers should treat an empty result as "unknown user".
   String get displayName {
     if (userName != null && userName!.trim().isNotEmpty) return userName!.trim();
     if (userEmail != null && userEmail!.contains('@')) return userEmail!.split('@').first;
-    return 'there';
+    return '';
   }
 
   // ─── ACTIVE SESSION (single source of truth) ───

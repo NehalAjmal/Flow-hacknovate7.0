@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../core/theme.dart';
 import '../core/app_state.dart';
 import '../api_service.dart';
-import 'app_shell.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -67,12 +66,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             name: _fullNameController.text.trim(),
             email: _emailController.text.trim(),
           );
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const AppShell()),
-      );
+      // Auth-driven home swap navigates to the main layout — no Navigator call.
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (e) {

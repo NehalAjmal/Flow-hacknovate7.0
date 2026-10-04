@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../core/theme.dart';
 import '../core/app_state.dart';
 import '../api_service.dart';
-import 'app_shell.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -56,18 +55,16 @@ class _LoginScreenState extends State<LoginScreen> {
             role: (data['role'] ?? 'solo').toString(),
             email: _emailController.text.trim(),
           );
-
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const AppShell()),
-      );
+      // No Navigator call here — FlowApp swaps its auth-driven `home` to the
+      // MainLayout as soon as AppState notifies. Pushing a route here would
+      // REPLACE the home route and permanently break logout navigation.
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.isAuthError
           ? "Invalid credentials. Please try again."
           : e.message);
     } catch (e) {
-      setState(() => _errorMessage = "Cannot connect to server.");
+      // Unexpected (non-API) failure — surface it so it's debuggable on-screen
+      setState(() => _errorMessage = "Sign-in failed: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

@@ -45,6 +45,9 @@ class _MainLayoutState extends State<MainLayout> {
     );
     if (confirmed == true && mounted) {
       await context.read<AppState>().logout();
+      // Drop any stray pushed routes so the app lands on its root, where the
+      // auth-driven home swap shows the login screen.
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     }
   }
 
