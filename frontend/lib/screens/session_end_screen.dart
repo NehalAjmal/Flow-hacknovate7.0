@@ -1,16 +1,48 @@
 import 'package:flutter/material.dart';
+import '../core/models.dart';
 import '../widgets/count_up_text.dart';
 import '../widgets/focus_ring.dart';
 import '../widgets/focus_sparkline.dart';
-import 'app_shell.dart';
+import 'main_layout.dart';
 
 class SessionEndScreen extends StatelessWidget {
-  const SessionEndScreen({super.key});
+  final SessionEndData result;
+  const SessionEndScreen({super.key, required this.result});
+
+  String _formatClock(dynamic ts) {
+    final t = DateTime.tryParse(ts?.toString() ?? '');
+    if (t == null) return '--:--';
+    final h = t.hour % 12 == 0 ? 12 : t.hour % 12;
+    final m = t.minute.toString().padLeft(2, '0');
+    return '$h:$m ${t.hour < 12 ? 'AM' : 'PM'}';
+  }
+
+  (String, String, Color) _eventCopy(Map<String, dynamic> e, ThemeData theme) {
+    final state = (e['state'] ?? '').toString();
+    final score = ((e['score'] ?? 75) as num).toDouble().round();
+    switch (state) {
+      case 'stuck':
+        return ('Cognitive loop detected', 'Focus score dropped to $score%.', theme.colorScheme.secondary);
+      case 'fatigue':
+        return ('Fatigue detected', 'Focus score at $score% — reset recommended.', theme.colorScheme.error);
+      case 'passive':
+      case 'distracted':
+        return ('Attention drift', 'Focus score at $score% — context switching observed.', theme.colorScheme.secondary);
+      case 'neutral':
+        return ('Steady state', 'Focus score holding at $score%.', theme.primaryColor);
+      default:
+        return ('In flow', 'Focus score at $score%.', theme.primaryColor);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final events = result.events;
+
+    final learnedText = result.eventCount == 0
+        ? "No telemetry reached the engine this session (the activity agent may not have run). Complete a session with the desktop agent running and FLOW will start learning your rhythm."
+        : "Across ${result.eventCount} telemetry ticks, your strongest trough landed at minute ${result.troughMinute}. Your ultradian cycle is currently estimated at ${result.cycleMinutes} minutes — next session, FLOW will schedule your break just before that dip.";
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -28,9 +60,9 @@ class SessionEndScreen extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text("SESSION COMPLETE", 
+                        Text("SESSION COMPLETE",
                           style: theme.textTheme.labelMedium?.copyWith(
-                            color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6) // ✅ Dynamic Color
+                            color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.6)
                           )
                         ),
                         const SizedBox(height: 4),
@@ -39,9 +71,9 @@ class SessionEndScreen extends StatelessWidget {
                     ),
                     ElevatedButton.icon(
                       onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const AppShell()),
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const MainLayout()),
+                          (route) => false,
                         );
                       },
                       icon: const Icon(Icons.grid_view_rounded, size: 18),
@@ -78,7 +110,7 @@ class SessionEndScreen extends StatelessWidget {
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       CountUpText(
-                                        target: 78,
+                                        target: result.focusScore,
                                         style: theme.textTheme.displayLarge?.copyWith(color: theme.primaryColor, fontSize: 64),
                                       ),
                                       Padding(
@@ -87,19 +119,10 @@ class SessionEndScreen extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                                  const SizedBox(height: 12),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: theme.primaryColor.withValues(alpha: 0.15), // ✅ Dynamic Color
-                                      borderRadius: BorderRadius.circular(100)
-                                    ),
-                                    child: Text("↑ Top 10% this week", style: theme.textTheme.labelLarge?.copyWith(color: theme.primaryColor)),
-                                  ),
                                 ],
                               ),
                               FocusRing(
-                                score: 78,
+                                score: result.focusScore.toDouble(),
                                 color: theme.primaryColor,
                                 trackColor: theme.dividerColor,
                                 size: 120,
@@ -115,9 +138,9 @@ class SessionEndScreen extends StatelessWidget {
                       flex: 2,
                       child: Column(
                         children: [
-                          _buildStatCard(context, "TOTAL DURATION", 52, "min"),
+                          _buildStatCard(context, "TOTAL DURATION", result.actualDurationMin ?? 0, "min"),
                           const SizedBox(height: 14),
-                          _buildStatCard(context, "INTERVENTIONS", 1, "accepted"),
+                          _buildStatCard(context, "TELEMETRY TICKS", result.eventCount, "logged"),
                         ],
                       ),
                     ),
@@ -141,11 +164,17 @@ class SessionEndScreen extends StatelessWidget {
                             children: [
                               Text("Session Telemetry Replay", style: theme.textTheme.headlineSmall),
                               const SizedBox(height: 24),
-                              FocusSparkline(
-                                scores: const [75, 82, 85, 38, 79, 55, 72, 78], // Drop at index 3 indicates "Stuck" event
-                                color: theme.primaryColor,
-                                height: 140,
-                              ),
+                              if (result.scores.length >= 2)
+                                FocusSparkline(
+                                  scores: result.scores,
+                                  color: theme.primaryColor,
+                                  height: 140,
+                                )
+                              else
+                                Text(
+                                  "Not enough telemetry was captured to replay this session.",
+                                  style: theme.textTheme.bodyMedium,
+                                ),
                             ],
                           ),
                         ),
@@ -172,7 +201,7 @@ class SessionEndScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                "Your post-intervention recovery is remarkably strong. You accepted the suggested break at minute 48 and returned highly focused. Ultradian period estimated at 52 minutes.",
+                                learnedText,
                                 style: theme.textTheme.bodyLarge?.copyWith(height: 1.6, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color),
                               ),
                             ],
@@ -187,15 +216,25 @@ class SessionEndScreen extends StatelessWidget {
                 // ─── REPLAY TIMELINE ───
                 Text("Session Event Log", style: theme.textTheme.headlineSmall),
                 const SizedBox(height: 20),
-                
-                // ✅ FIX: Removed the extra `Icons.play_arrow_rounded` argument from this first line!
-                _buildTimelineEvent(context, "10:00 AM", "Session Started", "Deep Work baseline established.", theme.primaryColor),
-                
-                _buildTimelineEvent(context, "10:22 AM", "Cognitive Loop Detected", "Focus score dropped to 38%.", theme.colorScheme.secondary),
-                _buildTimelineEvent(context, "10:24 AM", "AI Strategy Deployed", "Constraint Inversion strategy suggested.", theme.primaryColor),
-                _buildTimelineEvent(context, "10:35 AM", "Flow Resumed", "Focus score stabilized at 79%.", theme.primaryColor),
-                _buildTimelineEvent(context, "10:48 AM", "Fatigue Detected", "Intervention fired. 5m break accepted.", theme.colorScheme.error),
-                _buildTimelineEvent(context, "10:52 AM", "Session Concluded", "Ended manually.", theme.dividerColor, isLast: true),
+
+                if (events.isEmpty)
+                  Text(
+                    "No events logged for this session.",
+                    style: theme.textTheme.bodyMedium,
+                  )
+                else
+                  ...List.generate(events.length, (i) {
+                    final e = events[i];
+                    final (title, description, color) = _eventCopy(e, theme);
+                    return _buildTimelineEvent(
+                      context,
+                      _formatClock(e['ts']),
+                      title,
+                      description,
+                      color,
+                      isLast: i == events.length - 1,
+                    );
+                  }),
               ],
             ),
           ),

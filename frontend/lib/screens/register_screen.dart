@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../core/app_state.dart';
+import '../api_service.dart';
 import 'app_shell.dart';
 import 'login_screen.dart';
 
@@ -14,7 +14,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  String _accountType = 'solo'; 
+  String _accountType = 'solo';
   bool _isObscured = true;
   bool _isLoading = false;
   String? _errorMessage;
@@ -43,40 +43,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final url = Uri.parse('http://127.0.0.1:8002/auth/register');
-      
-      final payload = {
-        'full_name': _fullNameController.text,
-        'email': _emailController.text,
+      final data = await ApiService.register({
+        'full_name': _fullNameController.text.trim(),
+        'email': _emailController.text.trim(),
         'password': _passwordController.text,
         'account_type': _accountType,
-        'company_code': _accountType != 'solo' ? _companyCodeController.text : null,
+        'company_code': _accountType != 'solo' ? _companyCodeController.text.trim() : null,
         'age': int.tryParse(_ageController.text),
         'sex': _selectedSex,
-      };
+      });
 
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      );
-
-      if (response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        
-        final String realToken = data['access_token'] ?? data['token']; 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', realToken);
-        
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AppShell()),
-        );
-      } else {
-        final data = jsonDecode(response.body);
-        setState(() => _errorMessage = data['detail'] ?? "Invalid registration data. Please try again.");
+      final token = data['token'] as String?;
+      if (token == null || token.isEmpty) {
+        setState(() => _errorMessage = "Account created but no session token was returned. Try signing in.");
+        return;
       }
+
+      if (!mounted) return;
+      await context.read<AppState>().setAuth(
+            token: token,
+            id: (data['user_id'] ?? '').toString(),
+            role: (data['role'] ?? _accountType).toString(),
+            name: _fullNameController.text.trim(),
+            email: _emailController.text.trim(),
+          );
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const AppShell()),
+      );
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.message);
     } catch (e) {
       setState(() => _errorMessage = "Cannot connect to server.");
     } finally {

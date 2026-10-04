@@ -2,11 +2,9 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../core/theme.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../core/app_state.dart';
+import '../api_service.dart';
 
 enum InterruptType { fatigue, drift, ultradianBreak, userRequested }
 
@@ -22,7 +20,7 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
   int _selectedMinutes = 5;
   bool _timerStarted = false;
   int _secondsLeft = 0;
-  late Timer? _countdownTimer;
+  Timer? _countdownTimer;
   late AnimationController _breatheCtrl;
   late Animation<double> _breatheAnim;
   late AnimationController _entryCtrl;
@@ -101,41 +99,37 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
     });
 
     try {
-      final activeId = context.read<AppState>().activeSessionId;
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token') ?? '';
-      
+      final appState = context.read<AppState>();
+      final activeId = appState.activeSessionId;
+
       final payload = {
-        "task_declared": "Current Focus", // Could pass from AppState
+        "task_declared": appState.sessionIntent ?? appState.sessionTask ?? "Current focus",
         "difficulty": "Moderate",
-        "stuck_duration_minutes": 5, 
-        "active_window": "VS Code",
+        "stuck_duration_minutes": 5,
+        "active_window": "Unknown",
         "session_duration_minutes": 45,
         "session_id": activeId ?? "demo_session"
       };
 
-      final String apiUrl = "http://127.0.0.1:8002";
-      final res = await http.post(
-        Uri.parse('$apiUrl/session/stuck'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json'
-        },
-        body: jsonEncode(payload),
-      );
+      final data = await ApiService.stuck(payload);
 
-      if (res.statusCode == 200 && mounted) {
-        final data = jsonDecode(res.body);
+      if (mounted) {
         setState(() {
           _aiSuggestions = data['suggestions'];
           _aiEncouragement = data['encouragement'];
           _isLoadingAI = false;
         });
-      } else {
-        setState(() => _isLoadingAI = false);
       }
-    } catch(e) {
-      setState(() => _isLoadingAI = false);
+    } on ApiException catch (e) {
+      if (mounted) {
+        setState(() {
+          _aiSuggestions = null;
+          _aiEncouragement = e.message;
+          _isLoadingAI = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingAI = false);
     }
   }
 
@@ -289,7 +283,10 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
                           ),
                         ),
                       ] else ...[
-                        const Text("Failed to load suggestions. Check Gemini API Key.", style: TextStyle(color: Colors.red)),
+                        Text(
+                          _aiEncouragement ?? "Couldn't load AI suggestions right now.",
+                          style: const TextStyle(color: Colors.red),
+                        ),
                          SizedBox(
                           width: double.infinity,
                           child: OutlinedButton(

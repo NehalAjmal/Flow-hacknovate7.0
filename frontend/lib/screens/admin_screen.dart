@@ -1,11 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 
 import '../core/theme.dart';
-import '../core/models.dart'; // Make sure this points to the models we created
+import '../core/models.dart';
+import '../api_service.dart';
 
 class AdminScreen extends StatefulWidget {
   const AdminScreen({super.key});
@@ -16,8 +13,8 @@ class AdminScreen extends StatefulWidget {
 
 class _AdminScreenState extends State<AdminScreen> {
   bool _isLoading = true;
+  String? _error;
   AdminDashboardData? _adminData;
-  final String apiUrl = "http://127.0.0.1:8002"; 
 
   @override
   void initState() {
@@ -26,27 +23,30 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Future<void> _fetchAdminData() async {
+    setState(() {
+      _isLoading = _adminData == null;
+      _error = null;
+    });
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token') ?? '';
-
-      final response = await http.get(
-        Uri.parse('$apiUrl/admin/dashboard'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      if (response.statusCode == 200) {
-        if (!mounted) return;
-        setState(() {
-          _adminData = AdminDashboardData.fromJson(jsonDecode(response.body));
-          _isLoading = false;
-        });
-      }
+      final data = await ApiService.adminDashboard();
+      if (!mounted) return;
+      setState(() {
+        _adminData = AdminDashboardData.fromJson(data);
+        _isLoading = false;
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = e.message;
+      });
     } catch (e) {
       debugPrint("Network Error: $e");
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _error = 'Could not load the team dashboard.';
+      });
     }
   }
 
@@ -54,6 +54,36 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget build(BuildContext context) {
     if (_isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    if (_error != null) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.groups_rounded, size: 40, color: Theme.of(context).textTheme.bodySmall?.color),
+              const SizedBox(height: 16),
+              Text('Team dashboard unavailable', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 48),
+                child: Text(_error!, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyMedium),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _fetchAdminData,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
     }
 
     return Scaffold(
@@ -114,17 +144,15 @@ class _AdminScreenState extends State<AdminScreen> {
         ),
         ElevatedButton.icon(
           onPressed: () async {
+            final messenger = ScaffoldMessenger.of(context);
             try {
-              final prefs = await SharedPreferences.getInstance();
-              final token = prefs.getString('auth_token') ?? '';
-              final response = await http.post(
-                Uri.parse('$apiUrl/admin/send-break-alert'),
-                headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer $token'},
-              );
-              if (response.statusCode == 200 && mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Break alert issued to the team network.")));
-              }
-            } catch(e) { debugPrint(e.toString()); }
+              await ApiService.sendBreakAlert();
+              messenger.showSnackBar(const SnackBar(content: Text("Break alert issued to the team network.")));
+            } on ApiException catch (e) {
+              messenger.showSnackBar(SnackBar(content: Text(e.message)));
+            } catch (e) {
+              debugPrint(e.toString());
+            }
           },
           icon: const Icon(Icons.notifications_active_rounded, size: 18),
           label: const Text("Send Team Break Alert"),

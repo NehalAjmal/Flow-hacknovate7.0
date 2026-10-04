@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/theme.dart';
+import '../core/app_state.dart';
+import '../api_service.dart';
 
 class IntentScreen extends StatefulWidget {
   final VoidCallback? onStartSession;
@@ -14,6 +17,7 @@ class IntentScreen extends StatefulWidget {
 class _IntentScreenState extends State<IntentScreen> {
   String _selectedTask = 'Deep work';
   String _selectedDuration = '50m';
+  bool _isStarting = false;
   final TextEditingController _intentController = TextEditingController();
 
   final List<Map<String, String>> _taskChips = [
@@ -31,6 +35,51 @@ class _IntentScreenState extends State<IntentScreen> {
   void dispose() {
     _intentController.dispose();
     super.dispose();
+  }
+
+  int get _plannedMinutes => switch (_selectedDuration) {
+        '25m' => 25,
+        '50m' => 50,
+        '90m' => 90,
+        _ => 60,
+      };
+
+  Future<void> _beginSession() async {
+    if (_isStarting) return;
+    setState(() => _isStarting = true);
+
+    final intentText = _intentController.text.trim().isNotEmpty
+        ? _intentController.text.trim()
+        : '$_selectedTask session';
+
+    try {
+      final data = await ApiService.startSession(
+        taskDescription: intentText,
+        difficulty: 'moderate',
+        plannedMinutes: _plannedMinutes,
+      );
+
+      final sessionId = (data['session_id'] ?? data['id'])?.toString();
+      if (sessionId == null || sessionId.isEmpty) {
+        throw ApiException('Server did not return a session id.', null);
+      }
+
+      if (!mounted) return;
+      context.read<AppState>().startSession(
+            sessionId,
+            task: '$_selectedTask — $intentText',
+            intent: intentText,
+          );
+      widget.onStartSession?.call();
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not start session: ${e.message}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isStarting = false);
+    }
   }
 
   @override
@@ -59,25 +108,25 @@ class _IntentScreenState extends State<IntentScreen> {
                       _buildDurationCard(context),
                       const SizedBox(height: 16),
                       ElevatedButton(
-                        onPressed: () {
-                          // TODO: Trigger backend session start
-                          if (widget.onStartSession != null) {
-                            widget.onStartSession!();
-                          }
-                        },
+                        onPressed: _isStarting ? null : _beginSession,
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 20),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                         ),
                         // ✅ FIX: prefer_const_constructors
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.play_circle_fill_rounded, size: 22),
-                            SizedBox(width: 8),
-                            Text("Begin focus session", style: TextStyle(fontSize: 16)),
-                          ],
-                        ),
+                        child: _isStarting
+                            ? const SizedBox(
+                                height: 20, width: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.play_circle_fill_rounded, size: 22),
+                                  SizedBox(width: 8),
+                                  Text("Begin focus session", style: TextStyle(fontSize: 16)),
+                                ],
+                              ),
                       ),
                     ],
                   ),

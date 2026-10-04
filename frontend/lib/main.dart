@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart'; // ✅ Added Provider
+import 'package:provider/provider.dart';
+
 import 'core/theme.dart';
-import 'core/app_state.dart';            // ✅ Added AppState Brain
+import 'core/app_state.dart';
 import 'screens/login_screen.dart';
+import 'screens/main_layout.dart';
 
 void main() {
   runApp(
-    // ✅ 1. Wrap the entire app in the State Provider
     ChangeNotifierProvider(
       create: (context) => AppState(),
       child: const FlowApp(),
@@ -14,12 +15,23 @@ void main() {
   );
 }
 
-class FlowApp extends StatelessWidget {
+class FlowApp extends StatefulWidget {
   const FlowApp({super.key});
 
   @override
+  State<FlowApp> createState() => _FlowAppState();
+}
+
+class _FlowAppState extends State<FlowApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Restore persisted auth (auto-login) before showing the first screen.
+    context.read<AppState>().bootstrap();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // ✅ 2. Listen to the global theme state from the Brain
     final appState = context.watch<AppState>();
 
     return MaterialApp(
@@ -27,8 +39,41 @@ class FlowApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: FlowTheme.lightTheme,
       darkTheme: FlowTheme.darkTheme,
-      themeMode: appState.themeMode, // Controlled dynamically
-     home: const LoginScreen(),      // Boot directly into your layout
+      themeMode: appState.themeMode,
+      home: !appState.bootstrapped
+          ? const _BootSplash()
+          : (appState.isLoggedIn ? const MainLayout() : const LoginScreen()),
+    );
+  }
+}
+
+class _BootSplash extends StatelessWidget {
+  const _BootSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Theme.of(context).primaryColor,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              alignment: Alignment.center,
+              child: const Text('F',
+                  style: TextStyle(
+                      color: Colors.white, fontSize: 32, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(height: 24),
+            const CircularProgressIndicator(),
+          ],
+        ),
+      ),
     );
   }
 }

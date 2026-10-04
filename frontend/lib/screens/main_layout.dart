@@ -2,12 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_state.dart';
-// import '../core/theme.dart';
 import 'dashboard_screen.dart';
 import 'intent_screen.dart';
 import 'active_session_screen.dart';
 import 'patterns_screen.dart';
-import 'admin_screen.dart'; // ✅ Correct import!
+import 'admin_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -21,38 +20,71 @@ class _MainLayoutState extends State<MainLayout> {
 
   void _switchScreen(int index) => setState(() => _currentIndex = index);
 
+  Future<void> _confirmLogout() async {
+    final theme = Theme.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: theme.cardColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Sign out?', style: theme.textTheme.headlineSmall),
+        content: Text('Your active session tracking will stop.',
+            style: theme.textTheme.bodyMedium),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: TextStyle(color: theme.textTheme.bodyMedium?.color)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Sign out',
+                style: TextStyle(color: theme.colorScheme.error, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await context.read<AppState>().logout();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    
+    final appState = context.watch<AppState>();
+    final isAdmin = appState.isAdmin;
+
     // SCREENS ARRAY: No 'const' on the array itself to prevent compiler crashes
     final List<Widget> screens = [
-      const DashboardScreen(key: ValueKey('dash')), 
-      
-      IntentScreen(
-        key: const ValueKey('intent'), 
-        onStartSession: () {
-          context.read<AppState>().startSession(null); 
-          _switchScreen(2); // Jump to Active Session
-        }
+      DashboardScreen(
+        key: const ValueKey('dash'),
+        onViewActive: () => _switchScreen(2),
       ),
-      
-      const ActiveSessionScreen(key: ValueKey('active')),
+      IntentScreen(
+        key: const ValueKey('intent'),
+        onStartSession: () => _switchScreen(2), // session itself is started by IntentScreen
+      ),
+      ActiveSessionScreen(
+        key: const ValueKey('active'),
+        onSessionEnded: () => _switchScreen(0),
+        onStartSession: () => _switchScreen(1),
+      ),
       const PatternsScreen(key: ValueKey('patterns')),
-      
-      // ✅ FIX: Changed to AdminScreen to match your class name!
-      const AdminScreen(key: ValueKey('admin')),
+      if (isAdmin) const AdminScreen(key: ValueKey('admin')),
     ];
 
     // ─── BULLETPROOF COLOR EXTRACTION ───
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     final surfaceColor = theme.cardColor;
     final borderColor = theme.dividerColor;
     final primaryColor = theme.primaryColor;
     final primaryTint = primaryColor.withValues(alpha: isDark ? 0.1 : 0.15);
     final text3Color = theme.textTheme.bodyMedium?.color ?? Colors.grey;
     final driftColor = theme.colorScheme.error;
+
+    // Clamp the index so it stays valid when the admin tab appears/disappears
+    if (_currentIndex >= screens.length) _currentIndex = 0;
 
     return Scaffold(
       body: Row(
@@ -77,16 +109,17 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Navigation Icons
                 _buildNavItem(Icons.grid_view_rounded, 0, primaryColor, primaryTint, text3Color),
                 _buildNavItem(Icons.adjust_rounded, 1, primaryColor, primaryTint, text3Color),
                 _buildNavItem(Icons.access_time_rounded, 2, primaryColor, primaryTint, text3Color, isNotif: true, notifColor: driftColor),
                 _buildNavItem(Icons.show_chart_rounded, 3, primaryColor, primaryTint, text3Color),
-                _buildNavItem(Icons.people_alt_rounded, 4, primaryColor, primaryTint, text3Color), // Routes to Admin
-                
+                if (isAdmin)
+                  _buildNavItem(Icons.people_alt_rounded, 4, primaryColor, primaryTint, text3Color),
+
                 const Spacer(),
-                
+
                 // Theme Toggle (Wired to AppState Provider)
                 GestureDetector(
                   onTap: () => context.read<AppState>().toggleTheme(),
@@ -97,10 +130,10 @@ class _MainLayoutState extends State<MainLayout> {
                   ),
                 ),
                 const SizedBox(height: 8),
-                
-                // User Avatar Placeholder
+
+                // User Avatar (tap = sign out)
                 GestureDetector(
-                  onTap: () {},
+                  onTap: _confirmLogout,
                   child: Container(
                     width: 36, height: 36,
                     decoration: BoxDecoration(
@@ -112,8 +145,11 @@ class _MainLayoutState extends State<MainLayout> {
                       shape: BoxShape.circle,
                       border: Border.all(color: primaryColor, width: 2),
                     ),
-                    child: const Center(
-                      child: Text("N", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    child: Center(
+                      child: Text(
+                        appState.displayName.isNotEmpty ? appState.displayName[0].toUpperCase() : 'F',
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
                     ),
                   ),
                 ),
@@ -121,7 +157,7 @@ class _MainLayoutState extends State<MainLayout> {
               ],
             ),
           ),
-          
+
           // ─── MAIN CONTENT AREA (INDEXED STACK) ───
           Expanded(
             child: IndexedStack(

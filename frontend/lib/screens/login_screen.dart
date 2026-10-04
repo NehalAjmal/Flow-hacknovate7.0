@@ -1,9 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../core/theme.dart';
-import 'app_shell.dart'; 
+import '../core/app_state.dart';
+import '../api_service.dart';
+import 'app_shell.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -14,7 +14,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  String _loginMode = 'solo'; 
+  String _loginMode = 'solo';
   bool _isObscured = true;
   bool _isLoading = false;
   String? _errorMessage;
@@ -38,35 +38,34 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final url = Uri.parse('http://127.0.0.1:8002/auth/login');
-      
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': _emailController.text,
-          'password': _passwordController.text,
-          'mode': _loginMode,
-          'company_code': _loginMode != 'solo' ? _companyCodeController.text : null,
-        }),
+      final data = await ApiService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
       );
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        
-        // SAVE TOKEN FOR DASHBOARDS TO USE
-        final String realToken = data['access_token'] ?? data['token'] ?? 'fake-jwt-token-12345'; 
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('auth_token', realToken);
-        
-        if (!mounted) return;
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const AppShell()),
-        );
-      } else {
-        setState(() => _errorMessage = "Invalid credentials. Please try again.");
+      final token = data['token'] as String?;
+      if (token == null || token.isEmpty) {
+        setState(() => _errorMessage = "Server did not return a session token.");
+        return;
       }
+
+      if (!mounted) return;
+      await context.read<AppState>().setAuth(
+            token: token,
+            id: (data['user_id'] ?? '').toString(),
+            role: (data['role'] ?? 'solo').toString(),
+            email: _emailController.text.trim(),
+          );
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const AppShell()),
+      );
+    } on ApiException catch (e) {
+      setState(() => _errorMessage = e.isAuthError
+          ? "Invalid credentials. Please try again."
+          : e.message);
     } catch (e) {
       setState(() => _errorMessage = "Cannot connect to server.");
     } finally {

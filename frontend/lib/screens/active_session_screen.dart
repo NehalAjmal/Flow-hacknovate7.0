@@ -2,16 +2,18 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/app_state.dart';
+import '../core/models.dart';
+import '../api_service.dart';
 import '../widgets/focus_sparkline.dart';
 import '../widgets/meeting_countdown_pill.dart';
 import 'interrupt_screen.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'session_end_screen.dart';
 
 class ActiveSessionScreen extends StatefulWidget {
   final VoidCallback? onEndSession;
-  const ActiveSessionScreen({super.key, this.onEndSession});
+  final VoidCallback? onSessionEnded; // called after the summary screen closes
+  final VoidCallback? onStartSession; // jumps to the Intent tab
+  const ActiveSessionScreen({super.key, this.onEndSession, this.onSessionEnded, this.onStartSession});
 
   @override
   State<ActiveSessionScreen> createState() => _ActiveSessionScreenState();
@@ -21,11 +23,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     with SingleTickerProviderStateMixin {
   int _secondsElapsed = 0;
   bool _isPaused = false;
+  bool _isEnding = false;
+  String _currentState = 'deep_work';
   late Timer _timer;
   late Timer _statusTimer;
   late AnimationController _blinkController;
   final List<double> _focusHistory = [];
-  final String apiUrl = "http://127.0.0.1:8002"; 
 
   @override
   void initState() {
@@ -44,9 +47,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       vsync: this,
       duration: const Duration(seconds: 1),
     );
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _blinkController.repeat(reverse: true);
+      _pollStatus();
     });
   }
 
@@ -54,45 +58,84 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   void dispose() {
     _timer.cancel();
     _statusTimer.cancel();
-    _blinkController.stop(); 
+    _blinkController.stop();
     _blinkController.dispose();
     super.dispose();
   }
 
   Future<void> _pollStatus() async {
-    final activeId = context.read<AppState>().activeSessionId;
+    final appState = context.read<AppState>();
+    final activeId = appState.activeSessionId;
     if (activeId == null) return;
-    
+
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString('auth_token') ?? '';
+      final data = await ApiService.status(activeId);
 
-      final res = await http.get(
-        Uri.parse('$apiUrl/session/status?session_id=$activeId'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
+      if (!mounted) return;
+      final double currentScore = (data['focus_score'] ?? 0).toDouble();
+      final String state = (data['state'] ?? 'deep_work').toString();
 
-      if (res.statusCode == 200 && mounted) {
-        final data = jsonDecode(res.body);
-        final double currentScore = (data['focus_score'] ?? 0).toDouble();
-        
-        setState(() {
-            _focusHistory.add(currentScore);
-            if (_focusHistory.length > 20) _focusHistory.removeAt(0);
-        });
+      setState(() {
+        _focusHistory.add(currentScore);
+        if (_focusHistory.length > 20) _focusHistory.removeAt(0);
+        _currentState = state;
+      });
 
-        // Update the global state
-        final double currentEar = (data['signals']?['ear'] ?? 0).toDouble();
-        final bool isDrifting = data['intervention'] != null;
+      // Update the global state
+      final double currentEar = (data['signals']?['ear'] ?? 0).toDouble();
+      final bool isDrifting = data['intervention'] != null;
 
-        context.read<AppState>().updateTelemetry(
-          bpm: 74, // Keep static or from biometrics (which logic fetches it implicitly)
-          ear: currentEar,
-          drift: isDrifting
+      appState.updateTelemetry(
+            bpm: appState.currentBpm,
+            ear: currentEar,
+            drift: isDrifting,
+            score: currentScore.round(),
+          );
+    } on ApiException catch (e) {
+      // The backend no longer knows this session (ended elsewhere/expired)
+      if (e.isNotFound && mounted) {
+        await context.read<AppState>().endSession();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session is no longer active.')),
         );
-        context.read<AppState>().focusScore = currentScore.toInt();
       }
-    } catch(e) {}
+    } catch (_) {
+      // Transient network error — next poll will retry
+    }
+  }
+
+  Future<void> _endSession() async {
+    if (_isEnding) return;
+    final appState = context.read<AppState>();
+    final navigator = Navigator.of(context);
+    final sessionId = appState.activeSessionId;
+
+    if (sessionId == null) {
+      widget.onSessionEnded?.call();
+      return;
+    }
+
+    setState(() => _isEnding = true);
+    try {
+      final result = await ApiService.endSession(sessionId);
+      if (!mounted) return;
+      await appState.endSession();
+
+      navigator
+          .push(MaterialPageRoute(
+        builder: (_) => SessionEndScreen(result: SessionEndData.fromJson(result)),
+      ))
+          .then((_) => widget.onSessionEnded?.call());
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not end session: ${e.message}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isEnding = false);
+    }
   }
 
   void _togglePause() => setState(() => _isPaused = !_isPaused);
@@ -116,16 +159,66 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
     return h > 0 ? '${h.toString().padLeft(2, '0')}:$minSec' : minSec;
   }
 
+  String get _stateLabel => switch (_currentState) {
+        'deep_work' => 'Deep Focus',
+        'neutral' => 'Steady',
+        'distracted' => 'Distracted',
+        'stuck' => 'Stuck',
+        'fatigue' => 'Fatigued',
+        'passive' => 'Drifted',
+        _ => 'Deep Focus',
+      };
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     final appState = context.watch<AppState>();
+
+    // ── NO ACTIVE SESSION: honest empty state instead of fake telemetry ──
+    if (appState.activeSessionId == null) {
+      return Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 72, height: 72,
+                decoration: BoxDecoration(
+                  color: theme.primaryColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: Icon(Icons.waves_rounded, color: theme.primaryColor, size: 36),
+              ),
+              const SizedBox(height: 20),
+              Text('No active session', style: theme.textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              Text(
+                'Declare an intention to start tracking your focus.',
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: widget.onStartSession,
+                icon: const Icon(Icons.play_circle_fill_rounded, size: 20),
+                label: const Text('Start a session'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     final isDrifting = appState.isDrifting;
 
-    final targetBg = isDrifting 
-        ? (isDark ? const Color(0xFF24181A) : const Color(0xFFF5EBEB)) 
+    final targetBg = isDrifting
+        ? (isDark ? const Color(0xFF24181A) : const Color(0xFFF5EBEB))
         : Colors.transparent;
 
     return Scaffold(
@@ -272,7 +365,9 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
               ),
               const SizedBox(height: 8),
               Text(
-                "🐛 ${appState.currentTask}", 
+                appState.sessionTask ?? 'Focus session',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.white),
               ),
               const SizedBox(height: 24),
@@ -289,7 +384,11 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                   const SizedBox(width: 8),
                   _buildQuickBreakBtn("Feeling stuck?", () => _triggerBreak(InterruptType.drift), isWarning: true),
                   const SizedBox(width: 8),
-                  _buildHeroActionButton("End session", Icons.check_rounded, widget.onEndSession ?? () {}),
+                  _buildHeroActionButton(
+                    _isEnding ? "Ending…" : "End session",
+                    Icons.check_rounded,
+                    _endSession,
+                  ),
                 ],
               )
             ],
@@ -514,8 +613,11 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
 
   Widget _buildFlowStatusCard(BuildContext context) {
     final theme = Theme.of(context);
+    final appState = context.watch<AppState>();
     final primaryColor = theme.primaryColor;
     final tintColor = primaryColor.withValues(alpha: 0.15);
+    final score = appState.focusScore;
+    final progress = (score / 100).clamp(0.0, 1.0);
 
     return Card(
       elevation: 0,
@@ -535,19 +637,20 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                   child: Icon(Icons.waves_rounded, color: primaryColor, size: 22),
                 ),
                 const SizedBox(width: 14),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("Deep Focus", style: theme.textTheme.headlineSmall?.copyWith(color: primaryColor)),
-                    const SizedBox(height: 2),
-                    Text("Cognitive load nominal", style: theme.textTheme.bodySmall),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_stateLabel, style: theme.textTheme.headlineSmall?.copyWith(color: primaryColor)),
+                      const SizedBox(height: 2),
+                      Text("Live from the decision engine", style: theme.textTheme.bodySmall),
+                    ],
+                  ),
                 ),
-                const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: tintColor, borderRadius: BorderRadius.circular(100)),
-                  child: Text("82 / 100", style: theme.textTheme.labelLarge?.copyWith(color: primaryColor)),
+                  child: Text("$score / 100", style: theme.textTheme.labelLarge?.copyWith(color: primaryColor)),
                 ),
               ],
             ),
@@ -555,7 +658,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
               child: LinearProgressIndicator(
-                value: 0.82, minHeight: 6, backgroundColor: theme.dividerColor,
+                value: progress, minHeight: 6, backgroundColor: theme.dividerColor,
                 valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
               ),
             ),
@@ -593,7 +696,12 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                 children: [
                   Icon(Icons.check_circle_outline_rounded, color: primaryColor, size: 18),
                   const SizedBox(width: 10),
-                  Expanded(child: Text("Fix JWT token refresh & write unit tests", style: theme.textTheme.bodyMedium)),
+                  Expanded(
+                    child: Text(
+                      context.watch<AppState>().sessionIntent ?? 'No intention declared — stay on your declared task.',
+                      style: theme.textTheme.bodyMedium,
+                    ),
+                  ),
                 ],
               ),
             ),
