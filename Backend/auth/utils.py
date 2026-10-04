@@ -19,16 +19,16 @@ def get_password_hash(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
         return bcrypt.checkpw(
-            plain_password.encode("utf-8"), 
+            plain_password.encode("utf-8"),
             hashed_password.encode("utf-8")
         )
     except ValueError:
         # Catch the "Invalid salt" crash if the DB contains a plain text password.
-        
-        # HACKATHON BYPASS: If you are manually typing passwords into your DB 
+
+        # HACKATHON BYPASS: If you are manually typing passwords into your DB
         # to test the demo, uncomment the line below to just allow plain-text matches:
-        # return plain_password == hashed_password 
-        
+        # return plain_password == hashed_password
+
         return False
 
 

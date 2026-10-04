@@ -16,7 +16,7 @@ load_dotenv(find_dotenv())
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
-    print("✗ DATABASE_URL not found in .env")
+    print(" DATABASE_URL not found in .env")
     print("  → Copy .env.example to .env and fill in your MySQL password")
     sys.exit(1)
 
@@ -43,7 +43,7 @@ def create_database(url: str, db_name: str):
         ))
         conn.commit()
     engine.dispose()
-    print(f"  ✓ Database `{db_name}` ready")
+    print(f"   Database `{db_name}` ready")
 
 
 def create_tables():
@@ -60,7 +60,7 @@ def create_tables():
     engine = create_engine(DATABASE_URL)
     Base.metadata.create_all(bind=engine)
     engine.dispose()
-    print("  ✓ All tables created (or already exist)")
+    print("   All tables created (or already exist)")
 
 
 def seed_demo_team():
@@ -75,7 +75,7 @@ def seed_demo_team():
     try:
         existing = db.query(Team).filter(Team.company_code == "ERR011").first()
         if existing:
-            print("  ✓ Demo team ERR011 already exists — skipping seed")
+            print("   Demo team ERR011 already exists — skipping seed")
             return
 
         admin_key_hash = bcrypt.hashpw(b"000000", bcrypt.gensalt()).decode("utf-8")
@@ -86,14 +86,14 @@ def seed_demo_team():
         )
         db.add(demo_team)
         db.commit()
-        print("  ✓ Demo team ERR011 seeded (admin key: 000000)")
+        print("   Demo team ERR011 seeded (admin key: 000000)")
     finally:
         db.close()
         engine.dispose()
 
 
 def main():
-    print("\n🚀 FLOW — Database Setup\n")
+    print("\n FLOW — Database Setup\n")
 
     db_name = get_db_name(DATABASE_URL)
 
@@ -101,7 +101,7 @@ def main():
     try:
         create_database(DATABASE_URL, db_name)
     except Exception as e:
-        print(f"  ✗ Failed: {e}")
+        print(f"   Failed: {e}")
         print("  → Check your DATABASE_URL in .env and make sure MySQL is running")
         sys.exit(1)
 
@@ -109,17 +109,17 @@ def main():
     try:
         create_tables()
     except Exception as e:
-        print(f"  ✗ Failed: {e}")
+        print(f"   Failed: {e}")
         sys.exit(1)
 
     print("[3/3] Seeding demo data...")
     try:
         seed_demo_team()
     except Exception as e:
-        print(f"  ✗ Failed: {e}")
+        print(f"   Failed: {e}")
         sys.exit(1)
 
-    print("\n✅ Setup complete! Run the server with:\n")
+    print("\n Setup complete! Run the server with:\n")
     print("   uvicorn main:app --reload\n")
 
 

@@ -96,7 +96,7 @@ def get_patterns(
     params = pattern.get("parameters", {})
     # learner exports ultradian_cycle_minutes; seeded demo data uses ultradian_period
     cycle_minutes = int(params.get("ultradian_cycle_minutes") or params.get("ultradian_period") or 90)
-    peak_hours = pattern.get("peak_hours", [9, 10, 14]) 
+    peak_hours = pattern.get("peak_hours", [9, 10, 14])
 
     # 2. Fetch real sessions
     sessions = db.query(Session).filter(Session.user_id == current_user.id).all()
@@ -104,7 +104,7 @@ def get_patterns(
     # Compute weekly trends
     days_map = {0:"Mon", 1:"Tue", 2:"Wed", 3:"Thu", 4:"Fri", 5:"Sat", 6:"Sun"}
     points_dict = {d: [] for d in days_map.values()}
-    
+
     # Only compute from the last 7 days to avoid flatlining the entire map historically
     # naive UTC — MySQL returns naive datetimes and aware/naive comparison raises
     week_ago = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7)
@@ -114,21 +114,21 @@ def get_patterns(
             dt = s.start_time
             day_str = days_map[dt.weekday()]
             points_dict[day_str].append(s.focus_score)
-            
+
     weekly_trends = []
     for day_str in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]:
         scores = points_dict[day_str]
         avg = int(sum(scores)/len(scores)) if scores else 0
         weekly_trends.append(ChartPoint(label=day_str, value=avg))
 
-    # Compute hourly quality 
+    # Compute hourly quality
     hourly_dict = {h: [] for h in range(9, 18)}
     for s in sessions:
         if s.start_time and s.focus_score:
             h = s.start_time.hour
             if h in hourly_dict:
                 hourly_dict[h].append(s.focus_score)
-                
+
     hourly_quality = []
     for h in sorted(hourly_dict.keys()):
         scores = hourly_dict[h]

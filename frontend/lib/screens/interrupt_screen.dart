@@ -74,7 +74,7 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
       builder: (context) => AlertDialog(
         backgroundColor: Theme.of(context).cardColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Break complete ✓', style: Theme.of(context).textTheme.headlineMedium),
+        title: Text('Break complete', style: Theme.of(context).textTheme.headlineMedium),
         content: Text('Ready to resume your session?', style: Theme.of(context).textTheme.bodyMedium),
         actions: [
           TextButton(
@@ -227,7 +227,7 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
                     const SizedBox(height: 16),
                     Text(copy.message, style: theme.textTheme.bodyMedium?.copyWith(height: 1.6)),
                     const SizedBox(height: 40),
-                    
+
                     if (_showingAI) ...[
                       // AI View
                       if (_isLoadingAI)
@@ -318,7 +318,7 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
                           }).toList(),
                         ),
                         const SizedBox(height: 32),
-                        
+
                         if (widget.type == InterruptType.drift) ...[
                           Row(
                             children: [

@@ -15,7 +15,7 @@ def get_team_summary(
     db: DBSession = Depends(get_db)
 ):
     team_id = current_user.team_id
-    
+
     # 1. Fetch all users in this team
     team_members = db.query(User).filter(User.team_id == team_id).all() if team_id else []
 
@@ -41,10 +41,10 @@ def get_team_summary(
 
     for i, member in enumerate(team_members):
         display_name = f"Employee {i+1}" # Privacy filter
-        
+
         # Grab their most recent session
         last_session = db.query(Session).filter(Session.user_id == member.id).order_by(Session.start_time.desc()).first()
-        
+
         status = "Offline"
         score = 75
         risk = "Low"
@@ -54,7 +54,7 @@ def get_team_summary(
             if last_session.end_time is None:
                 status = "In Flow"
                 active_count += 1
-            
+
             # Simple ML Burnout logic
             if score < 50:
                 risk = "High"

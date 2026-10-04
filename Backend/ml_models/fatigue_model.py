@@ -15,7 +15,7 @@ class FatigueService:
         self.thread = None
         self.detector = None
 
-        self.cap = None  # 🔥 camera handle
+        self.cap = None  #  camera handle
 
         self.state = {
             "fatigue_score": 0.0,
@@ -49,7 +49,7 @@ class FatigueService:
 
         if not os.path.exists(MODEL_PATH):
             raise FileNotFoundError(
-                f"❌ Model not found at {MODEL_PATH}\n"
+                f" Model not found at {MODEL_PATH}\n"
                 f"Download and place in ml_models/"
             )
 
@@ -65,7 +65,7 @@ class FatigueService:
         )
 
         self.detector = vision.FaceLandmarker.create_from_options(options)
-        print("✅ MediaPipe initialized")
+        print(" MediaPipe initialized")
 
     # ─────────────────────────────
     # START
@@ -74,7 +74,7 @@ class FatigueService:
         if self.running:
             return
 
-        print("🚀 Starting fatigue service...")
+        print(" Starting fatigue service...")
 
         self._init_detector()
 
@@ -89,16 +89,16 @@ class FatigueService:
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
 
-        print("✅ Fatigue service started")
+        print(" Fatigue service started")
 
     # ─────────────────────────────
-    # STOP (🔥 IMPORTANT FIX)
+    # STOP ( IMPORTANT FIX)
     # ─────────────────────────────
     def stop(self):
         if not self.running:
             return
 
-        print("🛑 Stopping fatigue service...")
+        print(" Stopping fatigue service...")
 
         self.running = False
 
@@ -109,7 +109,7 @@ class FatigueService:
             self.cap.release()
             self.cap = None
 
-        print("🛑 Fatigue service stopped")
+        print(" Fatigue service stopped")
 
     # ─────────────────────────────
     # GET STATE
@@ -124,10 +124,10 @@ class FatigueService:
         self.cap = cv2.VideoCapture(0)
 
         if not self.cap.isOpened():
-            print("❌ Camera failed to open")
+            print(" Camera failed to open")
             return
 
-        print("📸 Camera opened")
+        print(" Camera opened")
 
         while self.running:
             ret, frame = self.cap.read()
@@ -161,7 +161,7 @@ class FatigueService:
                     self.ear_history.append(ear)
                     if len(self.ear_history) > self.calibration_frames:
                         self.baseline_ear = np.mean(self.ear_history)
-                        print("✅ Calibration complete")
+                        print(" Calibration complete")
                     continue
 
                 ear_ratio = ear / self.baseline_ear
@@ -201,7 +201,7 @@ class FatigueService:
             self.cap.release()
             self.cap = None
 
-        print("📸 Camera released")
+        print(" Camera released")
 
     # ─────────────────────────────
     # HELPERS
@@ -219,5 +219,5 @@ class FatigueService:
         ])
 
 
-# 🔥 SINGLETON INSTANCE
+#  SINGLETON INSTANCE
 fatigue_service = FatigueService()

@@ -7,7 +7,7 @@ from db_models.session import Session
 from db_models.biometric import BiometricReading
 from llm.cache import get_intervention
 
-# 🔥 ML ENGINE IMPORTS
+#  ML ENGINE IMPORTS
 from engine.decision import DecisionEngine, compute_trough_pressure
 from engine.deviation import DeviationEngine
 from engine.ultradian import UltradianEngine
@@ -17,7 +17,7 @@ import os
 import sys
 from learning.engine import PatternLearner
 
-# 🔥 FATIGUE SERVICE
+#  FATIGUE SERVICE
 from ml_models.fatigue_model import fatigue_service
 
 pattern_learner = PatternLearner()
@@ -127,18 +127,18 @@ def start_session(
     params = _learned_params(db, user_id)
     cycle_minutes = int(params.get("ultradian_cycle_minutes") or params.get("ultradian_period") or DEFAULT_ULTRADIAN_CYCLE)
 
-    # 🔥 PER-SESSION ENGINES (ultradian clock starts now)
+    #  PER-SESSION ENGINES (ultradian clock starts now)
     engines = _new_engines()
     engines["ultradian"] = UltradianEngine(cycle_minutes=cycle_minutes)
     engines["ultradian"].start()
 
-    # 🔥 START FATIGUE TRACKING (CAMERA OPENS HERE)
+    #  START FATIGUE TRACKING (CAMERA OPENS HERE)
     try:
         fatigue_service.start()
     except Exception as e:
         print("fatigue start failed:", e)
 
-    # 🔥 START KEYBOARD/MOUSE LOCAL AGENT
+    #  START KEYBOARD/MOUSE LOCAL AGENT
     agent_process = None
     try:
         agent_script = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "agent", "main.py"))
@@ -218,7 +218,7 @@ def ingest_signal(
     if not live:
         # Server restarted mid-session: rebuild state instead of erroring out
         live = _rehydrate_live(db, session)
-        print(f"♻️ rehydrated live session {session_id[:8]} from DB")
+        print(f" rehydrated live session {session_id[:8]} from DB")
 
     # ── TIME CALCULATION ─────────────────────
     session_minutes = int(
@@ -227,7 +227,7 @@ def ingest_signal(
 
     kpm = keystroke_count * 2
 
-    # 🔥 TROUGH CALCULATION — real elapsed minutes vs the user's learned trough
+    #  TROUGH CALCULATION — real elapsed minutes vs the user's learned trough
     current_minute = session_minutes
     trough_minute = live["trough_minute"]
 
@@ -246,7 +246,7 @@ def ingest_signal(
         else:
             biometric = round(max(0.0, 1.0 - fatigue), 3)
 
-        # 🔥 TROUGH PRESSURE
+        #  TROUGH PRESSURE
         trough_pressure = compute_trough_pressure(current_minute, trough_minute)
 
         # ── DECISION ENGINE ────────────────────
@@ -262,7 +262,7 @@ def ingest_signal(
         new_score = decision["focus_score"] * 100
 
     except Exception as e:
-        print("⚠️ fallback:", e)
+        print(" fallback:", e)
 
         new_state = classify_state(kpm, window_switches, idle_seconds, active_window, session_minutes)
         new_score = compute_focus_score(kpm, window_switches, idle_seconds, session_minutes, new_state)
@@ -285,7 +285,7 @@ def ingest_signal(
         "active_window": active_window,
     })
 
-    # 🔥 PREDICTIVE INTERVENTION
+    #  PREDICTIVE INTERVENTION
     if trough_pressure > 0.8 and not live["intervention"]:
         live["intervention"] = {
             "title": "Upcoming focus dip",
@@ -446,7 +446,7 @@ def end_session(
         user.pattern_model = patterns
     db.commit()
 
-    print(f"📊 learned patterns for session {session_id[:8]}: "
+    print(f" learned patterns for session {session_id[:8]}: "
           f"trough={patterns.get('parameters', {}).get('trough_minute')} min, "
           f"cycle={patterns.get('parameters', {}).get('ultradian_cycle_minutes')} min")
 

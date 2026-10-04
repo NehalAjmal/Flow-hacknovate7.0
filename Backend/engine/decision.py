@@ -19,7 +19,7 @@ class DecisionEngine:
             0.1 * biometric
         ) * 100
 
-        # 🔥 APPLY TROUGH PENALTY
+        #  APPLY TROUGH PENALTY
         base_score -= trough_pressure * 20
 
         base_score = max(0, min(100, base_score))
@@ -40,7 +40,7 @@ class DecisionEngine:
         }
 
 
-# 🔥 HELPER FUNCTION
+#  HELPER FUNCTION
 def compute_trough_pressure(current_minute, trough_minute):
     if trough_minute <= 0:
         return 0.0

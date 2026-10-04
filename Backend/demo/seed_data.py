@@ -178,7 +178,7 @@ def make_pattern_model(sessions: list) -> dict:
 def seed():
     db = SessionLocal()
 
-    print("\n🌱 FLOW — Demo Data Seeder\n")
+    print("\n FLOW — Demo Data Seeder\n")
 
     # 1. Get or create the ERR011 team
     team = db.query(Team).filter(Team.company_code == "ERR011").first()
@@ -192,16 +192,16 @@ def seed():
         db.add(team)
         db.commit()
         db.refresh(team)
-        print("  ✓ Created team ERR011")
+        print("   Created team ERR011")
     else:
-        print("  ✓ Team ERR011 already exists")
+        print("   Team ERR011 already exists")
 
     # 2. Create demo users
     created_users = []
     for u in DEMO_USERS:
         existing = db.query(User).filter(User.email == u["email"]).first()
         if existing:
-            print(f"  ✓ User {u['email']} already exists — skipping")
+            print(f"   User {u['email']} already exists — skipping")
             created_users.append(existing)
             continue
 
@@ -219,7 +219,7 @@ def seed():
         db.commit()
         db.refresh(user)
         created_users.append(user)
-        print(f"  ✓ Created user: {u['email']} / {u['password']}")
+        print(f"   Created user: {u['email']} / {u['password']}")
 
     # 3. Seed sessions for the first demo user (Amaan)
     demo_user = created_users[0]
@@ -229,7 +229,7 @@ def seed():
     ).count()
 
     if existing_sessions >= 5:
-        print(f"  ✓ Demo user already has {existing_sessions} sessions — skipping session seed")
+        print(f"   Demo user already has {existing_sessions} sessions — skipping session seed")
     else:
         print(f"\n  Seeding sessions for {demo_user.full_name}...")
         seeded_sessions = []
@@ -274,17 +274,17 @@ def seed():
             seeded_sessions.append(session)
 
         db.commit()
-        print(f"  ✓ Seeded {len(seeded_sessions)} sessions")
+        print(f"   Seeded {len(seeded_sessions)} sessions")
 
         # 4. Update pattern model on demo user
         pattern = make_pattern_model(seeded_sessions)
         demo_user.pattern_model = pattern
         db.commit()
-        print("  ✓ Updated pattern model for demo user")
+        print("   Updated pattern model for demo user")
 
     db.close()
 
-    print("\n✅ Demo data ready!\n")
+    print("\n Demo data ready!\n")
     print("  Login credentials:")
     print("  ─────────────────────────────────────")
     print("  Solo/Employee:  demo@flow.app   / demo1234")

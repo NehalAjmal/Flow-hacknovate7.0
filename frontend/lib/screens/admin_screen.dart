@@ -180,7 +180,7 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         ),
         const SizedBox(width: 14),
-        
+
         // Burnout Risk Card (LIVE BINDING)
         Expanded(
           child: _buildGradientHeroCard(
@@ -192,7 +192,7 @@ class _AdminScreenState extends State<AdminScreen> {
           ),
         ),
         const SizedBox(width: 14),
-        
+
         // Best Meeting Window (LIVE BINDING)
         Expanded(
           child: Card(
@@ -240,7 +240,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _buildLiveStateGrid(BuildContext context) {
     // LIVE BINDING: Map backend dict to the UI
     final dist = _adminData?.stateDistribution ?? {};
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -315,7 +315,7 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _buildPerformanceTrend(BuildContext context) {
     // LIVE BINDING: Map backend trend array to graph
     final trendList = _adminData?.trend7Days ?? [];
-    
+
     // Fallback if DB is empty
     List<double> bars = [0.65, 0.70, 0.68, 0.75, 0.82, 0.71, 0.85];
     List<String> days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -324,7 +324,7 @@ class _AdminScreenState extends State<AdminScreen> {
       days = trendList.map((t) => t.day.substring(0, 1)).toList(); // Get first letter
       bars = trendList.map((t) => t.avgScore / 100.0).toList(); // Convert 85 -> 0.85
     }
-    
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -434,16 +434,16 @@ class _AdminScreenState extends State<AdminScreen> {
             const SizedBox(height: 16),
             _buildTableRow(context, "ID", "Focus Score", "Sessions", "Burnout Flag", isHeader: true),
             const Divider(),
-            
+
             // Generate live rows or fall back to mock data
             if (flags.isNotEmpty) ...[
               ...flags.map((flag) => Column(
                 children: [
                   _buildTableRow(
-                    context, 
-                    flag.displayName, 
-                    "${flag.avgFocusScore}", 
-                    "${flag.sessionsThisWeek}", 
+                    context,
+                    flag.displayName,
+                    "${flag.avgFocusScore}",
+                    "${flag.sessionsThisWeek}",
                     flag.riskLevel == 'high' || flag.riskLevel == 'medium'
                   ),
                   const Divider(),
@@ -462,10 +462,10 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   Widget _buildTableRow(BuildContext context, String col1, String col2, String col3, dynamic col4, {bool isHeader = false}) {
-    final style = isHeader 
-        ? Theme.of(context).textTheme.labelSmall 
+    final style = isHeader
+        ? Theme.of(context).textTheme.labelSmall
         : Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600);
-        
+
     Widget lastCol;
     if (isHeader) {
       lastCol = Text(col4, style: style);
@@ -496,17 +496,17 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget _buildTag(BuildContext context, String text, {bool isGreen = false}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isGreen 
+        color: isGreen
             ? (isDark ? FlowTheme.primaryTintDark : FlowTheme.primaryTintLight)
             : theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(100),
       ),
       child: Text(text, style: theme.textTheme.labelLarge?.copyWith(
-        color: isGreen ? theme.primaryColor : theme.textTheme.bodyMedium?.color, 
+        color: isGreen ? theme.primaryColor : theme.textTheme.bodyMedium?.color,
         fontSize: 10
       )),
     );

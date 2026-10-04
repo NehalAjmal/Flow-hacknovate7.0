@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import '../api_service.dart';
 import '../core/models.dart';
+import '../core/theme.dart';
 
 class PatternsScreen extends StatefulWidget {
   const PatternsScreen({super.key});
@@ -337,11 +338,11 @@ class _PatternsScreenState extends State<PatternsScreen> {
                  }
                  final insight = snapshot.data?['gemini_insight'] as String?;
                  if (snapshot.hasData && insight != null && insight.isNotEmpty) {
-                   return _buildInsightItem(context, "🧠", "FLOW Core AI Insight", insight, "Focus DNA", "orange");
+                   return _buildInsightItem(context, Icons.auto_awesome_rounded, "FLOW Core AI Insight", insight, "Focus DNA", "orange");
                  }
                  return _buildInsightItem(
                    context,
-                   "🧠",
+                   Icons.auto_awesome_rounded,
                    "AI insight unavailable",
                    snapshot.error?.toString() ?? "Gemini couldn't be reached. Check the backend GEMINI_API_KEY.",
                    "Error",
@@ -357,7 +358,7 @@ class _PatternsScreenState extends State<PatternsScreen> {
              ),
 
             const SizedBox(height: 8),
-            _buildInsightItem(context, "📊", "Weekly trend", _weeklyTrendLine(), "Pattern", "green"),
+            _buildInsightItem(context, Icons.insights_rounded, "Weekly trend", _weeklyTrendLine(), "Pattern", "green"),
           ],
         ),
       ),
@@ -372,7 +373,7 @@ class _PatternsScreenState extends State<PatternsScreen> {
     return 'Best day: ${best.label} at ${best.value}% average focus.';
   }
 
-  Widget _buildInsightItem(BuildContext context, String emoji, String title, String sub, String tag, String type) {
+  Widget _buildInsightItem(BuildContext context, IconData icon, String title, String sub, String tag, String type) {
     final theme = Theme.of(context);
 
     Color bgColor = theme.primaryColor.withValues(alpha: 0.05);
@@ -386,9 +387,12 @@ class _PatternsScreenState extends State<PatternsScreen> {
         children: [
           Container(
             width: 36, height: 36,
-            decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(FlowTheme.radiusSm),
+            ),
             alignment: Alignment.center,
-            child: Text(emoji, style: const TextStyle(fontSize: 20)),
+            child: Icon(icon, size: 18, color: type == "rose" ? theme.colorScheme.error : theme.primaryColor),
           ),
           const SizedBox(width: 12),
           Expanded(

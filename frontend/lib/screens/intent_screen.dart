@@ -7,7 +7,7 @@ import '../api_service.dart';
 class IntentScreen extends StatefulWidget {
   final VoidCallback? onStartSession;
 
-  // ✅ FIX: use_super_parameters
+  //  FIX: use_super_parameters
   const IntentScreen({super.key, this.onStartSession});
 
   @override
@@ -20,13 +20,13 @@ class _IntentScreenState extends State<IntentScreen> {
   bool _isStarting = false;
   final TextEditingController _intentController = TextEditingController();
 
-  final List<Map<String, String>> _taskChips = [
-    {'emoji': '🧠', 'label': 'Deep work'},
-    {'emoji': '📝', 'label': 'Writing'},
-    {'emoji': '🐛', 'label': 'Debugging'},
-    {'emoji': '📊', 'label': 'Review'},
-    {'emoji': '📞', 'label': 'Meeting prep'},
-    {'emoji': '🎨', 'label': 'Design'},
+  final List<Map<String, dynamic>> _taskChips = [
+    {'icon': Icons.psychology_rounded, 'label': 'Deep work'},
+    {'icon': Icons.edit_note_rounded, 'label': 'Writing'},
+    {'icon': Icons.build_rounded, 'label': 'Debugging'},
+    {'icon': Icons.fact_check_rounded, 'label': 'Review'},
+    {'icon': Icons.groups_rounded, 'label': 'Meeting prep'},
+    {'icon': Icons.palette_rounded, 'label': 'Design'},
   ];
 
   final List<String> _durations = ['25m', '50m', '90m', 'Custom'];
@@ -113,7 +113,7 @@ class _IntentScreenState extends State<IntentScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 20),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(100)),
                         ),
-                        // ✅ FIX: prefer_const_constructors
+                        //  FIX: prefer_const_constructors
                         child: _isStarting
                             ? const SizedBox(
                                 height: 20, width: 20,
@@ -197,10 +197,10 @@ class _IntentScreenState extends State<IntentScreen> {
                 final isSelected = _selectedTask == chip['label'];
                 return _buildChip(
                   context,
-                  emoji: chip['emoji']!,
-                  label: chip['label']!,
+                  icon: chip['icon'] as IconData,
+                  label: chip['label'] as String,
                   isSelected: isSelected,
-                  onTap: () => setState(() => _selectedTask = chip['label']!),
+                  onTap: () => setState(() => _selectedTask = chip['label'] as String),
                 );
               }).toList(),
             ),
@@ -223,7 +223,7 @@ class _IntentScreenState extends State<IntentScreen> {
               controller: _intentController,
               maxLines: 4,
               decoration: const InputDecoration(
-                hintText: "e.g. Fix the JWT token refresh bug in the auth module and write unit tests for edge cases…",
+                hintText: "e.g. Fix the JWT token refresh bug in the auth module and write unit tests for edge cases...",
                 contentPadding: EdgeInsets.all(20),
               ),
             ),
@@ -300,13 +300,13 @@ class _IntentScreenState extends State<IntentScreen> {
         ),
         borderRadius: BorderRadius.circular(28),
       ),
-      // ✅ FIX: prefer_const_constructors
+      //  FIX: prefer_const_constructors
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text("OPTIMAL WINDOW", style: TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'DM Mono', letterSpacing: 1.5)),
           SizedBox(height: 8),
-          Text("Right now ✓", style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
+          Text("Right now", style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
           SizedBox(height: 6),
           Text("You're in a peak ultradian phase. Best 50 min window starts immediately.", style: TextStyle(fontSize: 13, color: Colors.white, height: 1.4)),
         ],
@@ -334,7 +334,7 @@ class _IntentScreenState extends State<IntentScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            Text("✓ Plenty of uninterrupted time", style: TextStyle(fontSize: 11, color: Theme.of(context).primaryColor, fontWeight: FontWeight.w500)),
+            Text("Plenty of uninterrupted time", style: TextStyle(fontSize: 11, color: Theme.of(context).primaryColor, fontWeight: FontWeight.w500)),
           ],
         ),
       ),
@@ -363,7 +363,7 @@ class _IntentScreenState extends State<IntentScreen> {
                     width: 36, height: 36,
                     decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(10)),
                     alignment: Alignment.center,
-                    child: const Text("🔬", style: TextStyle(fontSize: 20)),
+                    child: Icon(Icons.biotech_rounded, size: 20, color: Theme.of(context).primaryColor),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -394,11 +394,11 @@ class _IntentScreenState extends State<IntentScreen> {
           children: [
             Text("Recent intentions", style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 10),
-            _buildRecentTaskItem(context, "🐛 Debug auth module"),
+            _buildRecentTaskItem(context, "Debug auth module"),
             const SizedBox(height: 6),
-            _buildRecentTaskItem(context, "📝 Write engineering spec"),
+            _buildRecentTaskItem(context, "Write engineering spec"),
             const SizedBox(height: 6),
-            _buildRecentTaskItem(context, "🎨 UI component design"),
+            _buildRecentTaskItem(context, "UI component design"),
           ],
         ),
       ),
@@ -407,7 +407,7 @@ class _IntentScreenState extends State<IntentScreen> {
 
   // ─── HELPER WIDGETS ──────────────────────────────────────────────────────
 
-  Widget _buildChip(BuildContext context, {required String emoji, required String label, required bool isSelected, required VoidCallback onTap}) {
+  Widget _buildChip(BuildContext context, {required IconData icon, required String label, required bool isSelected, required VoidCallback onTap}) {
     final theme = Theme.of(context);
     return GestureDetector(
       onTap: onTap,
@@ -424,7 +424,7 @@ class _IntentScreenState extends State<IntentScreen> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 14)),
+            Icon(icon, size: 15, color: isSelected ? theme.primaryColor : theme.textTheme.bodyMedium?.color),
             const SizedBox(width: 6),
             Text(
               label,

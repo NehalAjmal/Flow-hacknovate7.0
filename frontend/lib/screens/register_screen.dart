@@ -80,13 +80,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 24),
           child: SizedBox(
-            width: 420, 
+            width: 420,
             child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(40.0),
@@ -141,12 +141,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 20),
                     _buildTextField("Email address", Icons.email_outlined, false, theme, _emailController),
                     const SizedBox(height: 20),
-                    
+
                     if (_accountType != 'solo') ...[
                       _buildTextField("Company Code", Icons.business_rounded, false, theme, _companyCodeController),
                       const SizedBox(height: 20),
                     ],
-                    
+
                     Row(
                       children: [
                          Expanded(child: _buildTextField("Age", Icons.calendar_today_outlined, false, theme, _ageController, isNumeric: true)),
@@ -185,7 +185,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ],
                     ),
                     const SizedBox(height: 20),
-                    
+
                     _buildTextField("Password", Icons.lock_outline_rounded, true, theme, _passwordController),
                     const SizedBox(height: 32),
 
@@ -199,7 +199,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _isLoading ? null : _handleRegister,
-                        child: _isLoading 
+                        child: _isLoading
                             ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                             : const Text("Sign Up →", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       ),

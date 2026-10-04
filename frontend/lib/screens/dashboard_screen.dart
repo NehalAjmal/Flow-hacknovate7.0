@@ -226,7 +226,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           children: [
             Text(_formatDate(DateTime.now()), style: theme.textTheme.labelMedium?.copyWith(color: isDark ? FlowTheme.text3Dark : FlowTheme.text3Light)),
             const SizedBox(height: 2),
-            Text('${_dashData?.greeting ?? 'Welcome back'} 👋', style: theme.textTheme.headlineLarge),
+            Text(_dashData?.greeting ?? 'Welcome back', style: theme.textTheme.headlineLarge),
           ],
         ),
         if (isActive)
@@ -471,9 +471,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     const SizedBox(height: 20),
                     Column(
                       children: [
-                        _buildTimelineItem(context, "🎯", _dashData != null && _dashData!.sessionsToday > 0 ? "Focus sessions today" : "No sessions yet today", "${_dashData?.sessionsToday ?? 0} sessions · ${_dashData?.totalFocusMins ?? 0} min tracked", true, false),
-                        _buildTimelineItem(context, "🌊", "Rhythm position", "${_dashData?.rhythmPositionMin ?? 0} min into your cycle", false, true),
-                        _buildTimelineItem(context, "💤", "Recommended break", "~${_dashData?.minutesUntilTrough ?? 0} min from now", false, false, isLast: true),
+                        _buildTimelineItem(context, Icons.adjust_rounded, _dashData != null && _dashData!.sessionsToday > 0 ? "Focus sessions today" : "No sessions yet today", "${_dashData?.sessionsToday ?? 0} sessions · ${_dashData?.totalFocusMins ?? 0} min tracked", true, false),
+                        _buildTimelineItem(context, Icons.waves_rounded, "Rhythm position", "${_dashData?.rhythmPositionMin ?? 0} min into your cycle", false, true),
+                        _buildTimelineItem(context, Icons.hotel_rounded, "Recommended break", "~${_dashData?.minutesUntilTrough ?? 0} min from now", false, false, isLast: true),
                       ],
                     ),
                   ],
@@ -497,9 +497,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       ],
                     ),
                     const SizedBox(height: 14),
-                    _buildAppRow(context, "❤️", "Heart rate", _bioData?.hasHr == true ? '${_bioData!.hr} bpm' : '—', _bioData?.hasHr == true ? (_bioData!.hr / 120).clamp(0.0, 1.0) : 0, const Color(0xFFE8F0EA), Theme.of(context).primaryColor),
-                    _buildAppRow(context, "📈", "HRV", _bioData?.hasHrv == true ? '${_bioData!.hrv} ms' : '—', _bioData?.hasHrv == true ? (_bioData!.hrv / 100).clamp(0.0, 1.0) : 0, const Color(0xFFE8EEF5), Theme.of(context).primaryColor),
-                    _buildAppRow(context, "👁️", "Eye openness (EAR)", _bioData != null && _bioData!.ear > 0 ? _bioData!.ear.toStringAsFixed(2) : '—', (_bioData?.ear ?? 0).clamp(0.0, 1.0), const Color(0xFFFFF3E8), Theme.of(context).colorScheme.secondary),
+                    _buildAppRow(context, Icons.favorite_rounded, "Heart rate", _bioData?.hasHr == true ? '${_bioData!.hr} bpm' : '—', _bioData?.hasHr == true ? (_bioData!.hr / 120).clamp(0.0, 1.0) : 0, FlowTheme.iconChipBg(context), Theme.of(context).primaryColor),
+                    _buildAppRow(context, Icons.show_chart_rounded, "HRV", _bioData?.hasHrv == true ? '${_bioData!.hrv} ms' : '—', _bioData?.hasHrv == true ? (_bioData!.hrv / 100).clamp(0.0, 1.0) : 0, FlowTheme.iconChipBg(context), Theme.of(context).primaryColor),
+                    _buildAppRow(context, Icons.visibility_rounded, "Eye openness (EAR)", _bioData != null && _bioData!.ear > 0 ? _bioData!.ear.toStringAsFixed(2) : '—', (_bioData?.ear ?? 0).clamp(0.0, 1.0), FlowTheme.iconChipBg(context), Theme.of(context).colorScheme.secondary),
                     const SizedBox(height: 12),
                     const Divider(),
                     const SizedBox(height: 12),
@@ -560,7 +560,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     child: ElevatedButton(
                       onPressed: _isBusy ? null : (isActive ? _endSession : _startSession),
                       style: ElevatedButton.styleFrom(shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12)),
-                      child: Text(_isBusy ? "Working…" : (isActive ? "－ End session" : "＋ New session")),
+                      child: Text(_isBusy ? "Working..." : (isActive ? "End session" : "New session")),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -621,18 +621,32 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   }
 
   Widget _buildHeroCard(BuildContext context, String label, String value, String sub, {bool isGreen = false, bool isOrange = false}) {
-    List<Color> gradientColors = isGreen ? [const Color(0xFF4F6F57), const Color(0xFF6B8F71)] : [const Color(0xFF8B5E3A), const Color(0xFFC4845A)];
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final gradientColors = isGreen
+        ? (isDark ? FlowTheme.brandGradientDark : FlowTheme.brandGradientLight)
+        : null;
+    final accent = isGreen
+        ? (isDark ? FlowTheme.primaryDark : FlowTheme.primaryLight)
+        : (isDark ? FlowTheme.fatigueDark : FlowTheme.fatigueLight);
+
     return Container(
-      width: double.infinity, padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(gradient: LinearGradient(colors: gradientColors), borderRadius: BorderRadius.circular(28)),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isGreen ? null : (isDark ? FlowTheme.surfaceDark : FlowTheme.surfaceLight),
+        gradient: gradientColors == null ? null : LinearGradient(colors: gradientColors),
+        border: Border.all(color: isDark ? FlowTheme.borderDark : FlowTheme.borderLight),
+        borderRadius: BorderRadius.circular(FlowTheme.radiusLg),
+      ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(label, style: const TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'DM Mono', letterSpacing: 1.5)),
+          Text(label, style: TextStyle(fontSize: 11, color: isGreen ? Colors.white70 : (isDark ? FlowTheme.text3Dark : FlowTheme.text3Light), fontFamily: 'DM Mono', letterSpacing: 1.5)),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontSize: 42, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -2, height: 1)),
+          Text(value, style: TextStyle(fontSize: 40, fontWeight: FontWeight.w800, color: isGreen ? Colors.white : accent, letterSpacing: -2, height: 1)),
           const SizedBox(height: 4),
-          Text(sub, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+          Text(sub, style: TextStyle(fontSize: 12, color: isGreen ? Colors.white70 : (isDark ? FlowTheme.text2Dark : FlowTheme.text2Light))),
         ],
       ),
     );
@@ -700,7 +714,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildTimelineItem(BuildContext context, String emoji, String title, String time, bool isGreen, bool isOrange, {bool isLast = false}) {
+  Widget _buildTimelineItem(BuildContext context, IconData icon, String title, String time, bool isGreen, bool isOrange, {bool isLast = false}) {
     final theme = Theme.of(context);
     Color dotBg = isGreen ? theme.colorScheme.primaryContainer : (isOrange ? theme.colorScheme.secondaryContainer : theme.colorScheme.surface);
     Color dotBorder = isGreen ? theme.primaryColor : (isOrange ? theme.colorScheme.secondary : theme.dividerColor);
@@ -712,7 +726,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             width: 34,
             child: Column(
               children: [
-                Container(width: 34, height: 34, decoration: BoxDecoration(color: dotBg, border: Border.all(color: dotBorder, width: 2), shape: BoxShape.circle), alignment: Alignment.center, child: Text(emoji, style: const TextStyle(fontSize: 14))),
+                Container(width: 34, height: 34, decoration: BoxDecoration(color: dotBg, border: Border.all(color: dotBorder, width: 2), shape: BoxShape.circle), alignment: Alignment.center, child: Icon(icon, size: 16, color: dotBorder)),
                 if (!isLast) Expanded(child: Container(width: 2, color: theme.dividerColor)),
               ],
             ),
@@ -724,12 +738,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     );
   }
 
-  Widget _buildAppRow(BuildContext context, String emoji, String name, String time, double progress, Color iconBg, Color barColor) {
+  Widget _buildAppRow(BuildContext context, IconData icon, String name, String time, double progress, Color iconBg, Color barColor) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          Container(width: 32, height: 32, decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(9)), alignment: Alignment.center, child: Text(emoji, style: const TextStyle(fontSize: 16))),
+          Container(width: 32, height: 32, decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(9)), alignment: Alignment.center, child: Icon(icon, size: 16, color: barColor)),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

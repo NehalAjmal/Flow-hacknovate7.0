@@ -79,7 +79,7 @@ try:
     mouse_listener = pynput_mouse.Listener(on_move=on_move)
     mouse_listener.start()
 except Exception:
-    print("⚠️ Mouse tracking unavailable (pynput missing). Continuing without it.")
+    print(" Mouse tracking unavailable (pynput missing). Continuing without it.")
 
 
 def get_and_reset_mouse_distance():
@@ -93,7 +93,7 @@ def get_and_reset_mouse_distance():
 # ── MAIN LOOP ─────────────────────────────────────────────────────────────────
 
 def run():
-    print(f"\n⚡ FLOW Agent Started (Local Mode)")
+    print(f"\n FLOW Agent Started (Local Mode)")
     print(f"   Session : {SESSION_ID}")
     print(f"   Backend : {BACKEND_URL}")
     print(f"   Interval: {SEND_INTERVAL}s")
@@ -125,7 +125,7 @@ def run():
                     "timestamp":         datetime.now().isoformat(),
                 }
 
-                print(f"📡 [{datetime.now().strftime('%H:%M:%S')}] "
+                print(f" [{datetime.now().strftime('%H:%M:%S')}] "
                       f"keys={keystrokes} switches={switches} "
                       f"idle={idle_seconds}s window='{active_window[:30]}'")
 
@@ -141,21 +141,21 @@ def run():
                     state = data.get("state", "unknown")
                     score = data.get("focus_score", 0)
                     intervene = data.get("should_intervene", False)
-                    print(f"   ✅ State: {state} | Score: {score}"
-                          + (" | 🔔 INTERVENE" if intervene else ""))
+                    print(f"    State: {state} | Score: {score}"
+                          + (" |  INTERVENE" if intervene else ""))
                 elif res.status_code == 404:
-                    print("   🛑 Session not found on backend — stopping agent.")
+                    print("    Session not found on backend — stopping agent.")
                     sys.exit(0)
                 else:
-                    print(f"   ⚠️  Backend error {res.status_code}: {res.text[:80]}")
+                    print(f"     Backend error {res.status_code}: {res.text[:80]}")
 
             except requests.exceptions.ConnectionError:
-                print("   ❌ Cannot reach backend — is the local server running on port 8002?")
+                print("    Cannot reach backend — is the local server running on port 8002?")
             except Exception as e:
-                print(f"   ❌ Error: {e}")
+                print(f"    Error: {e}")
 
     except KeyboardInterrupt:
-        print("\n🛑 FLOW Agent shutting down gracefully... Good luck with the Demo!")
+        print("\n FLOW Agent shutting down gracefully... Good luck with the Demo!")
         sys.exit(0)
 
 if __name__ == "__main__":

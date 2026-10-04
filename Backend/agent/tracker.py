@@ -92,13 +92,13 @@ class WindowTracker:
                 import win32gui  # noqa: F401
                 impl = _get_window_win32
             except ImportError:
-                print("⚠️ pywin32 not installed — window tracking disabled")
+                print(" pywin32 not installed — window tracking disabled")
         elif system == "Darwin":
             try:
                 import Quartz  # noqa: F401
                 impl = _get_window_macos
             except ImportError:
-                print("⚠️ pyobjc not installed — window tracking disabled "
+                print(" pyobjc not installed — window tracking disabled "
                       "(pip install pyobjc-framework-Quartz)")
         elif system == "Linux":
             impl = _get_window_linux

@@ -223,7 +223,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
 
     return Scaffold(
       backgroundColor: Colors.transparent,
-      // ✅ THE FIREWALL: RepaintBoundary prevents the semantics crash!
+      //  THE FIREWALL: RepaintBoundary prevents the semantics crash!
       body: RepaintBoundary(
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 500),
@@ -385,7 +385,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                   _buildQuickBreakBtn("Feeling stuck?", () => _triggerBreak(InterruptType.drift), isWarning: true),
                   const SizedBox(width: 8),
                   _buildHeroActionButton(
-                    _isEnding ? "Ending…" : "End session",
+                    _isEnding ? "Ending..." : "End session",
                     Icons.check_rounded,
                     _endSession,
                   ),
@@ -448,13 +448,13 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
               children: [
                 Text("LIVE TELEMETRY", style: theme.textTheme.labelMedium),
                 Text(
-                  '${appState.focusScore} now', 
+                  '${appState.focusScore} now',
                   style: theme.textTheme.labelSmall?.copyWith(color: theme.primaryColor, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
             const SizedBox(height: 16),
-            // ✅ THE SECOND FIREWALL
+            //  THE SECOND FIREWALL
             RepaintBoundary(
               child: FocusSparkline(scores: _focusHistory, color: theme.primaryColor, height: 60),
             ),
@@ -464,8 +464,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMinStat("BPM", "${appState.currentBpm}", theme.textTheme.bodyLarge?.color), 
-                _buildMinStat("EAR", "${appState.currentEar}", theme.colorScheme.secondary),      
+                _buildMinStat("BPM", "${appState.currentBpm}", theme.textTheme.bodyLarge?.color),
+                _buildMinStat("EAR", "${appState.currentEar}", theme.colorScheme.secondary),
                 _buildMinStat("DRIFT", isDrifting ? "HIGH" : "LOW", isDrifting ? theme.colorScheme.error : theme.primaryColor),
               ],
             )

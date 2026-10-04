@@ -74,13 +74,13 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Scaffold(
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: SizedBox(
-            width: 420, 
+            width: 420,
             child: Card(
               child: Padding(
                 padding: const EdgeInsets.all(40.0),
@@ -150,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: _isLoading ? null : _handleLogin,
-                        child: _isLoading 
+                        child: _isLoading
                             ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                             : const Text("Sign In →", style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       ),

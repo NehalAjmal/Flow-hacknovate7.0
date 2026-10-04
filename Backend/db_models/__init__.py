@@ -6,7 +6,7 @@ from db_models.biometric      import BiometricReading
 from db_models.breaks        import Break
 from db_models.calendar_cache import CalendarCache
 from db_models.llm_cache      import LLMCache
- 
+
 __all__ = [
     "Base", "engine", "SessionLocal", "get_db",
     "Team",

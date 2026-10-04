@@ -61,7 +61,7 @@ class PatternLearner:
         self.keystroke_history.append(avg_kpm)
         self.switch_history.append(avg_switch)
 
-        # 🔥 COMPUTE TROUGH FOR THIS SESSION
+        #  COMPUTE TROUGH FOR THIS SESSION
         trough = self._compute_trough_minute(session_data, timestamps)
         self.trough_history.append(trough)
 
@@ -112,7 +112,7 @@ class PatternLearner:
         baseline_kpm = float(np.mean(self.keystroke_history)) if self.keystroke_history else 0
         baseline_switch = float(np.mean(self.switch_history)) if self.switch_history else 0
 
-        # 🔥 FINAL TROUGH (learned over sessions)
+        #  FINAL TROUGH (learned over sessions)
         trough_minute = int(np.median(self.trough_history)) if self.trough_history else 45
 
         return {
