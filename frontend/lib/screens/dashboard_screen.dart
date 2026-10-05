@@ -63,6 +63,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       });
       _ringEntry.forward(from: _ringEntry.isCompleted ? 0 : _ringEntry.value);
     } on ApiException catch (e) {
+      // An invalid/expired token (e.g. backend restarted) should bounce the
+      // user back to the login screen instead of a dead error page.
+      if (e.isAuthError && mounted) {
+        await context.read<AppState>().logout();
+        return;
+      }
       if (!mounted || silent) return;
       setState(() {
         _isLoading = false;
