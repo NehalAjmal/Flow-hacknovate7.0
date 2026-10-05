@@ -62,8 +62,9 @@ def _compute_fatigue_signal(
 
 def _read_fatigue_json() -> Optional[dict]:
     """
-    Read the latest entry from the ML friend's fatigue.json output.
-    Returns None if file doesn't exist yet.
+    Read the latest entry from the fatigue.json snapshot.
+    Accepts either a single snapshot object or a list of snapshots
+    (returns the last entry of a list). Returns None if unavailable.
     """
     if not _FATIGUE_JSON.exists():
         return None
@@ -72,6 +73,8 @@ def _read_fatigue_json() -> Optional[dict]:
             data = json.load(f)
         if isinstance(data, list) and data:
             return data[-1]  # most recent entry
+        if isinstance(data, dict):
+            return data
         return None
     except Exception:
         return None
@@ -145,7 +148,20 @@ def get_latest_biometric(
             source=reading.source,
         )
 
-    # Fallback: read fatigue.json from ML friend's engine
+    # Second: the in-process fatigue service (live webcam state, always freshest)
+    from ml_models.fatigue_model import fatigue_service
+
+    state = fatigue_service.get_state()
+    if state.get("ear") or state.get("fatigue_score"):
+        return LatestBiometricResponse(
+            heart_rate_bpm=None,
+            hrv_sdnn=None,
+            ear_value=state.get("ear"),
+            fatigue_signal=state.get("fatigue_score", 0.0),
+            source="webcam",
+        )
+
+    # Third fallback: read fatigue.json from ML friend's engine
     fatigue_data = _read_fatigue_json()
     if fatigue_data:
         ear = fatigue_data.get("ear_value") or fatigue_data.get("ear")

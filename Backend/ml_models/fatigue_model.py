@@ -3,6 +3,8 @@ import numpy as np
 import time
 import threading
 import os
+import json
+from datetime import datetime
 
 import mediapipe as mp
 from mediapipe.tasks import python
@@ -22,6 +24,10 @@ class FatigueService:
             "fatigue_state": "normal",
             "ear": 0.0
         }
+
+        # state snapshot written for cross-process consumers (biometric router fallback)
+        self._state_path = os.path.join(os.path.dirname(__file__), "fatigue.json")
+        self._last_state_write = 0.0
 
         # eye landmarks
         self.LEFT_EYE = [33, 160, 158, 133, 153, 144]
@@ -109,6 +115,13 @@ class FatigueService:
             self.cap.release()
             self.cap = None
 
+        # reset live state + drop the snapshot so consumers never see stale data
+        self.state = {"fatigue_score": 0.0, "fatigue_state": "normal", "ear": 0.0}
+        try:
+            os.remove(self._state_path)
+        except OSError:
+            pass
+
         print(" Fatigue service stopped")
 
     # ─────────────────────────────
@@ -193,6 +206,21 @@ class FatigueService:
                     "fatigue_score": round(self.fatigue_score, 3),
                     "fatigue_state": fatigue_state
                 })
+
+            # persist a snapshot ~1x/sec for cross-process consumers
+            now = time.time()
+            if now - self._last_state_write > 1.0:
+                self._last_state_write = now
+                try:
+                    with open(self._state_path, "w") as f:
+                        json.dump({
+                            "ear": self.state.get("ear", 0.0),
+                            "fatigue_score": self.state.get("fatigue_score", 0.0),
+                            "fatigue_state": self.state.get("fatigue_state", "normal"),
+                            "updated_at": datetime.now().isoformat(),
+                        }, f)
+                except Exception:
+                    pass  # snapshot is best-effort only
 
             time.sleep(0.03)
 
