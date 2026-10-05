@@ -341,13 +341,21 @@ def get_session_status(db: DBSession, session_id: str):
     live = _live_sessions.get(session_id)
     fatigue = fatigue_service.get_state()
 
+    def _minutes_to_trough() -> Optional[int]:
+        """Minutes until the session's learned trough, or None when unknown."""
+        if not live:
+            return None
+        start = _as_aware_utc(session.start_time) or live["session_start"]
+        elapsed = int((_utcnow() - start).total_seconds() / 60)
+        return max(0, live["trough_minute"] - elapsed)
+
     if not live:
         # Session exists but has no in-memory state (e.g. started before a restart):
         # report DB-derived basics instead of inventing a fake healthy session.
         log = session.signal_log or []
         return {
             "state": log[-1]["state"] if log else "deep_work",
-            "focus_score": round(log[-1]["score"], 1) if log else 75.0,
+            "focus_score": round(log[-1]["score"], 1) if log else 0.0,
             "signals": {
                 "behavioral": 0.0,
                 "ultradian": 0.5,
@@ -355,6 +363,7 @@ def get_session_status(db: DBSession, session_id: str):
                 "ear": min(1.0, fatigue.get("ear", 0.0) * 3),
             },
             "intervention": None,
+            "minutes_to_trough": None,
         }
 
     engines = live.get("engines") or {}
@@ -369,6 +378,7 @@ def get_session_status(db: DBSession, session_id: str):
             "ear": min(1.0, fatigue.get("ear", 0.0) * 3),
         },
         "intervention": live.get("intervention"),
+        "minutes_to_trough": _minutes_to_trough(),
     }
 
 def _prepare_learning_data(signal_log):

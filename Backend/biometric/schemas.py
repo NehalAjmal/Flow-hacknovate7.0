@@ -25,4 +25,5 @@ class LatestBiometricResponse(BaseModel):
     hrv_sdnn: Optional[float]
     ear_value: Optional[float]
     fatigue_signal: float
+    has_data: bool = False   # False = no real reading yet (defaults only)
     source: Optional[str]

@@ -29,16 +29,27 @@ def admin_dashboard(
 
 
 @router.post("/send-break-alert")
-def send_break_alert(current_user: User = Depends(require_admin)):
+def send_break_alert(
+    current_user: User = Depends(require_admin),
+    db: DBSession = Depends(get_db),
+):
     """
     Notify all active employees to take a break.
     In production this would push a notification via WebSocket.
-    For demo: returns success immediately.
+    For demo: returns success immediately with the real recipient count.
     """
+    notified = 0
+    if current_user.team_id:
+        from db_models.user import User as Usermodel
+        notified = db.query(Usermodel).filter(
+            Usermodel.team_id == current_user.team_id,
+            Usermodel.role == "employee",
+        ).count()
+
     return {
         "status": "ok",
         "message": "Break alert sent to all active employees.",
-        "notified_count": 5,  # demo value
+        "notified_count": notified,
     }
 
 

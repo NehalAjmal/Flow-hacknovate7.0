@@ -13,6 +13,7 @@ from typing import List
 from db_models.base import get_db
 from auth.dependencies import get_current_user
 from db_models.user import User
+from db_models.session import Session as SessionModel
 from llm.client import get_gemini_client, get_model_name
 from llm.prompts import stuck_prompt
 from .schemas import StuckRequest, StuckResponse, StuckSuggestion
@@ -184,6 +185,44 @@ def pre_check(
         "suggested_duration_min": int(params.get("ultradian_cycle_minutes") or params.get("ultradian_period") or 50),
         "warnings": [],   # calendar warnings added here once calendar_google is connected
     }
+
+
+@router.get("/recent")
+def get_recent_intentions(
+    current_user: User = Depends(get_current_user),
+    db: DBSession = Depends(get_db),
+):
+    """
+    The user's last few declared intentions (distinct task descriptions from
+    past sessions, most recent first). Empty list for brand-new accounts.
+    """
+    sessions = (
+        db.query(SessionModel)
+        .filter(
+            SessionModel.user_id == current_user.id,
+            SessionModel.task_description != None,
+            SessionModel.task_description != "",
+        )
+        .order_by(SessionModel.start_time.desc())
+        .limit(20)
+        .all()
+    )
+
+    seen = set()
+    recent = []
+    for s in sessions:
+        task = s.task_description.strip()
+        if task.lower() in seen:
+            continue
+        seen.add(task.lower())
+        recent.append({
+            "task": task,
+            "started_at": s.start_time.isoformat() if s.start_time else None,
+        })
+        if len(recent) >= 5:
+            break
+
+    return {"recent": recent}
 
 
 # ── Stuck endpoint (Gemini AI) — was already here ─────────────────────────────

@@ -27,6 +27,10 @@ class AdminDashboardResponse(BaseModel):
     total_employees: int
     active_right_now: int
     avg_focus_score: int
+    avg_focus_delta: int = 0
+    sessions_today: int = 0
+    avg_duration_min: int = 0
+    company_code: Optional[str] = None
     burnout_flags_count: int
     best_meeting_window: str
     trend_7_days: List[TrendPoint]

@@ -34,6 +34,7 @@ def get_admin_dashboard(db: DBSession, team_id: Optional[str]) -> AdminDashboard
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     week_ago = now - timedelta(days=7)
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    yesterday_start = today_start - timedelta(days=1)
 
     # Admin without a team (solo account) — show honest zeros, no fake demo data
     if not team_id:
@@ -49,6 +50,11 @@ def get_admin_dashboard(db: DBSession, team_id: Optional[str]) -> AdminDashboard
 
     if total_employees == 0:
         return _empty_dashboard()
+
+    # Team record for the company code
+    from db_models.team import Team
+    team = db.query(Team).filter(Team.id == team_id).first()
+    company_code = team.company_code if team else None
 
     employee_ids = [e.id for e in employees]
 
@@ -108,14 +114,33 @@ def get_admin_dashboard(db: DBSession, team_id: Optional[str]) -> AdminDashboard
             avg_score=day_avg
         ))
 
-    # State distribution — pull from live sessions service
-    # Placeholder counts since engine integration is async
+    # State distribution — synthesized placeholder counts, honest about it:
+    # live per-employee state streaming isn't wired yet, so only active sessions
+    # are reflected (the rest are genuinely unknown, shown as 0).
     state_distribution = {
         "deep_work": max(0, active_now - 1),
         "stuck":     0,
         "fatigue":   min(1, active_now),
         "passive":   0,
     }
+
+    # Today's volume + duration + delta vs yesterday — all real
+    today_sessions = [
+        s for s in week_sessions
+        if s.start_time and s.start_time >= today_start
+    ]
+    sessions_today = len(today_sessions)
+    today_durations = [s.actual_duration_min or 0 for s in today_sessions]
+    avg_duration = int(sum(today_durations) / len(today_durations)) if today_durations else 0
+
+    yesterday_sessions = db.query(Session).filter(
+        Session.user_id.in_(employee_ids),
+        Session.start_time >= yesterday_start,
+        Session.start_time < today_start,
+    ).all()
+    y_scores = [s.focus_score for s in yesterday_sessions if s.focus_score]
+    y_avg = int(sum(y_scores) / len(y_scores)) if y_scores else avg_score
+    avg_focus_delta = avg_score - y_avg if (scores or y_scores) else 0
 
     # Best meeting window — find the hour with lowest avg active sessions
     # Simple heuristic: suggest 2 hours from now, on the half hour
@@ -126,6 +151,10 @@ def get_admin_dashboard(db: DBSession, team_id: Optional[str]) -> AdminDashboard
         total_employees=total_employees,
         active_right_now=active_now,
         avg_focus_score=avg_score,
+        avg_focus_delta=avg_focus_delta,
+        sessions_today=sessions_today,
+        avg_duration_min=avg_duration,
+        company_code=company_code,
         burnout_flags_count=len(burnout_flags),
         best_meeting_window=best_window,
         trend_7_days=trend,

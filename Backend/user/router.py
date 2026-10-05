@@ -29,12 +29,12 @@ def get_dashboard(
     sessions_count = len(todays_sessions)
     total_duration = sum([(s.actual_duration_min or 0) for s in todays_sessions])
 
-    # 2. Focus Score Math
+    # 2. Focus Score Math — honest zeros for accounts with no sessions today
     if sessions_count > 0:
         scores = [s.focus_score for s in todays_sessions if s.focus_score]
-        today_score = int(sum(scores) / len(scores)) if scores else 75
+        today_score = int(sum(scores) / len(scores)) if scores else 0
     else:
-        today_score = 75  # Default baseline if no sessions yet today
+        today_score = 0  # no invented baseline — the UI shows an empty state
 
     # Fetch Yesterday to calculate the Delta (+/- vs yesterday)
     yesterdays_sessions = db.query(Session).filter(
@@ -64,9 +64,15 @@ def get_dashboard(
     else:
         rhythm_pos = 0
 
-    minutes_until_trough = max(0, cycle_length - rhythm_pos)
+    # 4. History flag — any completed session ever (drives the empty/onboarding UI)
+    has_history = db.query(Session).filter(
+        Session.user_id == current_user.id,
+        Session.end_time != None
+    ).count() > 0
 
-    # 4. Dynamic Greeting
+    minutes_until_trough = max(0, cycle_length - rhythm_pos) if has_history else 0
+
+    # 5. Dynamic Greeting
     hour = now.hour
     first_name = current_user.full_name.split()[0]
     if hour < 12:
@@ -83,6 +89,7 @@ def get_dashboard(
         total_duration_minutes=total_duration,
         rhythm_position_minutes=rhythm_pos,
         minutes_until_trough=minutes_until_trough,
+        has_history=has_history,
         greeting_message=greeting
     )
 
@@ -94,12 +101,31 @@ def get_patterns(
     # 1. Get learned patterns from ML (or defaults)
     pattern = current_user.pattern_model or {}
     params = pattern.get("parameters", {})
+    has_pattern_data = bool(params)
     # learner exports ultradian_cycle_minutes; seeded demo data uses ultradian_period
     cycle_minutes = int(params.get("ultradian_cycle_minutes") or params.get("ultradian_period") or 90)
-    peak_hours = pattern.get("peak_hours", [9, 10, 14])
+
+    # Peak hours derived ONLY from learned data — never invented.
+    # The fatigue_focus_profile maps hour -> focus (0-1, higher = better).
+    profile = params.get("fatigue_focus_profile") or {}
+    if profile:
+        top = sorted(profile.items(), key=lambda kv: kv[1], reverse=True)[:2]
+        peak_hours = sorted(int(h) for h, _ in top)
+    else:
+        peak_hours = []
 
     # 2. Fetch real sessions
     sessions = db.query(Session).filter(Session.user_id == current_user.id).all()
+
+    # 3. Daily activity for the last 28 days (oldest first) — sessions completed per day
+    today = datetime.now(timezone.utc).replace(tzinfo=None).replace(hour=0, minute=0, second=0, microsecond=0)
+    daily_activity = [0] * 28
+    for s in sessions:
+        if s.start_time and s.end_time:
+            day_index = 27 - (today - s.start_time.replace(tzinfo=None).replace(
+                hour=0, minute=0, second=0, microsecond=0)).days
+            if 0 <= day_index < 28:
+                daily_activity[day_index] += 1
 
     # Compute weekly trends
     days_map = {0:"Mon", 1:"Tue", 2:"Wed", 3:"Thu", 4:"Fri", 5:"Sat", 6:"Sun"}
@@ -141,6 +167,8 @@ def get_patterns(
     return PatternsResponse(
         ultradian_cycle_minutes=cycle_minutes,
         peak_focus_hours=peak_hours,
+        has_pattern_data=has_pattern_data,
+        daily_activity=daily_activity,
         weekly_trends=weekly_trends,
         hourly_quality=hourly_quality
     )

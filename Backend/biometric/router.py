@@ -145,6 +145,7 @@ def get_latest_biometric(
             hrv_sdnn=reading.hrv_sdnn,
             ear_value=reading.ear_value,
             fatigue_signal=fatigue_signal,
+            has_data=True,
             source=reading.source,
         )
 
@@ -158,6 +159,7 @@ def get_latest_biometric(
             hrv_sdnn=None,
             ear_value=state.get("ear"),
             fatigue_signal=state.get("fatigue_score", 0.0),
+            has_data=True,
             source="webcam",
         )
 
@@ -171,14 +173,16 @@ def get_latest_biometric(
             hrv_sdnn=None,
             ear_value=ear,
             fatigue_signal=fatigue_score,
+            has_data=True,
             source="ml_model",
         )
 
-    # No data at all — return neutral defaults
+    # No data anywhere — honest defaults, never invented values
     return LatestBiometricResponse(
         heart_rate_bpm=None,
         hrv_sdnn=None,
         ear_value=None,
-        fatigue_signal=0.5,
+        fatigue_signal=0.0,
+        has_data=False,
         source=None,
     )
