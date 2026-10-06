@@ -70,7 +70,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on ApiException catch (e) {
       setState(() => _errorMessage = e.message);
     } catch (e) {
-      setState(() => _errorMessage = "Cannot connect to server.");
+      // Unexpected (non-API) failure — surface it so it's debuggable on-screen
+      setState(() => _errorMessage = "Sign-up failed: $e");
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
@@ -15,11 +17,21 @@ class _AdminScreenState extends State<AdminScreen> {
   bool _isLoading = true;
   String? _error;
   AdminDashboardData? _adminData;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchAdminData();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _fetchAdminData();
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchAdminData() async {
@@ -133,7 +145,7 @@ class _AdminScreenState extends State<AdminScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "COMPANY ADMINISTRATOR · ERROR 011",
+              _adminData?.companyCode != null ? "COMPANY ADMINISTRATOR · ${_adminData!.companyCode}" : "COMPANY ADMINISTRATOR",
               style: theme.textTheme.labelMedium?.copyWith(
                 color: isDark ? FlowTheme.text3Dark : FlowTheme.text3Light,
               ),
@@ -175,7 +187,9 @@ class _AdminScreenState extends State<AdminScreen> {
             context,
             "TEAM FOCUS SCORE",
             "${_adminData?.avgFocusScore ?? 0}",
-            "↑ +4 vs yesterday", // Can make this dynamic later
+            (_adminData?.avgFocusDelta ?? 0) != 0
+                ? "${(_adminData!.avgFocusDelta) > 0 ? '↑ +' : '↓ '}${_adminData!.avgFocusDelta} vs yesterday"
+                : "vs yesterday: no change",
             const [Color(0xFF4F6F57), Color(0xFF6B8F71)],
           ),
         ),
@@ -257,10 +271,10 @@ class _AdminScreenState extends State<AdminScreen> {
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: _buildStateCount(context, "Deep Work", "${dist['DEEP_WORK'] ?? 0}", Theme.of(context).primaryColor)),
+                Expanded(child: _buildStateCount(context, "Deep Work", "${dist['deep_work'] ?? 0}", Theme.of(context).primaryColor)),
                 Expanded(child: _buildStateCount(context, "Shallow Work", "${dist['SHALLOW_WORK'] ?? 0}", Theme.of(context).textTheme.bodyMedium!.color!)),
                 Expanded(child: _buildStateCount(context, "Break", "${dist['BREAK'] ?? 0}", Theme.of(context).colorScheme.primaryContainer)),
-                Expanded(child: _buildStateCount(context, "Fatigue", "${dist['FATIGUE'] ?? 0}", Theme.of(context).colorScheme.secondary)),
+                Expanded(child: _buildStateCount(context, "Fatigue", "${dist['fatigue'] ?? 0}", Theme.of(context).colorScheme.secondary)),
                 Expanded(child: _buildStateCount(context, "Offline", "${dist['OFFLINE'] ?? 0}", Theme.of(context).dividerColor)),
               ],
             )
@@ -294,7 +308,7 @@ class _AdminScreenState extends State<AdminScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("Sessions Today", style: Theme.of(context).textTheme.bodyMedium),
-                Text("9", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Theme.of(context).primaryColor)),
+                Text("${_adminData?.sessionsToday ?? 0}", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Theme.of(context).primaryColor)),
               ],
             ),
             const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Divider()),
@@ -302,7 +316,7 @@ class _AdminScreenState extends State<AdminScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text("Avg Duration", style: Theme.of(context).textTheme.bodyMedium),
-                Text("68 min", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Theme.of(context).primaryColor)),
+                Text("${_adminData?.avgDurationMin ?? 0} min", style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Theme.of(context).primaryColor)),
               ],
             ),
           ],
@@ -313,17 +327,15 @@ class _AdminScreenState extends State<AdminScreen> {
 
   // ─── PERFORMANCE TREND ───────────────────────────────────────────────────
   Widget _buildPerformanceTrend(BuildContext context) {
-    // LIVE BINDING: Map backend trend array to graph
-    final trendList = _adminData?.trend7Days ?? [];
-
-    // Fallback if DB is empty
-    List<double> bars = [0.65, 0.70, 0.68, 0.75, 0.82, 0.71, 0.85];
-    List<String> days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-
-    if (trendList.isNotEmpty) {
-      days = trendList.map((t) => t.day.substring(0, 1)).toList(); // Get first letter
-      bars = trendList.map((t) => t.avgScore / 100.0).toList(); // Convert 85 -> 0.85
-    }
+    // LIVE BINDING: map the backend trend array to the graph, real values only
+    final trend = _adminData?.trend7Days ?? const [];
+    final maxVal = trend.fold<int>(0, (a, p) => a > p.avgScore ? a : p.avgScore);
+    final bars = trend.isEmpty
+        ? const <double>[]
+        : trend.map((p) => maxVal == 0 ? 0.02 : p.avgScore / maxVal).toList();
+    final days = trend.isEmpty
+        ? const <String>[]
+        : trend.map((p) => p.day.isEmpty ? '' : p.day[0]).toList();
 
     return Card(
       child: Padding(
@@ -382,17 +394,25 @@ class _AdminScreenState extends State<AdminScreen> {
             const SizedBox(height: 14),
             Row(
               children: [
-                Expanded(child: _buildInsightPill(context, "10–11 AM", "Peak Focus Hour")),
+                Expanded(child: _buildInsightPill(context, _bestTeamDay(), "Best Focus Day")),
                 const SizedBox(width: 8),
-                Expanded(child: _buildInsightPill(context, "14:00", "Common Stuck Time", isWarning: true)),
+                Expanded(child: _buildInsightPill(context, "${_adminData?.avgFocusScore ?? 0}%", "Team Avg Focus", isWarning: (_adminData?.avgFocusScore ?? 0) < 50)),
                 const SizedBox(width: 8),
-                Expanded(child: _buildInsightPill(context, "18 min", "Best Break Length")),
+                Expanded(child: _buildInsightPill(context, "${_adminData?.totalEmployees ?? 0}", "Team Members")),
               ],
             )
           ],
         ),
       ),
     );
+  }
+
+  String _bestTeamDay() {
+    final trend = _adminData?.trend7Days ?? const [];
+    final scored = trend.where((p) => p.avgScore > 0).toList();
+    if (scored.isEmpty) return '\u2014';
+    final best = scored.reduce((a, b) => a.avgScore >= b.avgScore ? a : b);
+    return best.day;
   }
 
   Widget _buildInsightPill(BuildContext context, String value, String label, {bool isWarning = false}) {

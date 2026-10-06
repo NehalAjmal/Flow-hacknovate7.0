@@ -11,7 +11,8 @@ import 'session_end_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onViewActive;
-  const DashboardScreen({super.key, this.onViewActive});
+  final VoidCallback? onGoToIntent;
+  const DashboardScreen({super.key, this.onViewActive, this.onGoToIntent});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -188,7 +189,24 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     }
 
     final isActive = context.watch<AppState>().activeSessionId != null;
-    final bool isFatigued = (_bioData?.fatigueSignal ?? 0) > 0.7;
+    final bool isFatigued = (_bioData?.hasData ?? false) && (_bioData!.fatigueSignal > 0.7);
+
+    // Brand-new account: a guided, empty state instead of fake numbers
+    if (_dashData != null && !_dashData!.hasHistory) {
+      return Scaffold(
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(28, 28, 28, 40),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildTopBar(context, isActive),
+              const SizedBox(height: 24),
+              _buildGettingStarted(context),
+            ],
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: SingleChildScrollView(
@@ -219,6 +237,154 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     String hh = now.hour % 12 == 0 ? '12' : '${now.hour % 12}';
     String mm = now.minute.toString().padLeft(2, '0');
     return '${days[now.weekday - 1]}, ${now.day} ${months[now.month - 1]} · $hh:$mm';
+  }
+
+  /// Shown for brand-new accounts until the first session completes.
+  Widget _buildGettingStarted(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final steps = [
+      (
+        Icons.edit_note_rounded,
+        'Declare your intention',
+        'Tell FLOW what you are about to work on. It tracks drift against that intent.',
+        true,
+      ),
+      (
+        Icons.play_circle_rounded,
+        'Start your session',
+        'FLOW reads window switches, keystrokes and idle time every 30 seconds, and eye fatigue from your webcam.',
+        false,
+      ),
+      (
+        Icons.auto_graph_rounded,
+        'Complete a session',
+        'Your focus score, ultradian rhythm and AI patterns unlock as soon as real data exists.',
+        false,
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Welcome hero
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(28),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: isDark ? FlowTheme.brandGradientDark : FlowTheme.brandGradientLight,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(FlowTheme.radiusLg),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('GETTING STARTED', style: theme.textTheme.labelMedium?.copyWith(color: Colors.white70, letterSpacing: 1.5)),
+              const SizedBox(height: 10),
+              Text('Your focus, measured - not guessed.', style: theme.textTheme.headlineLarge?.copyWith(color: Colors.white)),
+              const SizedBox(height: 8),
+              Text(
+                'Everything on this screen fills in as you work. Three steps and FLOW starts learning your rhythm.',
+                style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70, height: 1.5),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+
+        // Steps
+        ...List.generate(steps.length, (i) {
+          final (icon, title, body, hasButton) = steps[i];
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(FlowTheme.radiusLg),
+              border: Border.all(color: theme.dividerColor),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44, height: 44,
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(FlowTheme.radiusMd),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text('${i + 1}', style: theme.textTheme.headlineMedium?.copyWith(color: theme.primaryColor)),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(icon, size: 18, color: theme.primaryColor),
+                          const SizedBox(width: 8),
+                          Text(title, style: theme.textTheme.headlineSmall?.copyWith(fontSize: 14)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(body, style: theme.textTheme.bodyMedium?.copyWith(height: 1.5)),
+                      if (hasButton) ...[
+                        const SizedBox(height: 14),
+                        ElevatedButton.icon(
+                          onPressed: widget.onGoToIntent,
+                          icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                          label: const Text('Go to Intent'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+
+        const SizedBox(height: 8),
+        // What FLOW measures strip
+        Row(
+          children: [
+            Expanded(child: _buildMeasureChip(context, Icons.keyboard_rounded, 'Keystroke rhythm')),
+            const SizedBox(width: 8),
+            Expanded(child: _buildMeasureChip(context, Icons.swipe_up_alt_rounded, 'Window switching')),
+            const SizedBox(width: 8),
+            Expanded(child: _buildMeasureChip(context, Icons.visibility_rounded, 'Eye fatigue (EAR)')),
+            const SizedBox(width: 8),
+            Expanded(child: _buildMeasureChip(context, Icons.timeline_rounded, 'Ultradian cycles')),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMeasureChip(BuildContext context, IconData icon, String label) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+      decoration: BoxDecoration(
+        color: FlowTheme.iconChipBg(context),
+        borderRadius: BorderRadius.circular(FlowTheme.radiusMd),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 20, color: theme.primaryColor),
+          const SizedBox(height: 8),
+          Text(label, textAlign: TextAlign.center, style: theme.textTheme.labelSmall),
+        ],
+      ),
+    );
   }
 
   Widget _buildTopBar(BuildContext context, bool isActive) {
@@ -383,8 +549,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 _buildHeroCard(
                   context,
                   "NEXT RECOMMENDED BREAK",
-                  '~${dash?.minutesUntilTrough ?? 0}m',
-                  "per your learned rhythm",
+                  (dash?.minutesUntilTrough ?? 0) > 0 ? '~${dash!.minutesUntilTrough}m' : '\u2014',
+                  (dash?.minutesUntilTrough ?? 0) > 0 ? "per your learned rhythm" : "unlocks after a few sessions",
                   isOrange: true,
                 ),
                 const SizedBox(height: 12),
@@ -401,6 +567,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final theme = Theme.of(context);
     final bio = _bioData;
     final signal = bio?.fatigueSignal ?? 0.0;
+    final hasData = bio?.hasData ?? false;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Padding(
@@ -413,11 +580,11 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               children: [
                 Text("EYE FATIGUE", style: theme.textTheme.labelMedium),
                 Text(
-                  bio == null ? '—' : '${(signal * 100).round()}%',
+                  hasData ? '${(signal * 100).round()}%' : '—',
                   style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: theme.primaryColor),
                 ),
                 Text(
-                  signal < 0.3 ? 'Normal' : (signal < 0.7 ? 'Elevated' : 'High'),
+                  hasData ? (signal < 0.3 ? 'Normal' : (signal < 0.7 ? 'Elevated' : 'High')) : 'Start a session with the camera',
                   style: theme.textTheme.labelSmall,
                 ),
               ],
@@ -430,7 +597,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(100),
-                    child: LinearProgressIndicator(value: signal.clamp(0.0, 1.0), minHeight: 8, backgroundColor: theme.dividerColor, color: theme.primaryColor),
+                    child: LinearProgressIndicator(value: hasData ? signal.clamp(0.0, 1.0) : 0.0, minHeight: 8, backgroundColor: theme.dividerColor, color: theme.primaryColor),
                   ),
                   const SizedBox(height: 4),
                   Text(
@@ -499,7 +666,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text("Biometric snapshot", style: Theme.of(context).textTheme.headlineSmall),
-                        _buildTag(context, _bioData != null ? "Live" : "No data", _bioData != null),
+                        _buildTag(context, (_bioData?.hasData ?? false) ? "Live" : "No data", _bioData?.hasData ?? false),
                       ],
                     ),
                     const SizedBox(height: 14),
@@ -681,6 +848,14 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               ],
             ),
             const SizedBox(height: 16),
+            if (heights.isEmpty)
+              SizedBox(
+                height: 48,
+                child: Center(
+                  child: Text('waiting for data', style: theme.textTheme.labelSmall),
+                ),
+              )
+            else
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: heights.map((h) => Expanded(

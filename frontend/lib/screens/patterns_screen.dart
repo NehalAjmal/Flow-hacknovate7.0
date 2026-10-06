@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
 import '../api_service.dart';
 import '../core/models.dart';
 import '../core/theme.dart';
@@ -16,7 +15,6 @@ class _PatternsScreenState extends State<PatternsScreen> {
   String? _error;
   PatternsData? _patterns;
   late Future<Map<String, dynamic>> _focusDnaFuture;
-  final List<double> _heatmapData = List.generate(28, (index) => Random().nextDouble());
 
   @override
   void initState() {
@@ -274,7 +272,7 @@ class _PatternsScreenState extends State<PatternsScreen> {
           ])),
           const SizedBox(height: 2),
           Text(
-            _patterns != null && _patterns!.cycleMinutes != 90
+            (_patterns?.hasPatternData ?? false)
                 ? "Learned from your sessions"
                 : "Default until FLOW learns your rhythm",
             style: const TextStyle(fontSize: 12, color: Colors.white70),
@@ -422,28 +420,42 @@ class _PatternsScreenState extends State<PatternsScreen> {
           children: [
             Text("Focus heatmap — last 28 days", style: theme.textTheme.headlineSmall),
             const SizedBox(height: 14),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 7, crossAxisSpacing: 4, mainAxisSpacing: 4, childAspectRatio: 1,
-              ),
-              itemCount: 28,
-              itemBuilder: (context, index) {
-                final val = _heatmapData[index];
-                double opacity = 0.2;
-                if (val > 0.8) { opacity = 1.0; }
-                else if (val > 0.6) { opacity = 0.85; }
-                else if (val > 0.4) { opacity = 0.65; }
-                else if (val > 0.2) { opacity = 0.4; }
-                return Container(
-                  decoration: BoxDecoration(
-                    color: theme.primaryColor.withValues(alpha: opacity),
-                    borderRadius: BorderRadius.circular(6),
+            if (!(_patterns?.hasAnyActivity ?? false))
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    'Your session activity will appear here once you complete sessions.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium,
                   ),
-                );
-              },
-            ),
+                ),
+              )
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 7, crossAxisSpacing: 4, mainAxisSpacing: 4, childAspectRatio: 1,
+                ),
+                itemCount: _patterns!.dailyActivity.length,
+                itemBuilder: (context, index) {
+                  final count = _patterns!.dailyActivity[index];
+                  final maxCount = _patterns!.dailyActivity.fold<int>(0, (a, b) => a > b ? a : b);
+                  final intensity = maxCount == 0 ? 0.0 : count / maxCount;
+                  final opacity = intensity == 0 ? 0.08 : (0.25 + intensity * 0.75);
+                  return Container(
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: theme.primaryColor.withValues(alpha: opacity),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: count > 0
+                        ? Text('$count', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: theme.textTheme.bodyLarge?.color))
+                        : null,
+                  );
+                },
+              ),
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

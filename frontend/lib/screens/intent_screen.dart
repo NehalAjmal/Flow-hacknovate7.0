@@ -18,7 +18,40 @@ class _IntentScreenState extends State<IntentScreen> {
   String _selectedTask = 'Deep work';
   String _selectedDuration = '50m';
   bool _isStarting = false;
+  String? _recommendation;
+  int? _suggestedDuration;
+  List<Map<String, dynamic>> _recentIntentions = [];
   final TextEditingController _intentController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadContext();
+  }
+
+  Future<void> _loadContext() async {
+    // pre-check: server-side recommendation + suggested duration
+    try {
+      final data = await ApiService.preCheck();
+      if (!mounted) return;
+      setState(() {
+        _recommendation = data['recommendation']?.toString();
+        _suggestedDuration = (data['suggested_duration_min'] as num?)?.toInt();
+        if (_suggestedDuration != null && _suggestedDuration! > 0) {
+          _selectedDuration = '${_suggestedDuration}m';
+        }
+      });
+    } on ApiException {
+      // no recommendation available - the honest fallback copy stays
+    } catch (_) {}
+
+    // recent intentions from real session history
+    try {
+      final recent = await ApiService.recentIntentions();
+      if (!mounted) return;
+      setState(() => _recentIntentions = recent);
+    } catch (_) {}
+  }
 
   final List<Map<String, dynamic>> _taskChips = [
     {'icon': Icons.psychology_rounded, 'label': 'Deep work'},
@@ -29,7 +62,14 @@ class _IntentScreenState extends State<IntentScreen> {
     {'icon': Icons.palette_rounded, 'label': 'Design'},
   ];
 
-  final List<String> _durations = ['25m', '50m', '90m', 'Custom'];
+  List<String> get _durations {
+    final presets = ['25m', '50m', '90m'];
+    final suggested = _suggestedDuration;
+    if (suggested != null && suggested > 0 && !presets.contains('${suggested}m')) {
+      presets.insert(0, '${suggested}m');
+    }
+    return presets;
+  }
 
   @override
   void dispose() {
@@ -37,12 +77,10 @@ class _IntentScreenState extends State<IntentScreen> {
     super.dispose();
   }
 
-  int get _plannedMinutes => switch (_selectedDuration) {
-        '25m' => 25,
-        '50m' => 50,
-        '90m' => 90,
-        _ => 60,
-      };
+  int get _plannedMinutes {
+    final m = RegExp(r'(\d+)').firstMatch(_selectedDuration)?.group(1);
+    return int.tryParse(m ?? '') ?? 50;
+  }
 
   Future<void> _beginSession() async {
     if (_isStarting) return;
@@ -140,11 +178,9 @@ class _IntentScreenState extends State<IntentScreen> {
                     children: [
                       _buildOptimalWindowHero(context),
                       const SizedBox(height: 12),
-                      _buildCalendarCheckCard(context),
+                      _buildPermissionsCard(context),
                       const SizedBox(height: 12),
-                      _buildPatternInsightCard(context),
-                      const SizedBox(height: 12),
-                      _buildRecentIntentionsCard(context),
+                      if (_recentIntentions.isNotEmpty) _buildRecentIntentionsCard(context),
                     ],
                   ),
                 ),
@@ -289,100 +325,68 @@ class _IntentScreenState extends State<IntentScreen> {
   // ─── RIGHT COLUMN WIDGETS ────────────────────────────────────────────────
 
   Widget _buildOptimalWindowHero(BuildContext context) {
+    final recommendation = _recommendation ?? 'Complete a few sessions so FLOW can learn your peak hours.';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF4F6F57), Color(0xFF6B8F71)],
+        gradient: LinearGradient(
+          colors: Theme.of(context).brightness == Brightness.dark
+              ? FlowTheme.brandGradientDark
+              : FlowTheme.brandGradientLight,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(FlowTheme.radiusLg),
       ),
-      //  FIX: prefer_const_constructors
-      child: const Column(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("OPTIMAL WINDOW", style: TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'DM Mono', letterSpacing: 1.5)),
-          SizedBox(height: 8),
-          Text("Right now", style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
-          SizedBox(height: 6),
-          Text("You're in a peak ultradian phase. Best 50 min window starts immediately.", style: TextStyle(fontSize: 13, color: Colors.white, height: 1.4)),
+          const Text("SMART RECOMMENDATION", style: TextStyle(fontSize: 11, color: Colors.white70, fontFamily: 'DM Mono', letterSpacing: 1.5)),
+          const SizedBox(height: 8),
+          Text(
+            _suggestedDuration != null && _suggestedDuration! > 0 ? "${_suggestedDuration}m window" : "Ready when you are",
+            style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1),
+          ),
+          const SizedBox(height: 6),
+          Text(recommendation, style: const TextStyle(fontSize: 13, color: Colors.white, height: 1.4)),
         ],
       ),
     );
   }
 
-  Widget _buildCalendarCheckCard(BuildContext context) {
+  Widget _buildPermissionsCard(BuildContext context) {
+    final theme = Theme.of(context);
     return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(FlowTheme.radiusLg)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Calendar check", style: Theme.of(context).textTheme.labelMedium),
+            Row(
+              children: [
+                Icon(Icons.verified_user_rounded, size: 16, color: theme.primaryColor),
+                const SizedBox(width: 8),
+                Text("Before your first session", style: theme.textTheme.labelMedium),
+              ],
+            ),
             const SizedBox(height: 8),
-            RichText(
-              text: TextSpan(
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontSize: 13),
-                children: [
-                  const TextSpan(text: "Next meeting in "),
-                  TextSpan(text: "2h 36m", style: TextStyle(fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color)),
-                ],
-              ),
+            Text(
+              "The backend needs macOS camera and Input Monitoring permission to track fatigue and keystrokes.",
+              style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12, height: 1.5),
             ),
             const SizedBox(height: 6),
-            Text("Plenty of uninterrupted time", style: TextStyle(fontSize: 11, color: Theme.of(context).primaryColor, fontWeight: FontWeight.w500)),
+            Text(
+              "Run:  python Backend/check_camera.py",
+              style: theme.textTheme.labelSmall?.copyWith(color: theme.primaryColor, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildPatternInsightCard(BuildContext context) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Your pattern says", style: Theme.of(context).textTheme.labelMedium),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primaryContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36, height: 36,
-                    decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(10)),
-                    alignment: Alignment.center,
-                    child: Icon(Icons.biotech_rounded, size: 20, color: Theme.of(context).primaryColor),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Peak hours: 9–11 AM", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Theme.of(context).textTheme.bodyLarge?.color)),
-                        Text("Avg focus score 87% this week", style: Theme.of(context).textTheme.labelSmall),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            )
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildRecentIntentionsCard(BuildContext context) {
     return Card(
@@ -394,11 +398,10 @@ class _IntentScreenState extends State<IntentScreen> {
           children: [
             Text("Recent intentions", style: Theme.of(context).textTheme.labelMedium),
             const SizedBox(height: 10),
-            _buildRecentTaskItem(context, "Debug auth module"),
-            const SizedBox(height: 6),
-            _buildRecentTaskItem(context, "Write engineering spec"),
-            const SizedBox(height: 6),
-            _buildRecentTaskItem(context, "UI component design"),
+            ..._recentIntentions.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _buildRecentTaskItem(context, item['task']?.toString() ?? ''),
+            )),
           ],
         ),
       ),

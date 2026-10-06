@@ -5,6 +5,7 @@ import 'core/theme.dart';
 import 'core/app_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_layout.dart';
+import 'screens/onboarding_screen.dart';
 
 void main() {
   runApp(
@@ -42,7 +43,9 @@ class _FlowAppState extends State<FlowApp> {
       themeMode: appState.themeMode,
       home: !appState.bootstrapped
           ? const _BootSplash()
-          : (appState.isLoggedIn ? const MainLayout() : const LoginScreen()),
+          : (!appState.isLoggedIn
+              ? const LoginScreen()
+              : (appState.needsOnboarding ? const OnboardingScreen() : const MainLayout())),
     );
   }
 }

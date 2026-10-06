@@ -112,6 +112,12 @@ class ApiService {
   static Future<Map<String, dynamic>> preCheck() async =>
       await get('/session/pre-check') as Map<String, dynamic>;
 
+  /// Last declared intentions from past sessions ({recent: [{task, started_at}]}).
+  static Future<List<Map<String, dynamic>>> recentIntentions() async {
+    final data = await get('/session/recent') as Map<String, dynamic>;
+    return (data['recent'] as List? ?? []).whereType<Map<String, dynamic>>().toList();
+  }
+
   /// Gemini-backed "I'm stuck" suggestions (60s timeout — LLM latency).
   static Future<Map<String, dynamic>> stuck(Map<String, dynamic> payload) async =>
       await post('/session/stuck', body: payload, ai: true) as Map<String, dynamic>;

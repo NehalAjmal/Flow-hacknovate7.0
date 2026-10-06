@@ -5,7 +5,6 @@ import '../core/app_state.dart';
 import '../core/models.dart';
 import '../api_service.dart';
 import '../widgets/focus_sparkline.dart';
-import '../widgets/meeting_countdown_pill.dart';
 import 'interrupt_screen.dart';
 import 'session_end_screen.dart';
 
@@ -25,6 +24,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   bool _isPaused = false;
   bool _isEnding = false;
   String _currentState = 'deep_work';
+  int? _minutesToTrough;
   late Timer _timer;
   late Timer _statusTimer;
   late AnimationController _blinkController;
@@ -79,6 +79,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
         _focusHistory.add(currentScore);
         if (_focusHistory.length > 20) _focusHistory.removeAt(0);
         _currentState = state;
+        _minutesToTrough = (data['minutes_to_trough'] as num?)?.toInt();
       });
 
       // Update the global state
@@ -298,10 +299,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
         ),
         Row(
           children: [
-            MeetingCountdownPill(
-              nextMeetingTime: DateTime.now().add(const Duration(minutes: 32)),
-              meetingTitle: "Team standup",
-            ),
             const SizedBox(width: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
@@ -544,7 +541,7 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
               children: [
                 Text("ALIGNED", style: theme.textTheme.labelSmall),
                 Text(
-                  isDrifting ? "85%" : "14%",
+                  isDrifting ? "DRIFTING" : "STEADY",
                   style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, fontFamily: 'DM Mono', color: isDrifting ? theme.colorScheme.error : theme.primaryColor),
                 ),
                 Text("DRIFT", style: theme.textTheme.labelSmall),
@@ -583,9 +580,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
               text: TextSpan(
                 style: theme.textTheme.bodyMedium?.copyWith(fontSize: 12),
                 children: [
-                  const TextSpan(text: "Peak phase — "),
-                  TextSpan(text: "~13 min", style: TextStyle(fontWeight: FontWeight.bold, color: theme.primaryColor)),
-                  const TextSpan(text: " until recommended break"),
+                  TextSpan(text: _minutesToTrough == null ? "Rhythm tracking active. " : "Peak phase — "),
+                  if (_minutesToTrough != null)
+                    TextSpan(text: "~$_minutesToTrough min", style: TextStyle(fontWeight: FontWeight.bold, color: theme.primaryColor)),
+                  if (_minutesToTrough != null) const TextSpan(text: " until recommended break"),
                 ],
               ),
             ),
@@ -704,22 +702,6 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: 0.4, minHeight: 5, backgroundColor: theme.dividerColor,
-                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Text("40%", style: theme.textTheme.labelSmall),
-              ],
             ),
           ],
         ),

@@ -61,6 +61,7 @@ class _MainLayoutState extends State<MainLayout> {
       DashboardScreen(
         key: const ValueKey('dash'),
         onViewActive: () => _switchScreen(2),
+        onGoToIntent: () => _switchScreen(1),
       ),
       IntentScreen(
         key: const ValueKey('intent'),

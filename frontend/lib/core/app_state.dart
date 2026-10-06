@@ -23,9 +23,11 @@ class AppState extends ChangeNotifier {
   String? userRole;
   String? userName;
   String? userEmail;
+  bool onboardingDone = true;
 
   bool get isLoggedIn => userId != null;
   bool get isAdmin => userRole == 'admin';
+  bool get needsOnboarding => isLoggedIn && !onboardingDone;
 
   /// Best display name: stored name, else the part before the email.
   /// Callers should treat an empty result as "unknown user".
@@ -71,7 +73,17 @@ class AppState extends ChangeNotifier {
         }
       }
     }
+    onboardingDone = prefs.getBool('onboarding_complete') ?? false;
+
     bootstrapped = true;
+    notifyListeners();
+  }
+
+  /// Marks the first-login walkthrough as seen on this device.
+  Future<void> completeOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('onboarding_complete', true);
+    onboardingDone = true;
     notifyListeners();
   }
 
