@@ -15,24 +15,25 @@ class BiometricEngine:
 
     def compute(self, hr: float = None, hrv: float = None) -> float:
         """
-        Compute biometric score (0–1)
-
-        If no data provided → return neutral score
+        Compute biometric score (0–1) from whichever components are available.
+        If no data provided → return neutral score.
         """
-
-        if hr is None or hrv is None:
+        if hr is None and hrv is None:
             return 0.5  # neutral fallback
 
+        components = []
+
         # ── HR component (higher HR = more stress)
-        hr_ratio = hr / self.baseline_hr
-        hr_score = max(0.0, 1.0 - (hr_ratio - 1.0))  # penalize high HR
+        if hr is not None:
+            hr_ratio = hr / self.baseline_hr
+            components.append(max(0.0, 1.0 - (hr_ratio - 1.0)))
 
         # ── HRV component (higher HRV = better)
-        hrv_ratio = hrv / self.baseline_hrv
-        hrv_score = min(hrv_ratio, 1.0)
+        if hrv is not None:
+            hrv_ratio = hrv / self.baseline_hrv
+            components.append(min(hrv_ratio, 1.0))
 
-        # ── Combine
-        biometric = 0.5 * hr_score + 0.5 * hrv_score
+        biometric = sum(components) / len(components)
 
         biometric = float(np.clip(biometric, 0.0, 1.0))
 

@@ -90,7 +90,8 @@ def _learned_params(db: DBSession, user_id: str) -> dict:
 
 
 def _latest_hr_hrv(db: DBSession, session_id: str):
-    """Latest real biometric reading for this session, if anything ingested one."""
+    """Latest real heart-rate signal for this session: DB readings first
+    (Apple Watch / rPPG ingest), then the live webcam rPPG estimate."""
     row = (
         db.query(BiometricReading)
         .filter(BiometricReading.session_id == session_id)
@@ -99,6 +100,12 @@ def _latest_hr_hrv(db: DBSession, session_id: str):
     )
     if row and row.heart_rate_bpm and row.hrv_sdnn:
         return float(row.heart_rate_bpm), float(row.hrv_sdnn)
+
+    # live webcam rPPG (same process) — HR only, gated by confidence
+    state = fatigue_service.get_state()
+    hr = state.get("heart_rate_bpm")
+    if hr and state.get("hr_confidence", 0.0) >= 0.15:
+        return float(hr), None
     return None
 
 
@@ -239,7 +246,7 @@ def ingest_signal(
 
         fatigue = fatigue_service.get_state().get("fatigue_score", 0.0)
 
-        # Biometric: real HR/HRV when available, otherwise webcam fatigue as proxy
+        # Biometric: real HR (watch or webcam rPPG) when available, otherwise webcam fatigue as proxy
         hr_hrv = _latest_hr_hrv(db, session_id)
         if hr_hrv:
             biometric = engines["biometric"].compute(hr=hr_hrv[0], hrv=hr_hrv[1])
@@ -377,6 +384,7 @@ def get_session_status(db: DBSession, session_id: str):
             "biometric": fatigue.get("fatigue_score", 0.0),
             "ear": min(1.0, fatigue.get("ear", 0.0) * 3),
         },
+        "heart_rate_bpm": fatigue.get("heart_rate_bpm"),
         "intervention": live.get("intervention"),
         "minutes_to_trough": _minutes_to_trough(),
     }

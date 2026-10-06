@@ -10,6 +10,8 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
+from ml_models.rppg import PulseEstimator, forehead_roi_mean
+
 
 class FatigueService:
     def __init__(self):
@@ -22,8 +24,13 @@ class FatigueService:
         self.state = {
             "fatigue_score": 0.0,
             "fatigue_state": "normal",
-            "ear": 0.0
+            "ear": 0.0,
+            "heart_rate_bpm": None,
+            "hr_confidence": 0.0
         }
+
+        # rPPG heart-rate estimation from the same camera frames
+        self.pulse = PulseEstimator()
 
         # state snapshot written for cross-process consumers (biometric router fallback)
         self._state_path = os.path.join(os.path.dirname(__file__), "fatigue.json")
@@ -89,6 +96,7 @@ class FatigueService:
         self.ear_history = []
         self.closed_frames = 0
         self.fatigue_score = 0.0
+        self.pulse = PulseEstimator()
 
         self.running = True
 
@@ -116,7 +124,10 @@ class FatigueService:
             self.cap = None
 
         # reset live state + drop the snapshot so consumers never see stale data
-        self.state = {"fatigue_score": 0.0, "fatigue_state": "normal", "ear": 0.0}
+        self.state = {
+            "fatigue_score": 0.0, "fatigue_state": "normal", "ear": 0.0,
+            "heart_rate_bpm": None, "hr_confidence": 0.0,
+        }
         try:
             os.remove(self._state_path)
         except OSError:
@@ -169,6 +180,18 @@ class FatigueService:
 
                 self.state["ear"] = ear
 
+                # rPPG: forehead green-channel sample for this frame
+                xs = [p[0] for p in self._get_points(face, [1, 33, 263, 152, 10], w, h)]
+                ys = [p[1] for p in self._get_points(face, [1, 33, 263, 152, 10], w, h)]
+                face_box = (min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys))
+                green = forehead_roi_mean(frame, face_box)
+                if green == green:  # not NaN
+                    self.pulse.add_sample(green)
+                self.pulse.estimate()
+                if self.pulse.bpm is not None:
+                    self.state["heart_rate_bpm"] = round(self.pulse.bpm, 1)
+                    self.state["hr_confidence"] = round(self.pulse.confidence, 2)
+
                 # ── CALIBRATION ──
                 if self.baseline_ear is None:
                     self.ear_history.append(ear)
@@ -217,6 +240,8 @@ class FatigueService:
                             "ear": self.state.get("ear", 0.0),
                             "fatigue_score": self.state.get("fatigue_score", 0.0),
                             "fatigue_state": self.state.get("fatigue_state", "normal"),
+                            "heart_rate_bpm": self.state.get("heart_rate_bpm"),
+                            "hr_confidence": self.state.get("hr_confidence", 0.0),
                             "updated_at": datetime.now().isoformat(),
                         }, f)
                 except Exception:

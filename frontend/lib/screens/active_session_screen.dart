@@ -85,9 +85,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
       // Update the global state
       final double currentEar = (data['signals']?['ear'] ?? 0).toDouble();
       final bool isDrifting = data['intervention'] != null;
+      final int liveBpm = ((data['heart_rate_bpm'] ?? appState.currentBpm) as num?)?.round() ?? 0;
 
       appState.updateTelemetry(
-            bpm: appState.currentBpm,
+            bpm: liveBpm,
             ear: currentEar,
             drift: isDrifting,
             score: currentScore.round(),

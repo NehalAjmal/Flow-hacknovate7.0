@@ -153,9 +153,10 @@ def get_latest_biometric(
     from ml_models.fatigue_model import fatigue_service
 
     state = fatigue_service.get_state()
-    if state.get("ear") or state.get("fatigue_score"):
+    hr_live = state.get("heart_rate_bpm")
+    if state.get("ear") or state.get("fatigue_score") or hr_live:
         return LatestBiometricResponse(
-            heart_rate_bpm=None,
+            heart_rate_bpm=hr_live,
             hrv_sdnn=None,
             ear_value=state.get("ear"),
             fatigue_signal=state.get("fatigue_score", 0.0),
@@ -169,7 +170,7 @@ def get_latest_biometric(
         ear = fatigue_data.get("ear_value") or fatigue_data.get("ear")
         fatigue_score = fatigue_data.get("fatigue_score", 0.5)
         return LatestBiometricResponse(
-            heart_rate_bpm=None,
+            heart_rate_bpm=fatigue_data.get("heart_rate_bpm"),
             hrv_sdnn=None,
             ear_value=ear,
             fatigue_signal=fatigue_score,
