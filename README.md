@@ -1,13 +1,22 @@
-
 # 🌊 Flow: AI-Powered Developer Fatigue Monitor
 
-**Flow** is an intelligent system designed to monitor and mitigate developer fatigue using real-time AI analysis. This project features a **Flutter Windows** desktop frontend and a **Python (FastAPI)** backend.
+**Flow** is an intelligent system designed to monitor and mitigate developer fatigue using real-time AI analysis. Built by **Team Error 011** for **Hacknovate 7.0**, Flow acts as an AI-powered cognitive alignment system. This project features a **premium Flutter Windows** desktop frontend and a robust **Python (FastAPI)** backend.
+
+## ✨ Key Features
+* **Real-Time Biometric Tracking**: Uses computer vision (MediaPipe & OpenCV) to monitor physical fatigue signs.
+* **Desktop Activity Monitoring**: Tracks context switching and application usage to identify passive consumption or distraction.
+* **AI-Powered Interventions**: Provides smart, context-aware nudges based on your current state (e.g., *Fatigued*, *Stuck*, *Passive*, *Distracted*, or *Deep Work*).
+* **Ultradian Rhythm Tracking**: Learns your natural focus cycles and suggests breaks at your biological natural break points.
+* **Calendar Integration**: Analyzes your schedule to warn you against starting deep work right before an upcoming meeting.
+* **Focus DNA & Session Export**: Export your session data to understand your long-term focus patterns and cognitive rhythms.
+
+---
 
 ## 🏗 Project Structure
 ```text
 Flow-hacknovate7.0/
 ├── .env              # Global environment variables (Root folder)
-├── backend/          # FastAPI server, ML models, & Database logic
+├── Backend/          # FastAPI server, ML models, & Database logic
 ├── frontend/         # Flutter Windows application
 └── README.md
 ```
@@ -29,7 +38,7 @@ GOOGLE_CLIENT_ID="107877434537-gajs6tph673aaoi9p6obkh232og8kutf.apps.googleuserc
 ### **2. Backend Setup (Python)**
 1.  **Navigate to the backend folder:**
     ```powershell
-    cd backend
+    cd Backend
     ```
 2.  **Create and activate a virtual environment:**
     ```powershell
@@ -70,10 +79,11 @@ GOOGLE_CLIENT_ID="107877434537-gajs6tph673aaoi9p6obkh232og8kutf.apps.googleuserc
 ---
 
 ## 🛠 Tech Stack
-* **Frontend:** Flutter (Dart)
+* **Frontend:** Flutter (Dart) with premium typography (Sora & DM Mono)
 * **Backend:** FastAPI (Python)
 * **Database:** MySQL (via SQLAlchemy)
-* **AI Integration:** Google Gemini API
+* **AI & Vision:** Google Gemini API, MediaPipe, OpenCV
+* **Desktop Activity:** `pynput`, platform-specific APIs (`pywin32` / `pyobjc`)
 * **Authentication:** JWT & Google OAuth 2.0
 
 ---

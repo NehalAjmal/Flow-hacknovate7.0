@@ -110,7 +110,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 24),
                     Text("Create your account", style: theme.textTheme.headlineMedium, textAlign: TextAlign.center),
                     const SizedBox(height: 8),
-                    Text("Initialize your cognitive baseline baseline.", style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
+                    Text("Initialize your cognitive baseline.", style: theme.textTheme.bodyMedium, textAlign: TextAlign.center),
                     const SizedBox(height: 32),
 
                     Container(

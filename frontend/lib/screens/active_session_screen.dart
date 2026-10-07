@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/app_state.dart';
 import '../core/models.dart';
+import '../core/theme.dart';
 import '../api_service.dart';
 import '../widgets/focus_sparkline.dart';
 import 'interrupt_screen.dart';
@@ -25,6 +26,8 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   bool _isEnding = false;
   String _currentState = 'deep_work';
   int? _minutesToTrough;
+  Map<String, dynamic>? _intervention;       // live from the decision engine
+  final Set<String> _suppressedInterventions = {};  // titles dismissed this session
   late Timer _timer;
   late Timer _statusTimer;
   late AnimationController _blinkController;
@@ -80,6 +83,11 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
         if (_focusHistory.length > 20) _focusHistory.removeAt(0);
         _currentState = state;
         _minutesToTrough = (data['minutes_to_trough'] as num?)?.toInt();
+        final live = data['intervention'];
+        final title = live == null ? null : (live['title'] ?? '').toString();
+        _intervention = (live != null && title != null && !_suppressedInterventions.contains(title))
+            ? live
+            : null;
       });
 
       // Update the global state
@@ -141,6 +149,31 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
   }
 
   void _togglePause() => setState(() => _isPaused = !_isPaused);
+
+  Future<void> _dismissIntervention() async {
+    final intervention = _intervention;
+    final sessionId = context.read<AppState>().activeSessionId;
+    if (intervention != null) {
+      final title = (intervention['title'] ?? '').toString();
+      if (title.isNotEmpty) _suppressedInterventions.add(title);
+    }
+    setState(() => _intervention = null);
+    if (sessionId != null) {
+      try {
+        await ApiService.respond(sessionId, 'dismissed');
+      } catch (_) {
+        // best-effort; the local suppression already hides it
+      }
+    }
+  }
+
+  void _acceptIntervention() {
+    final sessionId = context.read<AppState>().activeSessionId;
+    if (sessionId != null) {
+      ApiService.respond(sessionId, 'accepted').then((_) {}, onError: (_) {});
+    }
+    _triggerBreak(InterruptType.userRequested);
+  }
 
   void _triggerBreak(InterruptType type) {
     Navigator.of(context).push(
@@ -237,6 +270,10 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
                 _buildTopBar(context),
                 const SizedBox(height: 24),
                 _buildSessionHero(context, appState),
+                if (_intervention != null) ...[
+                  const SizedBox(height: 14),
+                  _buildInterventionCard(context, _intervention!),
+                ],
                 const SizedBox(height: 14),
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -425,6 +462,68 @@ class _ActiveSessionScreenState extends State<ActiveSessionScreen>
             fontWeight: FontWeight.w600, fontSize: 13,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildInterventionCard(BuildContext context, Map<String, dynamic> intervention) {
+    final theme = Theme.of(context);
+    final color = theme.colorScheme.error;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.error.withValues(alpha: 0.08),
+        border: Border.all(color: color, width: 1.5),
+        borderRadius: BorderRadius.circular(FlowTheme.radiusLg),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42, height: 42,
+            decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(FlowTheme.radiusMd)),
+            child: const Icon(Icons.notifications_active_rounded, color: Colors.white, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  (intervention['title'] ?? 'FLOW intervention').toString(),
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: color),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  (intervention['message'] ?? '').toString(),
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            children: [
+              ElevatedButton(
+                onPressed: _acceptIntervention,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+                child: Text(
+                  (intervention['action_label'] ?? 'Take a break').toString(),
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextButton(
+                onPressed: _dismissIntervention,
+                child: const Text('Dismiss', style: TextStyle(fontSize: 12)),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

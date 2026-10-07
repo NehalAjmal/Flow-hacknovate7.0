@@ -55,7 +55,15 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
     super.dispose();
   }
 
+  void _reportResponse(String response) {
+    final sessionId = context.read<AppState>().activeSessionId;
+    if (sessionId != null) {
+      ApiService.respond(sessionId, response).then((_) {}, onError: (_) {});
+    }
+  }
+
   void _startBreak() {
+    _reportResponse('accepted');
     setState(() { _timerStarted = true; _secondsLeft = _selectedMinutes * 60; });
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
       if (!mounted) { t.cancel(); return; }
@@ -81,6 +89,7 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
             onPressed: () { Navigator.pop(context); Navigator.pop(context); },
             child: Text('Resume session →', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w600)),
           ),
+          // response already reported when the break started
         ],
       ),
     );
@@ -328,7 +337,10 @@ class _InterruptScreenState extends State<InterruptScreen> with TickerProviderSt
                                     padding: const EdgeInsets.symmetric(vertical: 20),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                                   ),
-                                  onPressed: () => Navigator.pop(context),
+                                  onPressed: () {
+                                    _reportResponse('dismissed');
+                                    Navigator.pop(context);
+                                  },
                                   child: const Text('Back to task', style: TextStyle(fontWeight: FontWeight.w600)),
                                 ),
                               ),

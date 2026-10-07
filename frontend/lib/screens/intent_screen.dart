@@ -18,6 +18,7 @@ class _IntentScreenState extends State<IntentScreen> {
   String _selectedTask = 'Deep work';
   String _selectedDuration = '50m';
   bool _isStarting = false;
+  final TextEditingController _customDurationController = TextEditingController();
   String? _recommendation;
   int? _suggestedDuration;
   List<Map<String, dynamic>> _recentIntentions = [];
@@ -74,10 +75,14 @@ class _IntentScreenState extends State<IntentScreen> {
   @override
   void dispose() {
     _intentController.dispose();
+    _customDurationController.dispose();
     super.dispose();
   }
 
   int get _plannedMinutes {
+    if (_selectedDuration == 'Custom') {
+      return int.tryParse(_customDurationController.text) ?? 50;
+    }
     final m = RegExp(r'(\d+)').firstMatch(_selectedDuration)?.group(1);
     return int.tryParse(m ?? '') ?? 50;
   }
@@ -316,6 +321,19 @@ class _IntentScreenState extends State<IntentScreen> {
                 );
               }).toList(),
             ),
+            if (_selectedDuration == 'Custom') ...[
+              const SizedBox(height: 12),
+              TextField(
+                controller: _customDurationController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  hintText: 'Minutes (e.g. 35)',
+                  prefixIcon: Icon(Icons.timer_outlined),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ],
           ],
         ),
       ),
