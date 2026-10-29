@@ -1,25 +1,50 @@
+# ── Python ────────────────────────────────────────────────
 venv/
 .venv/
-.env
 ENV/
 __pycache__/
 *.pyc
 
-# logs
+# ── Secrets & env ─────────────────────────────────────────
+.env
+
+# ── Logs ──────────────────────────────────────────────────
 *.log
 
-# flutter / dart build artifacts
+# ── OS / IDE ──────────────────────────────────────────────
+.DS_Store
+.vscode/
+.idea/
+*.iml
+
+# ── Binary ML models (download at setup time) ────────────
+Backend/ml_models/*.task
+
+# ── Screenshots & images (not source code) ────────────────
+gui-test-screenshots/
+flowchart_and_ss/
+
+# ── One-off scripts ──────────────────────────────────────
+test_gemini.py
+start_server.sh
+
+# ── Flutter / Dart build artifacts ────────────────────────
 frontend/.dart_tool/
 frontend/build/
+frontend/.metadata
 frontend/windows/flutter/ephemeral/
 frontend/linux/flutter/ephemeral/
 
-# machine-specific flutter paths
+# ── Machine-specific Flutter paths ────────────────────────
 frontend/android/local.properties
 
-# zcode workspace state
+# ── Zcode workspace state ─────────────────────────────────
 .zcode/
-# iOS ephemeral/regenerated flutter files
+
+# ── iOS ephemeral / regenerated Flutter files ─────────────
 frontend/ios/Flutter/ephemeral/
 frontend/ios/Flutter/Generated.xcconfig
 frontend/ios/Flutter/flutter_export_environment.sh
+
+# ── Runtime artifacts ─────────────────────────────────────
+Backend/ml_models/fatigue.json

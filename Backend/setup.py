@@ -10,9 +10,38 @@ import sys
 import re
 import bcrypt
 import os
+import urllib.request
+from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 
 load_dotenv(find_dotenv())
+
+# ── ML MODEL DOWNLOAD ────────────────────────────────────────────────────────
+_ML_MODELS_DIR = Path(__file__).parent / "ml_models"
+_FACE_LANDMARKER = _ML_MODELS_DIR / "face_landmarker.task"
+_FACE_LANDMARKER_URL = (
+    "https://storage.googleapis.com/mediapipe-models/"
+    "face_landmarker/face_landmarker/float16/latest/face_landmarker.task"
+)
+
+
+def download_ml_models():
+    """Download large binary models that are not stored in git."""
+    if _FACE_LANDMARKER.exists():
+        print("   face_landmarker.task already present — skipping download")
+        return
+    _ML_MODELS_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"   Downloading face_landmarker.task (~4 MB)...")
+    try:
+        urllib.request.urlretrieve(_FACE_LANDMARKER_URL, _FACE_LANDMARKER)
+        print(f"   Saved to {_FACE_LANDMARKER}")
+    except Exception as e:
+        print(f"   Download failed: {e}")
+        print("   → You can manually download it from:")
+        print(f"     {_FACE_LANDMARKER_URL}")
+        print(f"     and place it at: {_FACE_LANDMARKER}")
+
+
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -93,11 +122,14 @@ def seed_demo_team():
 
 
 def main():
-    print("\n FLOW — Database Setup\n")
+    print("\n FLOW — Setup\n")
+
+    print("[1/4] Downloading ML models...")
+    download_ml_models()
 
     db_name = get_db_name(DATABASE_URL)
 
-    print(f"[1/3] Creating database `{db_name}`...")
+    print(f"[2/4] Creating database `{db_name}`...")
     try:
         create_database(DATABASE_URL, db_name)
     except Exception as e:
@@ -105,14 +137,14 @@ def main():
         print("  → Check your DATABASE_URL in .env and make sure MySQL is running")
         sys.exit(1)
 
-    print("[2/3] Creating tables...")
+    print("[3/4] Creating tables...")
     try:
         create_tables()
     except Exception as e:
         print(f"   Failed: {e}")
         sys.exit(1)
 
-    print("[3/3] Seeding demo data...")
+    print("[4/4] Seeding demo data...")
     try:
         seed_demo_team()
     except Exception as e:
