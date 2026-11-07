@@ -4,6 +4,14 @@
 <dict>
 	<key>com.apple.security.app-sandbox</key>
 	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<!-- Save PNG / export: only files the person picks in the save dialog -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- flutter_secure_storage keeps the sign-in tokens in the Keychain -->
+	<key>keychain-access-groups</key>
+	<array/>
 	<key>com.apple.security.cs.allow-jit</key>
 	<true/>
 	<key>com.apple.security.network.server</key>

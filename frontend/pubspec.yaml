@@ -1,38 +1,72 @@
-name: frontend
-description: The premium desktop client for FLOW.
+name: flow
+description: Flow desktop client (Windows + macOS).
 publish_to: 'none'
-version: 1.0.0+1
+version: 2.0.0+1
 
 environment:
-  sdk: '>=3.0.0 <4.0.0'
+  sdk: ^3.13.0
+  # Team pin: Flutter 3.47.9 via FVM (.fvmrc). Older SDKs fail `pub get`.
+  flutter: ">=3.47.9"
 
 dependencies:
   flutter:
     sdk: flutter
-
-  # UI Icons
-  cupertino_icons: ^1.0.6
-
-  # Network requests to FastAPI Backend
+  flutter_riverpod: ^3.5.0
+  go_router: ^18.1.3
   http: ^1.6.0
-  provider: ^6.1.5+1
-  shared_preferences: ^2.2.2
+  flutter_secure_storage: ^11.2.0
+  web_socket_channel: ^3.0.3
+  window_manager: ^0.5.1
+  tray_manager: ^0.5.0
+  local_notifier: ^0.1.6
+  shared_preferences: ^2.5.6
+  windows_single_instance: ^1.2.0
+  screen_retriever: ^0.2.0
+  url_launcher: ^6.3.3
+  file_selector: ^1.1.0
+  web: ^1.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/tray/
 
-  # ─── PREMIUM TYPOGRAPHY ──────────────────────────────────────────
+  # Type system (DESIGN_SPEC §type):
+  #  OffBit 101 / Dot  — instrument voice: wordmark, big numbers, headlines (>= 20 px only).
+  #  Sono              — UI and controls (OFL). SonoMono for small tabular numbers.
+  #  Cutive            — Flow's own notes: nudges, insights, guide, summaries (OFL).
   fonts:
-    - family: Sora
+    - family: OffBit
       fonts:
-        - asset: assets/fonts/Sora-Variable.ttf
-    - family: DM Mono
+        - asset: assets/fonts/OffBit-101.ttf
+        - asset: assets/fonts/OffBit-101Bold.ttf
+          weight: 700
+    - family: OffBitDot
       fonts:
-        - asset: assets/fonts/DMMono-Regular.ttf
-        - asset: assets/fonts/DMMono-Medium.ttf
+        - asset: assets/fonts/OffBit-Dot.ttf
+        - asset: assets/fonts/OffBit-DotBold.ttf
+          weight: 700
+    - family: Sono
+      fonts:
+        - asset: assets/fonts/Sono-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Sono-Regular.ttf
+        - asset: assets/fonts/Sono-Medium.ttf
           weight: 500
+        - asset: assets/fonts/Sono-SemiBold.ttf
+          weight: 600
+    - family: SonoMono
+      fonts:
+        - asset: assets/fonts/SonoMono-Light.ttf
+          weight: 300
+        - asset: assets/fonts/SonoMono-Regular.ttf
+        - asset: assets/fonts/SonoMono-Medium.ttf
+          weight: 500
+    - family: Cutive
+      fonts:
+        - asset: assets/fonts/Cutive-Regular.ttf
