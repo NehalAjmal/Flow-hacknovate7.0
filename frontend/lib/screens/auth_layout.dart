@@ -131,10 +131,7 @@ class _StageState extends State<BlocksStage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      Motion.enter(context, _rise, () => mounted);
-    });
+    Motion.enterOnMount(context, _rise, () => mounted);
   }
 
   static double _target(StageState s) => switch (s) {

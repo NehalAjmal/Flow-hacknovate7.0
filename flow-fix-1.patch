@@ -1,0 +1,330 @@
+diff --git a/frontend/lib/desktop/compact_views.dart b/frontend/lib/desktop/compact_views.dart
+index 616615f..befb85b 100644
+--- a/frontend/lib/desktop/compact_views.dart
++++ b/frontend/lib/desktop/compact_views.dart
+@@ -20,33 +20,79 @@ import 'window_controller.dart';
+ /// Wraps the whole app: in mini/card mode the router stays mounted but
+ /// offstage (no state lost, its tickers paused), and the compact view
+ /// cross-fades in (spec §3 fallback: FADE + one native resize).
+-class WindowFrame extends ConsumerWidget {
++///
++/// This sits in MaterialApp.builder, i.e. ABOVE the router's Navigator, so the
++/// compact views get their own Overlay: tooltips, ink and text selection need
++/// one, and the Navigator's is offstage here.
++class WindowFrame extends ConsumerStatefulWidget {
+   const WindowFrame({super.key, required this.child});
+   final Widget child;
+ 
+   @override
+-  Widget build(BuildContext context, WidgetRef ref) {
++  ConsumerState<WindowFrame> createState() => _WindowFrameState();
++}
++
++class _WindowFrameState extends ConsumerState<WindowFrame> {
++  // One persistent entry: Overlay reads initialEntries only once, so the
++  // entry's content watches the mode itself instead of capturing it.
++  final _entry = OverlayEntry(builder: (_) => const _CompactSwitcher());
++  Size _full = const Size(1280, 800); // until the first full layout
++
++  @override
++  void dispose() {
++    _entry.remove();
++    _entry.dispose();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) {
+     final mode = ref.watch(windowModeProvider);
+     final compact = mode == WindowMode.mini || mode == WindowMode.card;
+     return Stack(
+       children: [
+-        Offstage(
+-          offstage: compact,
+-          child: TickerMode(enabled: !compact, child: child),
+-        ),
+-        AnimatedSwitcher(
+-          duration: Motion.fade,
+-          child: switch (mode) {
+-            WindowMode.mini => const MiniWidget(key: ValueKey('mini')),
+-            WindowMode.card => const CardView(key: ValueKey('card')),
+-            _ => const SizedBox.shrink(key: ValueKey('none')),
++        // Offstage still lays its child out. At 320×88 the full app would
++        // overflow everywhere, so while compact it keeps the last full size.
++        LayoutBuilder(
++          builder: (context, box) {
++            if (!compact) _full = box.biggest;
++            final keep = compact ? _full : null;
++            return Offstage(
++              offstage: compact,
++              child: OverflowBox(
++                alignment: Alignment.topLeft,
++                minWidth: keep?.width,
++                maxWidth: keep?.width,
++                minHeight: keep?.height,
++                maxHeight: keep?.height,
++                child: TickerMode(enabled: !compact, child: widget.child),
++              ),
++            );
+           },
+         ),
++        // Empty in full mode: nothing in it hit-tests, so input reaches the app.
++        Positioned.fill(child: Overlay(initialEntries: [_entry])),
+       ],
+     );
+   }
+ }
+ 
++class _CompactSwitcher extends ConsumerWidget {
++  const _CompactSwitcher();
++
++  @override
++  Widget build(BuildContext context, WidgetRef ref) {
++    return AnimatedSwitcher(
++      duration: Motion.fade,
++      child: switch (ref.watch(windowModeProvider)) {
++        WindowMode.mini => const MiniWidget(key: ValueKey('mini')),
++        WindowMode.card => const CardView(key: ValueKey('card')),
++        _ => const SizedBox.shrink(key: ValueKey('none')),
++      },
++    );
++  }
++}
++
+ /// The 320×88 session widget: [dashed ring] 32:10 · Steady [⏸] [⤢].
+ /// Drag anywhere to move (native); it snaps to the nearest corner on release.
+ /// Click the time to pause/resume. The amber dot = a nudge waiting (it scales
+diff --git a/frontend/lib/screens/settings_screen.dart b/frontend/lib/screens/settings_screen.dart
+index d15491f..cf59ab7 100644
+--- a/frontend/lib/screens/settings_screen.dart
++++ b/frontend/lib/screens/settings_screen.dart
+@@ -1138,7 +1138,7 @@ class _HelpSection extends StatelessWidget {
+             child: Text(k, style: FlowType.chart(p, size: 11, color: p.text1)),
+           ),
+           const SizedBox(width: 12),
+-          Text(what, style: TextStyle(color: p.text2, fontSize: 12.5)),
++          Flexible(child: Text(what, style: TextStyle(color: p.text2, fontSize: 12.5))),
+         ],
+       ),
+     );
+@@ -1411,32 +1411,43 @@ class _ScheduleRowState extends ConsumerState<_ScheduleRow> {
+                   onChanged: (a, b) => _change(s.copyWith(start: Schedule.hm(a), end: Schedule.hm(b))),
+                 ),
+                 const SizedBox(height: 10),
+-                Row(
++                // days left, demand right; wraps to two lines when narrow
++                Wrap(
++                  alignment: WrapAlignment.spaceBetween,
++                  runSpacing: 8,
++                  spacing: 12,
+                   children: [
+-                    for (var d = 1; d <= 7; d++) ...[
+-                      Pressable(
+-                        selected: s.weekdays.contains(d),
+-                        semanticLabel: 'Day $d',
+-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+-                        onPressed: () {
+-                          final w = {...s.weekdays};
+-                          if (!w.remove(d)) w.add(d);
+-                          if (w.isNotEmpty) _change(s.copyWith(weekdays: w.toList()..sort()), now: true);
+-                        },
+-                        child: Text(_wd[d - 1]),
+-                      ),
+-                      const SizedBox(width: 4),
+-                    ],
+-                    const Spacer(),
+-                    for (final dm in Demand.values) ...[
+-                      Pressable(
+-                        selected: s.demand == dm,
+-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+-                        onPressed: () => _change(s.copyWith(demand: dm), now: true),
+-                        child: Text(dm.wire),
+-                      ),
+-                      const SizedBox(width: 4),
+-                    ],
++                    Wrap(
++                      spacing: 4,
++                      runSpacing: 4,
++                      children: [
++                        for (var d = 1; d <= 7; d++)
++                          Pressable(
++                            selected: s.weekdays.contains(d),
++                            semanticLabel: 'Day $d',
++                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
++                            onPressed: () {
++                              final w = {...s.weekdays};
++                              if (!w.remove(d)) w.add(d);
++                              if (w.isNotEmpty) _change(s.copyWith(weekdays: w.toList()..sort()), now: true);
++                            },
++                            child: Text(_wd[d - 1]),
++                          ),
++                      ],
++                    ),
++                    Wrap(
++                      spacing: 4,
++                      runSpacing: 4,
++                      children: [
++                        for (final dm in Demand.values)
++                          Pressable(
++                            selected: s.demand == dm,
++                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
++                            onPressed: () => _change(s.copyWith(demand: dm), now: true),
++                            child: Text(dm.wire),
++                          ),
++                      ],
++                    ),
+                   ],
+                 ),
+               ],
+diff --git a/frontend/lib/ui/brand/launch_overlay.dart b/frontend/lib/ui/brand/launch_overlay.dart
+index 4be1969..a57ba14 100644
+--- a/frontend/lib/ui/brand/launch_overlay.dart
++++ b/frontend/lib/ui/brand/launch_overlay.dart
+@@ -126,7 +126,10 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
+ 
+   @override
+   Widget build(BuildContext context) {
+-    if (_done) return widget.child;
++    // Same tree shape before and after: returning bare `widget.child` once
++    // done would remount the whole app at the end of the reveal (a hitch,
++    // and every screen's entrance replaying).
++    if (_done) return Stack(children: [widget.child, const SizedBox.shrink()]);
+     final appDark = Theme.of(context).brightness == Brightness.dark;
+     // Opposite ground for the splash; the reveal turns it into the app's own.
+     final splash = appDark ? FlowPalette.light : FlowPalette.dark;
+diff --git a/frontend/test/desktop_views_test.dart b/frontend/test/desktop_views_test.dart
+new file mode 100644
+index 0000000..d23beab
+--- /dev/null
++++ b/frontend/test/desktop_views_test.dart
+@@ -0,0 +1,130 @@
++import 'package:flow/api/mock/mock_backend.dart';
++import 'package:flow/api/models/session.dart';
++import 'package:flow/app.dart';
++import 'package:flow/desktop/desktop_host.dart';
++import 'package:flow/desktop/window_controller.dart';
++import 'package:flow/router/app_router.dart';
++import 'package:flow/router/routes.dart';
++import 'package:flow/state/auth_controller.dart';
++import 'package:flow/state/session_controller.dart';
++import 'package:flow/ui/brand/launch_overlay.dart';
++import 'package:flutter/gestures.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++
++import 'helpers.dart';
++
++/// Regressions found on real Windows hardware:
++/// - the compact views live above the router's Navigator, so their tooltips
++///   had no Overlay ("No Overlay widget found");
++/// - a schedule row's day + demand pills overflowed at mid widths.
++void main() {
++  setUp(() => SharedPreferences.setMockInitialValues({}));
++
++  Future<ProviderContainer> boot(WidgetTester tester, Size size) async {
++    tester.view.physicalSize = size;
++    tester.view.devicePixelRatio = 1;
++    addTearDown(tester.view.reset);
++    final b = MockBackend(config: const MockConfig(latency: Duration.zero, tick: Duration(hours: 1)));
++    final c = mockContainer(b);
++    await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
++    await tester.pump(const Duration(seconds: 3));
++    await tester.runAsync(() => c.read(authProvider.notifier).login(email: 'solo@flow.dev', password: 'password'));
++    for (var i = 0; i < 10; i++) {
++      await tester.pump(const Duration(milliseconds: 200));
++    }
++    return c;
++  }
++
++  Future<void> settle(WidgetTester tester, [int n = 10]) async {
++    for (var i = 0; i < n; i++) {
++      await tester.pump(const Duration(milliseconds: 150));
++    }
++  }
++
++  Future<void> teardown(WidgetTester tester, ProviderContainer c) async {
++    final err = tester.takeException();
++    await tester.pumpWidget(const SizedBox());
++    c.dispose();
++    await tester.pump(const Duration(seconds: 1));
++    expect(err, isNull);
++  }
++
++  for (final mode in [WindowMode.mini, WindowMode.card]) {
++    testWidgets('${mode.name} view renders with tooltips (has an Overlay)', (tester) async {
++      final c = await boot(tester, const Size(1280, 800));
++      await tester.runAsync(
++        () => c.read(liveSessionProvider.notifier).start(const StartSessionRequest(taskText: 'Draft', demand: Demand.moderate, plannedMinutes: 50)),
++      );
++      await settle(tester);
++      c.read(windowModeProvider.notifier).debugPreview(mode);
++      // the native resize to the widget's own window size
++      tester.view.physicalSize = mode == WindowMode.mini ? const Size(320, 88) : const Size(360, 440);
++      await settle(tester);
++      expect(find.byType(Tooltip), findsWidgets);
++      // hover a tooltip so it actually opens in the overlay
++      final g = await tester.createGesture(kind: PointerDeviceKind.mouse);
++      await g.addPointer(location: Offset.zero);
++      await g.moveTo(tester.getCenter(find.byTooltip('Open Flow')));
++      await tester.pump(const Duration(seconds: 2));
++      await g.removePointer();
++      await settle(tester);
++      // back to full: the app takes input again (the empty overlay passes it through)
++      c.read(windowModeProvider.notifier).debugPreview(WindowMode.full);
++      tester.view.physicalSize = const Size(1280, 800);
++      await settle(tester);
++      await teardown(tester, c);
++    });
++  }
++
++  testWidgets('the launch reveal ends without remounting the app beneath it', (tester) async {
++    _Probe.mounts = 0;
++    final c = mockContainer(MockBackend(config: const MockConfig(latency: Duration.zero, tick: Duration(hours: 1))));
++    await tester.pumpWidget(
++      UncontrolledProviderScope(
++        container: c,
++        child: const MaterialApp(home: LaunchOverlay(child: _Probe())),
++      ),
++    );
++    for (var i = 0; i < 60; i++) {
++      await tester.pump(const Duration(milliseconds: 100));
++    }
++    expect(_Probe.mounts, 1);
++    await tester.pumpWidget(const SizedBox());
++    c.dispose();
++  });
++
++  for (final w in [1024.0, 1100.0, 1180.0, 1280.0, 1440.0]) {
++    testWidgets('settings › schedules rows fit at ${w.toInt()} wide', (tester) async {
++      final c = await boot(tester, Size(w, 800));
++      c.read(appRouterProvider).go(Routes.settings);
++      await settle(tester, 20);
++      // the row's key is ValueKey<String?>, so match by value, not by type
++      final row = find.byWidgetPredicate((w) => w.key is ValueKey && (w.key! as ValueKey).value == 'sch_1');
++      final list = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first;
++      await tester.scrollUntilVisible(row, 300, scrollable: list);
++      await settle(tester);
++      await teardown(tester, c);
++    });
++  }
++}
++
++class _Probe extends StatefulWidget {
++  const _Probe();
++  static int mounts = 0;
++  @override
++  State<_Probe> createState() => _ProbeState();
++}
++
++class _ProbeState extends State<_Probe> {
++  @override
++  void initState() {
++    super.initState();
++    _Probe.mounts++;
++  }
++
++  @override
++  Widget build(BuildContext context) => const SizedBox.expand();
++}

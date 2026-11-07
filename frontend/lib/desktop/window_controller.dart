@@ -210,8 +210,11 @@ class WindowModeController extends Notifier<WindowMode> {
   void onTrayAction(String key) {
     switch (key) {
       case 'show':
+        // "Show Flow" always means the full app: it's also the way out of
+        // the widget if it ever misbehaves.
         _hidden = false;
         unawaited(_host.show());
+        expand();
       case 'pause_1h':
         unawaited(ref.read(pauseProvider.notifier).pauseFor(60));
       case 'resume':

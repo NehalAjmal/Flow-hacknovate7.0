@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/physics.dart';
 import 'package:flutter/widgets.dart';
 
+import '../ui/appear.dart' show AppearScope;
+
 /// Flow motion system. DESIGN_SPEC §1, Rule 2.
 ///
 /// Springs (not timers) for anything the user can interrupt, and every
@@ -36,6 +38,19 @@ abstract final class Motion {
     }
     LaunchGate.whenVisible(() {
       if (mounted()) c.forward();
+    });
+  }
+
+  /// For initState: like [enter], but on a revisit of a page (see
+  /// AppearScope) the controller starts settled in the very first frame —
+  /// no one-frame blank, no replayed entrance.
+  static void enterOnMount(BuildContext context, AnimationController c, bool Function() mounted) {
+    if (!AppearScope.animates(context)) {
+      c.value = 1;
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted()) enter(context, c, mounted);
     });
   }
 

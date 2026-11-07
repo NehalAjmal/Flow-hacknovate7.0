@@ -11,6 +11,7 @@ import '../state/schedule_runner.dart';
 import '../state/session_controller.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
+import '../ui/appear.dart';
 import '../ui/brand/wordmark.dart';
 import '../ui/dial.dart';
 import '../ui/pressable.dart';
@@ -81,7 +82,7 @@ class AppShell extends ConsumerWidget {
                 child: Column(
                   children: [
                     const _PauseBanner(),
-                    Expanded(child: child),
+                    Expanded(child: AppearScope(route: location, child: child)),
                   ],
                 ),
               ),

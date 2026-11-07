@@ -78,10 +78,7 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
   void initState() {
     super.initState();
     _lastStep = widget.minutes ~/ DurationDial.step;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      Motion.enter(context, _drawIn, () => mounted);
-    });
+    Motion.enterOnMount(context, _drawIn, () => mounted);
   }
 
   @override

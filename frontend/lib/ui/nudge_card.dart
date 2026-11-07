@@ -53,11 +53,20 @@ class NudgeCardView extends StatelessWidget {
       label: 'Break suggestion',
       child: Container(
         padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
+        // amber = break: a warm wash (stronger than a page's rest field,
+        // since a nudge is an event), an amber edge, and a soft amber glow
         decoration: BoxDecoration(
-          color: p.raised,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color.lerp(p.amberTint, p.raised, 0.15)!, Color.lerp(p.amberTint, p.raised, 0.6)!],
+          ),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: p.hairline),
-          boxShadow: [BoxShadow(color: Faces.ground(p.raised).withValues(alpha: 0.6), offset: const Offset(0, 2))],
+          border: Border.all(color: p.amber.withValues(alpha: 0.45)),
+          boxShadow: [
+            BoxShadow(color: p.amber.withValues(alpha: 0.16), blurRadius: 18, offset: const Offset(0, 4)),
+            BoxShadow(color: Faces.ground(p.raised).withValues(alpha: 0.5), offset: const Offset(0, 2)),
+          ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

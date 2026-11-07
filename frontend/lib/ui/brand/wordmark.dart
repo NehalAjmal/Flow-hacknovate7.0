@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show PathMetric;
 
 import 'package:flutter/material.dart';
 
@@ -87,6 +88,13 @@ class WordmarkPainter extends CustomPainter {
   static const _dash = 30.0;
   static const _gap = 22.0;
 
+  static final _dashCache = <int, List<({PathMetric metric, List<(double, Path)> dashes})>>{};
+  static List<({PathMetric metric, List<(double, Path)> dashes})> _dashesOf(int letter) =>
+      _dashCache.putIfAbsent(letter, () => [
+        for (final m in WordmarkLayout.letters[letter].computeMetrics())
+          (metric: m, dashes: [for (var s = 0.0; s < m.length; s += _dash + _gap) (s, m.extractPath(s, math.min(s + _dash, m.length)))]),
+      ]);
+
   @override
   void paint(Canvas canvas, Size size) {
     final f = WordmarkLayout.fit(size);
@@ -128,10 +136,13 @@ class WordmarkPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = strokeWidthPx / scale
           ..strokeCap = StrokeCap.round;
-        for (final metric in path.computeMetrics()) {
-          final limit = metric.length * d;
-          for (var s = 0.0; s < limit; s += _dash + _gap) {
-            canvas.drawPath(metric.extractPath(s, math.min(s + _dash, limit)), paint);
+        // Dashes are cut once per letter (the glyph paths are constant);
+        // per frame only the one partial dash at the drawing tip is cut.
+        for (final c in _dashesOf(i)) {
+          final limit = c.metric.length * d;
+          for (final (start, seg) in c.dashes) {
+            if (start >= limit) break;
+            canvas.drawPath(start + _dash <= limit ? seg : c.metric.extractPath(start, limit), paint);
           }
         }
       }

@@ -41,7 +41,7 @@ void main() {
           );
           final c = mockContainer(b);
           await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
-          await tester.pump(const Duration(seconds: 3)); // launch overlay
+          await tester.pump(const Duration(seconds: 4)); // launch overlay
 
           await tester.runAsync(() => c.read(authProvider.notifier).login(email: entry.key, password: 'password'));
           for (var i = 0; i < 10; i++) {
@@ -70,7 +70,7 @@ void main() {
     );
     final c = mockContainer(b);
     await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
-    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(seconds: 4));
     await tester.runAsync(() async {
       await c.read(authProvider.notifier).login(email: 'admin@flow.dev', password: 'password');
       await c.read(authProvider.notifier).verifyMfa(MockBackend.mfaCode);

@@ -208,6 +208,19 @@ class _DevPanelState extends ConsumerState<_DevPanel> {
                 TextButton(onPressed: () => ref.read(windowModeProvider.notifier).debugPreview(m), child: Text(m.name)),
             ],
           ),
+          if (anyMock)
+            Row(
+              children: [
+                const Expanded(child: Text('Nudge (mock sessions)', style: TextStyle(fontSize: 12))),
+                TextButton(
+                  onPressed: () {
+                    final why = backend.forceNudge();
+                    if (why != null) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(why)));
+                  },
+                  child: const Text('Send a nudge now'),
+                ),
+              ],
+            ),
           for (final area in ApiArea.values)
             Row(
               children: [

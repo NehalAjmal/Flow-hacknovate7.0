@@ -24,6 +24,11 @@ class _AppearState extends State<Appear> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    // no dependency: the scope's later value must not restart anything
+    if (!AppearScope.animates(context)) {
+      _c.value = 1;
+      return;
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) Motion.enter(context, _c, () => mounted);
     });
@@ -48,4 +53,44 @@ class _AppearState extends State<Appear> with SingleTickerProviderStateMixin {
       );
     },
   );
+}
+
+
+/// Entrances play on a page's first visit only. Going back to a page you've
+/// seen shows it settled; replaying the cascade on every switch reads as
+/// jitter, not as arrival. Decided once per visit, so content that arrives
+/// after a first-visit load still animates in.
+class AppearScope extends StatefulWidget {
+  const AppearScope({super.key, required this.route, required this.child});
+  final String route;
+  final Widget child;
+
+  static final _seen = <String>{};
+
+  /// False on a revisit; true outside any scope (dialogs, signed-out pages).
+  static bool animates(BuildContext context) => context.getInheritedWidgetOfExactType<_AppearFlag>()?.animate ?? true;
+
+  @override
+  State<AppearScope> createState() => _AppearScopeState();
+}
+
+class _AppearScopeState extends State<AppearScope> {
+  String? _route;
+  bool _animate = true;
+
+  @override
+  Widget build(BuildContext context) {
+    if (_route != widget.route) {
+      _route = widget.route;
+      _animate = AppearScope._seen.add(widget.route);
+    }
+    return _AppearFlag(animate: _animate, child: widget.child);
+  }
+}
+
+class _AppearFlag extends InheritedWidget {
+  const _AppearFlag({required this.animate, required super.child});
+  final bool animate;
+  @override
+  bool updateShouldNotify(_AppearFlag old) => false;
 }

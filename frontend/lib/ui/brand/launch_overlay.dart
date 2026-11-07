@@ -40,9 +40,11 @@ double _easeInOut(double t) => Curves.easeInOutCubic.transform(t.clamp(0.0, 1.0)
 
 class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTickerProviderStateMixin {
   // Timeline, milliseconds.
-  static const _dashStart = 120.0, _dashStagger = 90.0, _dashDur = 720.0;
-  static const _fillStart = 780.0, _fillStagger = 110.0, _fillResponse = 0.7;
-  static const _revealResponse = 0.55;
+  // ≈3.4 s end to end (was ≈2.6 s): the outline gets time to be seen as an
+  // outline, and the pour reads as liquid rather than a wipe.
+  static const _dashStart = 160.0, _dashStagger = 120.0, _dashDur = 950.0;
+  static const _fillStart = 1050.0, _fillStagger = 140.0, _fillResponse = 0.9;
+  static const _revealResponse = 0.65, _skipResponse = 0.42; // a skip is impatient: snappier reveal
   static const _fade = 150.0;
 
   late final Ticker _ticker = createTicker(_tick);
@@ -51,6 +53,8 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
   double? _revealAt; // ms when the reveal started
   bool _done = false;
   bool _reduced = false;
+  bool _skipped = false;
+  double get _response => _skipped ? _skipResponse : _revealResponse;
 
   @override
   void initState() {
@@ -80,9 +84,10 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
     return false; // never swallow keys
   }
 
-  double get _filledAt => _fillStart + 3 * _fillStagger + 640; // ≈ 97% of the last fill
+  double get _filledAt => _fillStart + 3 * _fillStagger + 820; // ≈ 97% of the last fill
 
   void _skip() {
+    _skipped = true;
     if (_ms < _filledAt) _offsetMs += _filledAt - _ms;
   }
 
@@ -97,7 +102,7 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
     }
     final r = _revealAt;
     if (r != null) {
-      final finished = _reduced ? ms - r >= _fade : _settle((ms - r) / 1000, _revealResponse).x > 0.999;
+      final finished = _reduced ? ms - r >= _fade : _settle((ms - r) / 1000, _response).x > 0.999;
       if (finished) {
         _ticker.stop();
         setState(() => _done = true);
@@ -126,7 +131,10 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    if (_done) return widget.child;
+    // Same tree shape before and after: returning bare `widget.child` once
+    // done would remount the whole app at the end of the reveal (a hitch,
+    // and every screen's entrance replaying).
+    if (_done) return Stack(children: [widget.child, const SizedBox.shrink()]);
     final appDark = Theme.of(context).brightness == Brightness.dark;
     // Opposite ground for the splash; the reveal turns it into the app's own.
     final splash = appDark ? FlowPalette.light : FlowPalette.dark;
@@ -156,6 +164,7 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
                   accent: accent,
                   frame: _frame(),
                   waiting: _revealAt == null && _ms >= _filledAt,
+                  response: _response,
                 ),
               ),
             ),
@@ -177,6 +186,7 @@ class _LaunchPainter extends CustomPainter {
     required this.accent,
     required this.frame,
     required this.waiting,
+    required this.response,
   });
 
   final double ms;
@@ -185,6 +195,7 @@ class _LaunchPainter extends CustomPainter {
   final Color ground, ink, stone, accent;
   final WordmarkFrame frame;
   final bool waiting;
+  final double response;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -206,7 +217,7 @@ class _LaunchPainter extends CustomPainter {
           size.bottomLeft(Offset.zero),
           size.bottomRight(Offset.zero),
         ].map((c) => (c - o).distance).reduce(math.max);
-        radius = far * _settle((ms - r) / 1000, _LaunchOverlayState._revealResponse).x;
+        radius = far * _settle((ms - r) / 1000, response).x;
       }
     }
 

@@ -47,7 +47,7 @@ void main() {
     await tester.pumpWidget(ProviderScope(overrides: mockOverrides(backend), retry: (_, _) => null, child: const FlowApp()));
     await tester.pump(const Duration(milliseconds: 100));
     await tester.tapAt(const Offset(10, 10));
-    // Skipped to the reveal: done well before the full ~2.4 s timeline.
+    // Skipped to the snappy reveal: done well before the full ~3.4 s timeline.
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.bySemanticsLabel('Flow is starting'), findsNothing);

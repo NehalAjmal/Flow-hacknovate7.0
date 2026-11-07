@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 
 import '../api/api_connector.dart';
 import '../api/models/agent.dart';
@@ -17,9 +19,35 @@ import 'auth_controller.dart';
 import 'session_controller.dart';
 
 /// Read-only data. Every provider watches the user id so it refetches on
-/// account switch, and autoDispose drops it when the screen closes.
+/// account switch (a sign-out drops everything at once).
+///
+/// Page switches must not flash a loader, so:
+/// - [_cache]: data outlives its screen by [_keep]; going back is instant.
+/// - [_refreshOn]: live changes refresh *in place*. A plain `ref.watch` would
+///   rebuild the provider as a dependency change, which Riverpod surfaces as
+///   AsyncLoading (the loader replaces the content); `invalidateSelf()` is a
+///   refresh, so the old value stays on screen until the new one lands.
+const _keep = Duration(minutes: 5);
+
+void _cache(Ref ref) {
+  final link = ref.keepAlive();
+  Timer? t;
+  ref.onCancel(() => t = Timer(_keep, link.close));
+  ref.onResume(() => t?.cancel());
+  ref.onDispose(() => t?.cancel());
+}
+
+void _refreshOn<T>(Ref ref, ProviderListenable<T> p) => ref.listen<T>(p, (a, b) {
+  if (a != b) ref.invalidateSelf();
+});
+
+/// Changes when a session starts or ends: totals, history and patterns move.
+final _sessionIdProvider = Provider<String?>((ref) => ref.watch(liveSessionProvider).value?.session.sessionId);
+
 FutureProvider<T> _userData<T>(Future<T> Function(Ref ref) load) => FutureProvider.autoDispose<T>((ref) {
   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
+  _cache(ref);
+  _refreshOn(ref, _sessionIdProvider);
   return load(ref);
 });
 
@@ -36,14 +64,16 @@ final dayTimelineProvider = FutureProvider.autoDispose.family<DayTimeline, DateT
   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
   // refetch today when the live session changes
   final now = DateTime.now();
-  if (_sameDay(day, now)) ref.watch(liveSessionRevisionProvider);
+  if (_sameDay(day, now)) _refreshOn(ref, liveSessionRevisionProvider);
+  _cache(ref);
   return ref.watch(insightsApiProvider).day(day);
 });
 
 /// Focus minutes per day for the rolling 4-week terrain (two months merged).
 final rollingMinutesProvider = FutureProvider.autoDispose<Map<DateTime, int>>((ref) async {
   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
-  ref.watch(liveSessionRevisionProvider);
+  _refreshOn(ref, liveSessionRevisionProvider);
+  _cache(ref);
   final now = DateTime.now();
   final api = ref.watch(insightsApiProvider);
   final results = await Future.wait([api.month(DateTime(now.year, now.month - 1, 1)), api.month(now)]);
@@ -54,16 +84,20 @@ bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month 
 
 final sessionsPageProvider = FutureProvider.autoDispose.family<SessionPage, int>((ref, page) {
   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
+  _cache(ref);
+  _refreshOn(ref, _sessionIdProvider);
   return ref.watch(sessionApiProvider).list(page: page);
 });
 
-final replayProvider = FutureProvider.autoDispose.family<SessionReplay, String>(
-  (ref, sessionId) => ref.watch(sessionApiProvider).replay(sessionId),
-);
+final replayProvider = FutureProvider.autoDispose.family<SessionReplay, String>((ref, sessionId) {
+  _cache(ref);
+  return ref.watch(sessionApiProvider).replay(sessionId);
+});
 
-final breaksProvider = FutureProvider.autoDispose.family<BreakSummary, String>(
-  (ref, sessionId) => ref.watch(breakApiProvider).list(sessionId),
-);
+final breaksProvider = FutureProvider.autoDispose.family<BreakSummary, String>((ref, sessionId) {
+  _cache(ref);
+  return ref.watch(breakApiProvider).list(sessionId);
+});
 
 // ── team / admin ───────────────────────────────────────────────────────────
 
@@ -88,7 +122,10 @@ final flagsProvider = FutureProvider<FeatureFlags>((ref) async {
   }
 });
 
-final changelogProvider = FutureProvider.autoDispose<List<ChangelogEntry>>((ref) => ref.watch(metaApiProvider).changelog());
+final changelogProvider = FutureProvider.autoDispose<List<ChangelogEntry>>((ref) {
+  _cache(ref);
+  return ref.watch(metaApiProvider).changelog();
+});
 
 // ── local agent ────────────────────────────────────────────────────────────
 
@@ -145,7 +182,8 @@ final sensingProvider = Provider<Sensing>((ref) {
 /// The seven day timelines of the week starting [weekStart] (a Monday).
 final weekTimelinesProvider = FutureProvider.autoDispose.family<List<DayTimeline>, DateTime>((ref, weekStart) {
   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
-  ref.watch(liveSessionRevisionProvider);
+  _refreshOn(ref, liveSessionRevisionProvider);
+  _cache(ref);
   final api = ref.watch(insightsApiProvider);
   return Future.wait([for (var i = 0; i < 7; i++) api.day(DateTime(weekStart.year, weekStart.month, weekStart.day + i))]);
 });
@@ -153,6 +191,8 @@ final weekTimelinesProvider = FutureProvider.autoDispose.family<List<DayTimeline
 /// Focus minutes per day for the last 12 months (year heatmap).
 final yearMinutesProvider = FutureProvider.autoDispose<Map<DateTime, int>>((ref) async {
   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
+  _cache(ref);
+  _refreshOn(ref, _sessionIdProvider);
   final now = DateTime.now();
   final api = ref.watch(insightsApiProvider);
   final months = await Future.wait([for (var i = 11; i >= 0; i--) api.month(DateTime(now.year, now.month - i, 1))]);

@@ -167,6 +167,11 @@ ThemeData buildTheme(Brightness brightness) {
         titleLarge: inst(base.textTheme.titleLarge),
       );
   return base.copyWith(
+    // One page motion everywhere, replacing each platform's default (the
+    // Windows/Linux zoom is the loudest): a short fade with a small rise.
+    pageTransitionsTheme: PageTransitionsTheme(
+      builders: {for (final t in TargetPlatform.values) t: const FlowPageTransitions()},
+    ),
     scaffoldBackgroundColor: p.bg,
     canvasColor: p.bg,
     dividerColor: p.hairline,
@@ -181,4 +186,41 @@ ThemeData buildTheme(Brightness brightness) {
       textStyle: TextStyle(fontFamily: FlowFonts.ui, color: p.onSelected, fontSize: 12),
     ),
   );
+}
+
+
+/// Incoming page: 180 ms fade + 6 px rise (FADE family, ease-out). The page
+/// underneath fades out a little faster, so the two never sit at half opacity
+/// over each other for long. No scale, no slide across: switching pages in
+/// Flow is a change of view, not a journey.
+class FlowPageTransitions extends PageTransitionsBuilder {
+  const FlowPageTransitions();
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 180);
+  @override
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 140);
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final inCurve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+    final outCurve = CurvedAnimation(parent: secondaryAnimation, curve: const Interval(0, 0.7, curve: Curves.easeIn));
+    return FadeTransition(
+      opacity: ReverseAnimation(outCurve),
+      child: FadeTransition(
+        opacity: inCurve,
+        child: AnimatedBuilder(
+          animation: inCurve,
+          child: child,
+          builder: (context, child) => Transform.translate(offset: Offset(0, 6 * (1 - inCurve.value)), child: child),
+        ),
+      ),
+    );
+  }
 }

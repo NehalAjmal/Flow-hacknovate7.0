@@ -70,6 +70,7 @@ Future<(ProviderContainer, FakeHost)> setup() async {
 }
 
 void main() {
+  devNudgeTests();
   test('no session: shrink does nothing (the widget only exists during a session)', () async {
     final (c, host) = await setup();
     c.read(windowModeProvider.notifier).shrink();
@@ -128,5 +129,25 @@ void main() {
     final (c, host) = await setup();
     await c.read(liveSessionProvider.notifier).start(const StartSessionRequest(taskText: 'x', demand: Demand.moderate, plannedMinutes: 50));
     await eventually(() => host.trays.contains(TrayState.steady) || host.trays.contains(TrayState.breakDue));
+  });
+}
+
+void devNudgeTests() {
+  test('dev panel: "Send a nudge now" raises a nudge at once, even in the quiet scenario', () async {
+    final host = FakeHost();
+    final b = MockBackend(config: const MockConfig(latency: Duration.zero, tick: Duration(hours: 1)))..scenario = MockScenario.quiet;
+    final c = ProviderContainer.test(overrides: [...mockOverrides(b), desktopHostProvider.overrideWithValue(host)], retry: (_, _) => null);
+    c.listen(authProvider, (_, _) {});
+    await eventually(() => c.read(authProvider) is SignedOut);
+    await c.read(authProvider.notifier).login(email: 'solo@flow.dev', password: 'password');
+    c.listen(liveSessionProvider, (_, _) {});
+    c.listen(windowModeProvider, (_, _) {});
+    await c.read(liveSessionProvider.future);
+    expect(b.forceNudge(), 'Start a session first.');
+    await c.read(liveSessionProvider.notifier).start(const StartSessionRequest(taskText: 'x', demand: Demand.moderate, plannedMinutes: 50));
+    expect(b.forceNudge(), isNull);
+    await eventually(() => c.read(liveSessionProvider).value?.pendingInterventionId != null);
+    expect(c.read(windowModeProvider), WindowMode.card, reason: 'the widget grows into the card');
+    expect(b.forceNudge(), 'A nudge is already waiting.');
   });
 }

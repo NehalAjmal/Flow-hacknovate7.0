@@ -9,6 +9,7 @@ import '../router/app_router.dart';
 import '../router/routes.dart';
 import '../state/break_controller.dart';
 import '../state/session_controller.dart';
+import '../ui/feature_note.dart' show ColorField, FieldTone;
 import '../ui/kit.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
@@ -20,29 +21,79 @@ import 'window_controller.dart';
 /// Wraps the whole app: in mini/card mode the router stays mounted but
 /// offstage (no state lost, its tickers paused), and the compact view
 /// cross-fades in (spec §3 fallback: FADE + one native resize).
-class WindowFrame extends ConsumerWidget {
+///
+/// This sits in MaterialApp.builder, i.e. ABOVE the router's Navigator, so the
+/// compact views get their own Overlay: tooltips, ink and text selection need
+/// one, and the Navigator's is offstage here.
+class WindowFrame extends ConsumerStatefulWidget {
   const WindowFrame({super.key, required this.child});
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<WindowFrame> createState() => _WindowFrameState();
+}
+
+class _WindowFrameState extends ConsumerState<WindowFrame> {
+  // One persistent entry: Overlay reads initialEntries only once, so the
+  // entry's content watches the mode itself instead of capturing it.
+  final _entry = OverlayEntry(builder: (_) => const _CompactSwitcher());
+  Size _full = const Size(1280, 800); // until the first full layout
+
+  @override
+  void dispose() {
+    _entry.remove();
+    _entry.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final mode = ref.watch(windowModeProvider);
     final compact = mode == WindowMode.mini || mode == WindowMode.card;
+    // expand: the parent's constraints are loose, and while compact the
+    // offstage app sizes to nothing, so a plain Stack collapsed to 0×0 and
+    // the widget painted into an empty (black) window.
     return Stack(
+      fit: StackFit.expand,
       children: [
-        Offstage(
-          offstage: compact,
-          child: TickerMode(enabled: !compact, child: child),
-        ),
-        AnimatedSwitcher(
-          duration: Motion.fade,
-          child: switch (mode) {
-            WindowMode.mini => const MiniWidget(key: ValueKey('mini')),
-            WindowMode.card => const CardView(key: ValueKey('card')),
-            _ => const SizedBox.shrink(key: ValueKey('none')),
+        // Offstage still lays its child out. At 320×88 the full app would
+        // overflow everywhere, so while compact it keeps the last full size.
+        LayoutBuilder(
+          builder: (context, box) {
+            if (!compact) _full = box.biggest;
+            final keep = compact ? _full : null;
+            return Offstage(
+              offstage: compact,
+              child: OverflowBox(
+                alignment: Alignment.topLeft,
+                minWidth: keep?.width,
+                maxWidth: keep?.width,
+                minHeight: keep?.height,
+                maxHeight: keep?.height,
+                child: TickerMode(enabled: !compact, child: widget.child),
+              ),
+            );
           },
         ),
+        // Empty in full mode: nothing in it hit-tests, so input reaches the app.
+        Positioned.fill(child: Overlay(initialEntries: [_entry])),
       ],
+    );
+  }
+}
+
+class _CompactSwitcher extends ConsumerWidget {
+  const _CompactSwitcher();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AnimatedSwitcher(
+      duration: Motion.fade,
+      child: switch (ref.watch(windowModeProvider)) {
+        WindowMode.mini => const MiniWidget(key: ValueKey('mini')),
+        WindowMode.card => const CardView(key: ValueKey('card')),
+        _ => const SizedBox.shrink(key: ValueKey('none')),
+      },
     );
   }
 }
@@ -190,10 +241,11 @@ class CardView extends ConsumerWidget {
     final live = ref.watch(liveSessionProvider).value;
     final win = ref.read(windowModeProvider.notifier);
     final id = live?.pendingInterventionId;
+    // a waiting nudge warms the whole card window (amber = break)
     return Material(
-      color: p.bg,
+      color: id != null ? ColorField.colorOf(p, FieldTone.rest) : p.bg,
       child: Container(
-        decoration: BoxDecoration(border: Border.all(color: p.hairline)),
+        decoration: BoxDecoration(border: Border.all(color: id != null ? p.amber.withValues(alpha: 0.5) : p.hairline)),
         padding: const EdgeInsets.fromLTRB(14, 10, 10, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,

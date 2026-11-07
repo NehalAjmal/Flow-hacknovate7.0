@@ -212,9 +212,7 @@ class _WeekCardsState extends State<_WeekCards> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Motion.enter(context, _rise, () => mounted);
-    });
+    Motion.enterOnMount(context, _rise, () => mounted);
   }
 
   @override
@@ -586,9 +584,7 @@ class _PeakBarsState extends State<_PeakBars> with SingleTickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Motion.enter(context, _rise, () => mounted);
-    });
+    Motion.enterOnMount(context, _rise, () => mounted);
   }
 
   @override
@@ -712,9 +708,7 @@ class _CycleCurveState extends State<_CycleCurve> with SingleTickerProviderState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Motion.enter(context, _draw, () => mounted);
-    });
+    Motion.enterOnMount(context, _draw, () => mounted);
   }
 
   @override
@@ -939,9 +933,7 @@ class _HeatmapState extends State<_Heatmap> with SingleTickerProviderStateMixin 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Motion.enter(context, _in, () => mounted);
-    });
+    Motion.enterOnMount(context, _in, () => mounted);
   }
 
   @override

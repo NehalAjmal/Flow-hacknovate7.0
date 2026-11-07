@@ -951,9 +951,7 @@ class _SessionAxisState extends State<SessionAxis> with SingleTickerProviderStat
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Motion.enter(context, _rise, () => mounted);
-    });
+    Motion.enterOnMount(context, _rise, () => mounted);
   }
 
   @override

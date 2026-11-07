@@ -245,6 +245,21 @@ class MockBackend {
     run = r;
   }
 
+  bool _forceNudge = false;
+
+  /// Dev panel: make the running session's next tick a nudge, whatever the
+  /// scenario or timing. Returns why it can't, or null when it will.
+  String? forceNudge() {
+    final r = run;
+    if (r == null) return 'Start a session first.';
+    if (r.session.pendingInterventionId != null) return 'A nudge is already waiting.';
+    if (breakActive) return 'A break is running.';
+    if (r.session.paused) return 'The session is paused.';
+    _forceNudge = true;
+    _tick(r);
+    return null;
+  }
+
   void _tick(MockRun r) {
     if (r.session.paused) return;
     r.elapsedTicks++;
@@ -252,7 +267,10 @@ class MockBackend {
     r.status = _statusFor(r);
     r.events.add(SessionStateEvent(r.status));
 
+    final forced = _forceNudge;
+    _forceNudge = false;
     final interventionDue =
+        forced ||
         scenario != MockScenario.quiet &&
         !breakActive &&
         r.session.pendingInterventionId == null &&

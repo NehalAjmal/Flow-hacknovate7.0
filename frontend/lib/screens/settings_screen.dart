@@ -1138,7 +1138,7 @@ class _HelpSection extends StatelessWidget {
             child: Text(k, style: FlowType.chart(p, size: 11, color: p.text1)),
           ),
           const SizedBox(width: 12),
-          Text(what, style: TextStyle(color: p.text2, fontSize: 12.5)),
+          Flexible(child: Text(what, style: TextStyle(color: p.text2, fontSize: 12.5))),
         ],
       ),
     );
@@ -1411,32 +1411,43 @@ class _ScheduleRowState extends ConsumerState<_ScheduleRow> {
                   onChanged: (a, b) => _change(s.copyWith(start: Schedule.hm(a), end: Schedule.hm(b))),
                 ),
                 const SizedBox(height: 10),
-                Row(
+                // days left, demand right; wraps to two lines when narrow
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  runSpacing: 8,
+                  spacing: 12,
                   children: [
-                    for (var d = 1; d <= 7; d++) ...[
-                      Pressable(
-                        selected: s.weekdays.contains(d),
-                        semanticLabel: 'Day $d',
-                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                        onPressed: () {
-                          final w = {...s.weekdays};
-                          if (!w.remove(d)) w.add(d);
-                          if (w.isNotEmpty) _change(s.copyWith(weekdays: w.toList()..sort()), now: true);
-                        },
-                        child: Text(_wd[d - 1]),
-                      ),
-                      const SizedBox(width: 4),
-                    ],
-                    const Spacer(),
-                    for (final dm in Demand.values) ...[
-                      Pressable(
-                        selected: s.demand == dm,
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                        onPressed: () => _change(s.copyWith(demand: dm), now: true),
-                        child: Text(dm.wire),
-                      ),
-                      const SizedBox(width: 4),
-                    ],
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        for (var d = 1; d <= 7; d++)
+                          Pressable(
+                            selected: s.weekdays.contains(d),
+                            semanticLabel: 'Day $d',
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                            onPressed: () {
+                              final w = {...s.weekdays};
+                              if (!w.remove(d)) w.add(d);
+                              if (w.isNotEmpty) _change(s.copyWith(weekdays: w.toList()..sort()), now: true);
+                            },
+                            child: Text(_wd[d - 1]),
+                          ),
+                      ],
+                    ),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 4,
+                      children: [
+                        for (final dm in Demand.values)
+                          Pressable(
+                            selected: s.demand == dm,
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            onPressed: () => _change(s.copyWith(demand: dm), now: true),
+                            child: Text(dm.wire),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ],

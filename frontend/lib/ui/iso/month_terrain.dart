@@ -63,10 +63,7 @@ class _MonthTerrainState extends State<MonthTerrain> with TickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      Motion.enter(context, _rise, () => mounted);
-    });
+    Motion.enterOnMount(context, _rise, () => mounted);
   }
 
   @override

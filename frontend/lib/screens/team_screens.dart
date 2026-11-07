@@ -206,9 +206,7 @@ class _TeamWeekState extends State<_TeamWeek> with SingleTickerProviderStateMixi
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Motion.enter(context, _in, () => mounted);
-    });
+    Motion.enterOnMount(context, _in, () => mounted);
   }
 
   @override
@@ -335,9 +333,7 @@ class _TrendLineState extends State<_TrendLine> with SingleTickerProviderStateMi
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) Motion.enter(context, _draw, () => mounted);
-    });
+    Motion.enterOnMount(context, _draw, () => mounted);
   }
 
   @override

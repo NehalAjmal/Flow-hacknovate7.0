@@ -1,0 +1,1053 @@
+diff --git a/frontend/lib/screens/auth_layout.dart b/frontend/lib/screens/auth_layout.dart
+index ece732b..63884e5 100644
+--- a/frontend/lib/screens/auth_layout.dart
++++ b/frontend/lib/screens/auth_layout.dart
+@@ -131,10 +131,7 @@ class _StageState extends State<BlocksStage> with TickerProviderStateMixin {
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (!mounted) return;
+-      Motion.enter(context, _rise, () => mounted);
+-    });
++    Motion.enterOnMount(context, _rise, () => mounted);
+   }
+ 
+   static double _target(StageState s) => switch (s) {
+diff --git a/frontend/lib/screens/insights_screen.dart b/frontend/lib/screens/insights_screen.dart
+index d34af65..e52bd5f 100644
+--- a/frontend/lib/screens/insights_screen.dart
++++ b/frontend/lib/screens/insights_screen.dart
+@@ -212,9 +212,7 @@ class _WeekCardsState extends State<_WeekCards> with TickerProviderStateMixin {
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (mounted) Motion.enter(context, _rise, () => mounted);
+-    });
++    Motion.enterOnMount(context, _rise, () => mounted);
+   }
+ 
+   @override
+@@ -586,9 +584,7 @@ class _PeakBarsState extends State<_PeakBars> with SingleTickerProviderStateMixi
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (mounted) Motion.enter(context, _rise, () => mounted);
+-    });
++    Motion.enterOnMount(context, _rise, () => mounted);
+   }
+ 
+   @override
+@@ -712,9 +708,7 @@ class _CycleCurveState extends State<_CycleCurve> with SingleTickerProviderState
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (mounted) Motion.enter(context, _draw, () => mounted);
+-    });
++    Motion.enterOnMount(context, _draw, () => mounted);
+   }
+ 
+   @override
+@@ -939,9 +933,7 @@ class _HeatmapState extends State<_Heatmap> with SingleTickerProviderStateMixin
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (mounted) Motion.enter(context, _in, () => mounted);
+-    });
++    Motion.enterOnMount(context, _in, () => mounted);
+   }
+ 
+   @override
+diff --git a/frontend/lib/screens/privacy_screen.dart b/frontend/lib/screens/privacy_screen.dart
+index 3ed774a..28eea2f 100644
+--- a/frontend/lib/screens/privacy_screen.dart
++++ b/frontend/lib/screens/privacy_screen.dart
+@@ -126,9 +126,7 @@ class _StackState extends State<_Stack> with SingleTickerProviderStateMixin {
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (mounted) Motion.enter(context, _rise, () => mounted);
+-    });
++    Motion.enterOnMount(context, _rise, () => mounted);
+   }
+ 
+   @override
+diff --git a/frontend/lib/screens/session_screens.dart b/frontend/lib/screens/session_screens.dart
+index 2355675..d1ef8a7 100644
+--- a/frontend/lib/screens/session_screens.dart
++++ b/frontend/lib/screens/session_screens.dart
+@@ -951,9 +951,7 @@ class _SessionAxisState extends State<SessionAxis> with SingleTickerProviderStat
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (mounted) Motion.enter(context, _rise, () => mounted);
+-    });
++    Motion.enterOnMount(context, _rise, () => mounted);
+   }
+ 
+   @override
+diff --git a/frontend/lib/screens/shell.dart b/frontend/lib/screens/shell.dart
+index 8bc3146..58f0072 100644
+--- a/frontend/lib/screens/shell.dart
++++ b/frontend/lib/screens/shell.dart
+@@ -11,6 +11,7 @@ import '../state/schedule_runner.dart';
+ import '../state/session_controller.dart';
+ import '../theme/motion.dart';
+ import '../theme/tokens.dart';
++import '../ui/appear.dart';
+ import '../ui/brand/wordmark.dart';
+ import '../ui/dial.dart';
+ import '../ui/pressable.dart';
+@@ -81,7 +82,7 @@ class AppShell extends ConsumerWidget {
+                 child: Column(
+                   children: [
+                     const _PauseBanner(),
+-                    Expanded(child: child),
++                    Expanded(child: AppearScope(route: location, child: child)),
+                   ],
+                 ),
+               ),
+diff --git a/frontend/lib/screens/team_screens.dart b/frontend/lib/screens/team_screens.dart
+index 6cf1a64..d9b272f 100644
+--- a/frontend/lib/screens/team_screens.dart
++++ b/frontend/lib/screens/team_screens.dart
+@@ -206,9 +206,7 @@ class _TeamWeekState extends State<_TeamWeek> with SingleTickerProviderStateMixi
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (mounted) Motion.enter(context, _in, () => mounted);
+-    });
++    Motion.enterOnMount(context, _in, () => mounted);
+   }
+ 
+   @override
+@@ -335,9 +333,7 @@ class _TrendLineState extends State<_TrendLine> with SingleTickerProviderStateMi
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (mounted) Motion.enter(context, _draw, () => mounted);
+-    });
++    Motion.enterOnMount(context, _draw, () => mounted);
+   }
+ 
+   @override
+diff --git a/frontend/lib/state/data_providers.dart b/frontend/lib/state/data_providers.dart
+index 5e0042d..d34cfef 100644
+--- a/frontend/lib/state/data_providers.dart
++++ b/frontend/lib/state/data_providers.dart
+@@ -1,6 +1,8 @@
++import 'dart:async';
+ import 'dart:typed_data';
+ 
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
+ 
+ import '../api/api_connector.dart';
+ import '../api/models/agent.dart';
+@@ -17,9 +19,35 @@ import 'auth_controller.dart';
+ import 'session_controller.dart';
+ 
+ /// Read-only data. Every provider watches the user id so it refetches on
+-/// account switch, and autoDispose drops it when the screen closes.
++/// account switch (a sign-out drops everything at once).
++///
++/// Page switches must not flash a loader, so:
++/// - [_cache]: data outlives its screen by [_keep]; going back is instant.
++/// - [_refreshOn]: live changes refresh *in place*. A plain `ref.watch` would
++///   rebuild the provider as a dependency change, which Riverpod surfaces as
++///   AsyncLoading (the loader replaces the content); `invalidateSelf()` is a
++///   refresh, so the old value stays on screen until the new one lands.
++const _keep = Duration(minutes: 5);
++
++void _cache(Ref ref) {
++  final link = ref.keepAlive();
++  Timer? t;
++  ref.onCancel(() => t = Timer(_keep, link.close));
++  ref.onResume(() => t?.cancel());
++  ref.onDispose(() => t?.cancel());
++}
++
++void _refreshOn<T>(Ref ref, ProviderListenable<T> p) => ref.listen<T>(p, (a, b) {
++  if (a != b) ref.invalidateSelf();
++});
++
++/// Changes when a session starts or ends: totals, history and patterns move.
++final _sessionIdProvider = Provider<String?>((ref) => ref.watch(liveSessionProvider).value?.session.sessionId);
++
+ FutureProvider<T> _userData<T>(Future<T> Function(Ref ref) load) => FutureProvider.autoDispose<T>((ref) {
+   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
++  _cache(ref);
++  _refreshOn(ref, _sessionIdProvider);
+   return load(ref);
+ });
+ 
+@@ -36,14 +64,16 @@ final dayTimelineProvider = FutureProvider.autoDispose.family<DayTimeline, DateT
+   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
+   // refetch today when the live session changes
+   final now = DateTime.now();
+-  if (_sameDay(day, now)) ref.watch(liveSessionRevisionProvider);
++  if (_sameDay(day, now)) _refreshOn(ref, liveSessionRevisionProvider);
++  _cache(ref);
+   return ref.watch(insightsApiProvider).day(day);
+ });
+ 
+ /// Focus minutes per day for the rolling 4-week terrain (two months merged).
+ final rollingMinutesProvider = FutureProvider.autoDispose<Map<DateTime, int>>((ref) async {
+   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
+-  ref.watch(liveSessionRevisionProvider);
++  _refreshOn(ref, liveSessionRevisionProvider);
++  _cache(ref);
+   final now = DateTime.now();
+   final api = ref.watch(insightsApiProvider);
+   final results = await Future.wait([api.month(DateTime(now.year, now.month - 1, 1)), api.month(now)]);
+@@ -54,16 +84,20 @@ bool _sameDay(DateTime a, DateTime b) => a.year == b.year && a.month == b.month
+ 
+ final sessionsPageProvider = FutureProvider.autoDispose.family<SessionPage, int>((ref, page) {
+   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
++  _cache(ref);
++  _refreshOn(ref, _sessionIdProvider);
+   return ref.watch(sessionApiProvider).list(page: page);
+ });
+ 
+-final replayProvider = FutureProvider.autoDispose.family<SessionReplay, String>(
+-  (ref, sessionId) => ref.watch(sessionApiProvider).replay(sessionId),
+-);
++final replayProvider = FutureProvider.autoDispose.family<SessionReplay, String>((ref, sessionId) {
++  _cache(ref);
++  return ref.watch(sessionApiProvider).replay(sessionId);
++});
+ 
+-final breaksProvider = FutureProvider.autoDispose.family<BreakSummary, String>(
+-  (ref, sessionId) => ref.watch(breakApiProvider).list(sessionId),
+-);
++final breaksProvider = FutureProvider.autoDispose.family<BreakSummary, String>((ref, sessionId) {
++  _cache(ref);
++  return ref.watch(breakApiProvider).list(sessionId);
++});
+ 
+ // ── team / admin ───────────────────────────────────────────────────────────
+ 
+@@ -88,7 +122,10 @@ final flagsProvider = FutureProvider<FeatureFlags>((ref) async {
+   }
+ });
+ 
+-final changelogProvider = FutureProvider.autoDispose<List<ChangelogEntry>>((ref) => ref.watch(metaApiProvider).changelog());
++final changelogProvider = FutureProvider.autoDispose<List<ChangelogEntry>>((ref) {
++  _cache(ref);
++  return ref.watch(metaApiProvider).changelog();
++});
+ 
+ // ── local agent ────────────────────────────────────────────────────────────
+ 
+@@ -145,7 +182,8 @@ final sensingProvider = Provider<Sensing>((ref) {
+ /// The seven day timelines of the week starting [weekStart] (a Monday).
+ final weekTimelinesProvider = FutureProvider.autoDispose.family<List<DayTimeline>, DateTime>((ref, weekStart) {
+   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
+-  ref.watch(liveSessionRevisionProvider);
++  _refreshOn(ref, liveSessionRevisionProvider);
++  _cache(ref);
+   final api = ref.watch(insightsApiProvider);
+   return Future.wait([for (var i = 0; i < 7; i++) api.day(DateTime(weekStart.year, weekStart.month, weekStart.day + i))]);
+ });
+@@ -153,6 +191,8 @@ final weekTimelinesProvider = FutureProvider.autoDispose.family<List<DayTimeline
+ /// Focus minutes per day for the last 12 months (year heatmap).
+ final yearMinutesProvider = FutureProvider.autoDispose<Map<DateTime, int>>((ref) async {
+   if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
++  _cache(ref);
++  _refreshOn(ref, _sessionIdProvider);
+   final now = DateTime.now();
+   final api = ref.watch(insightsApiProvider);
+   final months = await Future.wait([for (var i = 11; i >= 0; i--) api.month(DateTime(now.year, now.month - i, 1))]);
+diff --git a/frontend/lib/theme/motion.dart b/frontend/lib/theme/motion.dart
+index f3993db..0f8c7ca 100644
+--- a/frontend/lib/theme/motion.dart
++++ b/frontend/lib/theme/motion.dart
+@@ -3,6 +3,8 @@ import 'dart:math' as math;
+ import 'package:flutter/physics.dart';
+ import 'package:flutter/widgets.dart';
+ 
++import '../ui/appear.dart' show AppearScope;
++
+ /// Flow motion system. DESIGN_SPEC §1, Rule 2.
+ ///
+ /// Springs (not timers) for anything the user can interrupt, and every
+@@ -39,6 +41,19 @@ abstract final class Motion {
+     });
+   }
+ 
++  /// For initState: like [enter], but on a revisit of a page (see
++  /// AppearScope) the controller starts settled in the very first frame —
++  /// no one-frame blank, no replayed entrance.
++  static void enterOnMount(BuildContext context, AnimationController c, bool Function() mounted) {
++    if (!AppearScope.animates(context)) {
++      c.value = 1;
++      return;
++    }
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      if (mounted()) enter(context, c, mounted);
++    });
++  }
++
+   static Duration stagger(int distanceFromCause) => staggerStep * distanceFromCause.abs();
+ 
+   /// SETTLE as a closed form (0 → 1, critically damped) for painters that
+diff --git a/frontend/lib/theme/tokens.dart b/frontend/lib/theme/tokens.dart
+index 1f82b64..df5e457 100644
+--- a/frontend/lib/theme/tokens.dart
++++ b/frontend/lib/theme/tokens.dart
+@@ -167,6 +167,11 @@ ThemeData buildTheme(Brightness brightness) {
+         titleLarge: inst(base.textTheme.titleLarge),
+       );
+   return base.copyWith(
++    // One page motion everywhere, replacing each platform's default (the
++    // Windows/Linux zoom is the loudest): a short fade with a small rise.
++    pageTransitionsTheme: PageTransitionsTheme(
++      builders: {for (final t in TargetPlatform.values) t: const FlowPageTransitions()},
++    ),
+     scaffoldBackgroundColor: p.bg,
+     canvasColor: p.bg,
+     dividerColor: p.hairline,
+@@ -182,3 +187,40 @@ ThemeData buildTheme(Brightness brightness) {
+     ),
+   );
+ }
++
++
++/// Incoming page: 180 ms fade + 6 px rise (FADE family, ease-out). The page
++/// underneath fades out a little faster, so the two never sit at half opacity
++/// over each other for long. No scale, no slide across: switching pages in
++/// Flow is a change of view, not a journey.
++class FlowPageTransitions extends PageTransitionsBuilder {
++  const FlowPageTransitions();
++
++  @override
++  Duration get transitionDuration => const Duration(milliseconds: 180);
++  @override
++  Duration get reverseTransitionDuration => const Duration(milliseconds: 140);
++
++  @override
++  Widget buildTransitions<T>(
++    PageRoute<T> route,
++    BuildContext context,
++    Animation<double> animation,
++    Animation<double> secondaryAnimation,
++    Widget child,
++  ) {
++    final inCurve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
++    final outCurve = CurvedAnimation(parent: secondaryAnimation, curve: const Interval(0, 0.7, curve: Curves.easeIn));
++    return FadeTransition(
++      opacity: ReverseAnimation(outCurve),
++      child: FadeTransition(
++        opacity: inCurve,
++        child: AnimatedBuilder(
++          animation: inCurve,
++          child: child,
++          builder: (context, child) => Transform.translate(offset: Offset(0, 6 * (1 - inCurve.value)), child: child),
++        ),
++      ),
++    );
++  }
++}
+diff --git a/frontend/lib/ui/appear.dart b/frontend/lib/ui/appear.dart
+index 805c51b..7dacd2b 100644
+--- a/frontend/lib/ui/appear.dart
++++ b/frontend/lib/ui/appear.dart
+@@ -24,6 +24,11 @@ class _AppearState extends State<Appear> with SingleTickerProviderStateMixin {
+   @override
+   void initState() {
+     super.initState();
++    // no dependency: the scope's later value must not restart anything
++    if (!AppearScope.animates(context)) {
++      _c.value = 1;
++      return;
++    }
+     WidgetsBinding.instance.addPostFrameCallback((_) {
+       if (mounted) Motion.enter(context, _c, () => mounted);
+     });
+@@ -49,3 +54,43 @@ class _AppearState extends State<Appear> with SingleTickerProviderStateMixin {
+     },
+   );
+ }
++
++
++/// Entrances play on a page's first visit only. Going back to a page you've
++/// seen shows it settled; replaying the cascade on every switch reads as
++/// jitter, not as arrival. Decided once per visit, so content that arrives
++/// after a first-visit load still animates in.
++class AppearScope extends StatefulWidget {
++  const AppearScope({super.key, required this.route, required this.child});
++  final String route;
++  final Widget child;
++
++  static final _seen = <String>{};
++
++  /// False on a revisit; true outside any scope (dialogs, signed-out pages).
++  static bool animates(BuildContext context) => context.getInheritedWidgetOfExactType<_AppearFlag>()?.animate ?? true;
++
++  @override
++  State<AppearScope> createState() => _AppearScopeState();
++}
++
++class _AppearScopeState extends State<AppearScope> {
++  String? _route;
++  bool _animate = true;
++
++  @override
++  Widget build(BuildContext context) {
++    if (_route != widget.route) {
++      _route = widget.route;
++      _animate = AppearScope._seen.add(widget.route);
++    }
++    return _AppearFlag(animate: _animate, child: widget.child);
++  }
++}
++
++class _AppearFlag extends InheritedWidget {
++  const _AppearFlag({required this.animate, required super.child});
++  final bool animate;
++  @override
++  bool updateShouldNotify(_AppearFlag old) => false;
++}
+diff --git a/frontend/lib/ui/brand/launch_overlay.dart b/frontend/lib/ui/brand/launch_overlay.dart
+index a57ba14..d4f0a51 100644
+--- a/frontend/lib/ui/brand/launch_overlay.dart
++++ b/frontend/lib/ui/brand/launch_overlay.dart
+@@ -40,9 +40,11 @@ double _easeInOut(double t) => Curves.easeInOutCubic.transform(t.clamp(0.0, 1.0)
+ 
+ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTickerProviderStateMixin {
+   // Timeline, milliseconds.
+-  static const _dashStart = 120.0, _dashStagger = 90.0, _dashDur = 720.0;
+-  static const _fillStart = 780.0, _fillStagger = 110.0, _fillResponse = 0.7;
+-  static const _revealResponse = 0.55;
++  // ≈3.4 s end to end (was ≈2.6 s): the outline gets time to be seen as an
++  // outline, and the pour reads as liquid rather than a wipe.
++  static const _dashStart = 160.0, _dashStagger = 120.0, _dashDur = 950.0;
++  static const _fillStart = 1050.0, _fillStagger = 140.0, _fillResponse = 0.9;
++  static const _revealResponse = 0.65, _skipResponse = 0.42; // a skip is impatient: snappier reveal
+   static const _fade = 150.0;
+ 
+   late final Ticker _ticker = createTicker(_tick);
+@@ -51,6 +53,8 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
+   double? _revealAt; // ms when the reveal started
+   bool _done = false;
+   bool _reduced = false;
++  bool _skipped = false;
++  double get _response => _skipped ? _skipResponse : _revealResponse;
+ 
+   @override
+   void initState() {
+@@ -80,9 +84,10 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
+     return false; // never swallow keys
+   }
+ 
+-  double get _filledAt => _fillStart + 3 * _fillStagger + 640; // ≈ 97% of the last fill
++  double get _filledAt => _fillStart + 3 * _fillStagger + 820; // ≈ 97% of the last fill
+ 
+   void _skip() {
++    _skipped = true;
+     if (_ms < _filledAt) _offsetMs += _filledAt - _ms;
+   }
+ 
+@@ -97,7 +102,7 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
+     }
+     final r = _revealAt;
+     if (r != null) {
+-      final finished = _reduced ? ms - r >= _fade : _settle((ms - r) / 1000, _revealResponse).x > 0.999;
++      final finished = _reduced ? ms - r >= _fade : _settle((ms - r) / 1000, _response).x > 0.999;
+       if (finished) {
+         _ticker.stop();
+         setState(() => _done = true);
+@@ -159,6 +164,7 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
+                   accent: accent,
+                   frame: _frame(),
+                   waiting: _revealAt == null && _ms >= _filledAt,
++                  response: _response,
+                 ),
+               ),
+             ),
+@@ -180,6 +186,7 @@ class _LaunchPainter extends CustomPainter {
+     required this.accent,
+     required this.frame,
+     required this.waiting,
++    required this.response,
+   });
+ 
+   final double ms;
+@@ -188,6 +195,7 @@ class _LaunchPainter extends CustomPainter {
+   final Color ground, ink, stone, accent;
+   final WordmarkFrame frame;
+   final bool waiting;
++  final double response;
+ 
+   @override
+   void paint(Canvas canvas, Size size) {
+@@ -209,7 +217,7 @@ class _LaunchPainter extends CustomPainter {
+           size.bottomLeft(Offset.zero),
+           size.bottomRight(Offset.zero),
+         ].map((c) => (c - o).distance).reduce(math.max);
+-        radius = far * _settle((ms - r) / 1000, _LaunchOverlayState._revealResponse).x;
++        radius = far * _settle((ms - r) / 1000, response).x;
+       }
+     }
+ 
+diff --git a/frontend/lib/ui/brand/wordmark.dart b/frontend/lib/ui/brand/wordmark.dart
+index 6e1ee87..5a4ccc5 100644
+--- a/frontend/lib/ui/brand/wordmark.dart
++++ b/frontend/lib/ui/brand/wordmark.dart
+@@ -1,4 +1,5 @@
+ import 'dart:math' as math;
++import 'dart:ui' show PathMetric;
+ 
+ import 'package:flutter/material.dart';
+ 
+@@ -87,6 +88,13 @@ class WordmarkPainter extends CustomPainter {
+   static const _dash = 30.0;
+   static const _gap = 22.0;
+ 
++  static final _dashCache = <int, List<({PathMetric metric, List<(double, Path)> dashes})>>{};
++  static List<({PathMetric metric, List<(double, Path)> dashes})> _dashesOf(int letter) =>
++      _dashCache.putIfAbsent(letter, () => [
++        for (final m in WordmarkLayout.letters[letter].computeMetrics())
++          (metric: m, dashes: [for (var s = 0.0; s < m.length; s += _dash + _gap) (s, m.extractPath(s, math.min(s + _dash, m.length)))]),
++      ]);
++
+   @override
+   void paint(Canvas canvas, Size size) {
+     final f = WordmarkLayout.fit(size);
+@@ -128,10 +136,13 @@ class WordmarkPainter extends CustomPainter {
+           ..style = PaintingStyle.stroke
+           ..strokeWidth = strokeWidthPx / scale
+           ..strokeCap = StrokeCap.round;
+-        for (final metric in path.computeMetrics()) {
+-          final limit = metric.length * d;
+-          for (var s = 0.0; s < limit; s += _dash + _gap) {
+-            canvas.drawPath(metric.extractPath(s, math.min(s + _dash, limit)), paint);
++        // Dashes are cut once per letter (the glyph paths are constant);
++        // per frame only the one partial dash at the drawing tip is cut.
++        for (final c in _dashesOf(i)) {
++          final limit = c.metric.length * d;
++          for (final (start, seg) in c.dashes) {
++            if (start >= limit) break;
++            canvas.drawPath(start + _dash <= limit ? seg : c.metric.extractPath(start, limit), paint);
+           }
+         }
+       }
+diff --git a/frontend/lib/ui/dial.dart b/frontend/lib/ui/dial.dart
+index 5dfcc04..54f0e4d 100644
+--- a/frontend/lib/ui/dial.dart
++++ b/frontend/lib/ui/dial.dart
+@@ -78,10 +78,7 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
+   void initState() {
+     super.initState();
+     _lastStep = widget.minutes ~/ DurationDial.step;
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (!mounted) return;
+-      Motion.enter(context, _drawIn, () => mounted);
+-    });
++    Motion.enterOnMount(context, _drawIn, () => mounted);
+   }
+ 
+   @override
+diff --git a/frontend/lib/ui/iso/month_terrain.dart b/frontend/lib/ui/iso/month_terrain.dart
+index 778dbad..077b730 100644
+--- a/frontend/lib/ui/iso/month_terrain.dart
++++ b/frontend/lib/ui/iso/month_terrain.dart
+@@ -63,10 +63,7 @@ class _MonthTerrainState extends State<MonthTerrain> with TickerProviderStateMix
+   @override
+   void initState() {
+     super.initState();
+-    WidgetsBinding.instance.addPostFrameCallback((_) {
+-      if (!mounted) return;
+-      Motion.enter(context, _rise, () => mounted);
+-    });
++    Motion.enterOnMount(context, _rise, () => mounted);
+   }
+ 
+   @override
+diff --git a/frontend/lib/ui/loading_blocks.dart b/frontend/lib/ui/loading_blocks.dart
+index b4a217d..2d870cd 100644
+--- a/frontend/lib/ui/loading_blocks.dart
++++ b/frontend/lib/ui/loading_blocks.dart
+@@ -1,14 +1,23 @@
++import 'dart:async';
+ import 'dart:math' as math;
+ 
+ import 'package:flutter/material.dart';
+-import 'package:flutter/scheduler.dart';
+ 
+ import '../theme/motion.dart';
+ import '../theme/palette.dart';
+ 
+-/// Loading state (spec §13): faint blocks on a line that rise and fall very
+-/// gently, out of phase, like slow breathing. They first rise from the line
+-/// (SETTLE), then breathe. Reduced motion: still blocks.
++/// Loading state (spec §13): the o of the wordmark as a little jelly cup.
++///
++/// It shows nothing for the first [LoadingGrace.delay] — most loads finish
++/// sooner, and a loader that flashes for 80 ms reads as jitter — then fades in:
++///  - the cup is a dashed stone ring (the "not yet" line);
++///  - liquid pours in with an overshoot, sloshing (surface tilt + ripple scale
++///    with how fast the level moves, so it calms as it settles);
++///  - full, the whole cup jiggles like jelly (squash ↔ stretch, damped), its
++///    shadow squashing with it; then it glugs empty and goes again.
++/// One controller drives the painter directly (no widget rebuilds per frame),
++/// and the ring's dash path is built once per size.
++/// Reduced motion: a still, half-full cup. [count] is kept for API stability.
+ class LoadingBlocks extends StatefulWidget {
+   const LoadingBlocks({super.key, this.height = 120, this.count = 6, this.label = 'Loading'});
+   final double height;
+@@ -19,22 +28,29 @@ class LoadingBlocks extends StatefulWidget {
+   State<LoadingBlocks> createState() => _LoadingBlocksState();
+ }
+ 
++/// Shared "don't flash" rule for every loader.
++abstract final class LoadingGrace {
++  static const delay = Duration(milliseconds: 250);
++}
++
+ class _LoadingBlocksState extends State<LoadingBlocks> with SingleTickerProviderStateMixin {
+-  late final Ticker _ticker = createTicker((e) => setState(() => _t = e.inMicroseconds / 1e6));
+-  double _t = 0;
++  static const _loop = Duration(milliseconds: 1900);
++  late final _c = AnimationController(vsync: this, duration: _loop);
++  final _ring = _RingCache();
+ 
+   @override
+   void didChangeDependencies() {
+     super.didChangeDependencies();
+-    final reduced = Motion.reduced(context);
+-    if (reduced && _ticker.isActive) _ticker.stop();
+-    if (!reduced && !_ticker.isActive) _ticker.start();
+-    if (reduced) _t = 10;
++    if (Motion.reduced(context)) {
++      _c.stop();
++    } else if (!_c.isAnimating) {
++      _c.repeat();
++    }
+   }
+ 
+   @override
+   void dispose() {
+-    _ticker.dispose();
++    _c.dispose();
+     super.dispose();
+   }
+ 
+@@ -45,69 +61,183 @@ class _LoadingBlocksState extends State<LoadingBlocks> with SingleTickerProvider
+     child: SizedBox(
+       height: widget.height,
+       width: double.infinity,
+-      child: CustomPaint(painter: _LoadingPainter(FlowPalette.of(context), _t, widget.count, Motion.reduced(context))),
++      child: _Graced(
++        child: RepaintBoundary(
++          child: CustomPaint(
++            painter: _CupPainter(FlowPalette.of(context), _c, _ring, still: Motion.reduced(context)),
++          ),
++        ),
++      ),
+     ),
+   );
+ }
+ 
+-class _LoadingPainter extends CustomPainter {
+-  _LoadingPainter(this.p, this.t, this.count, this.still);
++/// Invisible for [LoadingGrace.delay], then a quick fade in.
++class _Graced extends StatefulWidget {
++  const _Graced({required this.child});
++  final Widget child;
++  @override
++  State<_Graced> createState() => _GracedState();
++}
++
++class _GracedState extends State<_Graced> {
++  bool _show = false;
++  Timer? _t;
++
++  @override
++  void initState() {
++    super.initState();
++    _t = Timer(LoadingGrace.delay, () {
++      if (mounted) setState(() => _show = true);
++    });
++  }
++
++  @override
++  void dispose() {
++    _t?.cancel();
++    super.dispose();
++  }
++
++  @override
++  Widget build(BuildContext context) => AnimatedOpacity(
++    opacity: _show ? 1 : 0,
++    duration: Motion.fade,
++    // don't tick an invisible painter
++    child: TickerMode(enabled: _show, child: widget.child),
++  );
++}
++
++class _RingCache {
++  double? _r;
++  Path? _path;
++  Path dashes(double r) {
++    if (_r == r && _path != null) return _path!;
++    final out = Path();
++    final m = (Path()..addOval(Rect.fromCircle(center: Offset.zero, radius: r))).computeMetrics().first;
++    final n = (m.length / 7).floor().clamp(12, 64);
++    final step = m.length / n;
++    for (var i = 0; i < n; i++) {
++      out.addPath(m.extractPath(i * step, i * step + step * 0.55), Offset.zero);
++    }
++    _r = r;
++    return _path = out;
++  }
++}
++
++class _CupPainter extends CustomPainter {
++  _CupPainter(this.p, this.anim, this.ring, {required this.still}) : super(repaint: anim);
+   final FlowPalette p;
+-  final double t;
+-  final int count;
++  final Animation<double> anim;
++  final _RingCache ring;
+   final bool still;
+ 
+-  static const _shape = [0.55, 0.9, 0.7, 1.0, 0.6, 0.8, 0.5, 0.75];
++  static const _loopSec = 1.9;
++  // phases of the loop (fractions)
++  static const _fillEnd = 0.5, _holdEnd = 0.8;
++
++  static double _backOut(double t) => Curves.easeOutBack.transform(t.clamp(0.0, 1.0));
++  static double _inCubic(double t) => Curves.easeInCubic.transform(t.clamp(0.0, 1.0));
++
++  /// Liquid level 0..1 at loop fraction [u].
++  static double level(double u) {
++    // fills to ~70% (overshooting to ~77%): air above the liquid keeps it a cup
++    if (u < _fillEnd) return 0.12 + 0.58 * _backOut(u / _fillEnd);
++    if (u < _holdEnd) return 0.7;
++    return 0.7 - 0.58 * _inCubic((u - _holdEnd) / (1 - _holdEnd));
++  }
+ 
+   @override
+   void paint(Canvas c, Size s) {
+-    final base = s.height - 6;
+-    final maxH = s.height * 0.7;
+-    final span = math.min(s.width, count * 64.0);
+-    final x0 = (s.width - span) / 2;
+-    final slot = span / count;
+-    final w = slot * 0.62;
+-    final depth = (w * 0.14).clamp(3.0, 8.0);
+-    c.drawLine(
+-      Offset(x0 - 12, base),
+-      Offset(x0 + span + 12, base),
+-      Paint()
+-        ..color = p.hairline
+-        ..strokeWidth = 1,
++    final u = still ? 0.6 : anim.value;
++    final r = math.min(s.shortestSide * 0.3, 30.0).clamp(10.0, 30.0);
++    final ctr = Offset(s.width / 2, s.height / 2 - r * 0.1);
++
++    // level and its speed (finite difference) drive the slosh
++    final lv = still ? 0.5 : level(u);
++    final speed = still ? 0.0 : (level((u + 0.01) % 1) - lv).abs() / (0.01 * _loopSec);
++
++    // jelly jiggle once full: damped squash ↔ stretch
++    var squash = 0.0;
++    if (!still && u >= _fillEnd && u < 1) {
++      final tau = (u - _fillEnd) * _loopSec;
++      squash = 0.11 * math.exp(-5.5 * tau) * math.sin(2 * math.pi * 3.2 * tau);
++    }
++    final sx = 1 + squash, sy = 1 - squash;
++
++    // shadow squashes with the cup
++    c.drawOval(
++      Rect.fromCenter(center: Offset(ctr.dx, ctr.dy + r * 1.28), width: r * 1.5 * sx, height: r * 0.22),
++      Paint()..color = p.hairline.withValues(alpha: 0.7),
++    );
++
++    c.save();
++    // jiggle about the cup's base, like jelly on a plate
++    c.translate(ctr.dx, ctr.dy + r);
++    c.scale(sx, sy);
++    c.translate(0, -r);
++
++    // liquid, clipped to the cup
++    final inner = r - 3.5;
++    c.save();
++    c.clipPath(Path()..addOval(Rect.fromCircle(center: Offset.zero, radius: inner)));
++    final surface = inner - 2 * inner * lv; // y of the surface
++    final amp = math.min(1.2 + speed * inner * 0.05, inner * 0.13);
++    final tilt = still ? 0.0 : math.sin(u * 2 * math.pi * 2) * math.min(speed, 2.0) * 0.12;
++    final ph = u * 2 * math.pi * 3;
++    final wave = Path()..moveTo(-inner, inner + 1);
++    const seg = 18;
++    for (var i = 0; i <= seg; i++) {
++      final x = -inner + 2 * inner * i / seg;
++      final y = surface + x * tilt + amp * math.sin(ph + i / seg * 2 * math.pi * 1.3);
++      wave.lineTo(x, y);
++    }
++    wave
++      ..lineTo(inner, inner + 1)
++      ..close();
++    c.drawPath(wave, Paint()..color = p.accent.withValues(alpha: 0.78));
++    // a highlight band just under the surface reads as "wet"
++    c.drawPath(
++      wave.shift(Offset(0, inner * 0.16)),
++      Paint()..color = p.accent.withValues(alpha: 0.28),
+     );
+-    for (var i = 0; i < count; i++) {
+-      final rise = still ? 1.0 : Motion.settleAt(t - i * 0.035 * 2);
+-      // very light: ±9% around the block's own height, 2.4 s period, out of phase
+-      final breathe = still ? 0.0 : 0.09 * math.sin(2 * math.pi * (t / 2.4) + i * 0.9);
+-      final h = maxH * _shape[i % _shape.length] * (1 + breathe) * rise;
+-      if (h < 0.5) continue;
+-      final x = x0 + i * slot + (slot - w) / 2;
+-      final top = base - h;
+-      final face = Color.lerp(p.recess, p.hairline, 0.35)!;
+-      c.drawPath(
+-        Path()
+-          ..moveTo(x, top)
+-          ..lineTo(x + depth, top - depth)
+-          ..lineTo(x + w + depth, top - depth)
+-          ..lineTo(x + w, top)
+-          ..close(),
+-        Paint()..color = Faces.top(face),
+-      );
+-      c.drawPath(
+-        Path()
+-          ..moveTo(x + w, top)
+-          ..lineTo(x + w + depth, top - depth)
+-          ..lineTo(x + w + depth, base - depth)
+-          ..lineTo(x + w, base)
+-          ..close(),
+-        Paint()..color = Faces.side(face),
+-      );
+-      c.drawRect(Rect.fromLTRB(x, top, x + w, base), Paint()..color = face);
++    // two bubbles rise while pouring
++    if (!still && u < _holdEnd) {
++      for (final (i, x) in const [(0, -0.35), (1, 0.28)].indexed) {
++        final bt = ((u * 1.6 + i * 0.37) % 1);
++        final by = inner - bt * (inner - surface + inner * 0.1);
++        if (by > surface + 3) {
++          c.drawCircle(Offset(x.$2 * inner, by), 1.6 + i * 0.6, Paint()..color = const Color(0xFFFFFFFF).withValues(alpha: 0.6));
++        }
++      }
+     }
++    c.restore();
++
++    // the dashed "not yet" ring on top
++    c.drawPath(
++      ring.dashes(r),
++      Paint()
++        ..style = PaintingStyle.stroke
++        ..strokeWidth = 2
++        ..strokeCap = StrokeCap.round
++        ..color = p.pastHeavy,
++    );
++    // cartoon gloss on the rim
++    c.drawArc(
++      Rect.fromCircle(center: Offset.zero, radius: r - 6),
++      -math.pi * 0.82,
++      math.pi * 0.28,
++      false,
++      Paint()
++        ..style = PaintingStyle.stroke
++        ..strokeWidth = 2.2
++        ..strokeCap = StrokeCap.round
++        ..color = const Color(0xFFFFFFFF).withValues(alpha: 0.55),
++    );
++    c.restore();
+   }
+ 
+   @override
+-  bool shouldRepaint(_LoadingPainter o) => o.t != t || o.p != p;
++  bool shouldRepaint(_CupPainter o) => o.p != p || o.still != still || o.anim != anim;
+ }
+ 
+ /// Loading state for lists of text rows (ported from the old frontend's
+@@ -149,7 +279,7 @@ class _SkeletonLinesState extends State<SkeletonLines> with SingleTickerProvider
+     return Semantics(
+       label: widget.label,
+       liveRegion: true,
+-      child: AnimatedBuilder(
++      child: _Graced(child: AnimatedBuilder(
+         animation: _c,
+         builder: (context, _) => Column(
+           crossAxisAlignment: CrossAxisAlignment.start,
+@@ -172,7 +302,7 @@ class _SkeletonLinesState extends State<SkeletonLines> with SingleTickerProvider
+             ],
+           ],
+         ),
+-      ),
++      )),
+     );
+   }
+ 
+diff --git a/frontend/test/desktop_views_test.dart b/frontend/test/desktop_views_test.dart
+index d23beab..9c6bc5f 100644
+--- a/frontend/test/desktop_views_test.dart
++++ b/frontend/test/desktop_views_test.dart
+@@ -30,7 +30,7 @@ void main() {
+     final b = MockBackend(config: const MockConfig(latency: Duration.zero, tick: Duration(hours: 1)));
+     final c = mockContainer(b);
+     await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
+-    await tester.pump(const Duration(seconds: 3));
++    await tester.pump(const Duration(seconds: 4));
+     await tester.runAsync(() => c.read(authProvider.notifier).login(email: 'solo@flow.dev', password: 'password'));
+     for (var i = 0; i < 10; i++) {
+       await tester.pump(const Duration(milliseconds: 200));
+diff --git a/frontend/test/page_switch_test.dart b/frontend/test/page_switch_test.dart
+new file mode 100644
+index 0000000..20607ad
+--- /dev/null
++++ b/frontend/test/page_switch_test.dart
+@@ -0,0 +1,106 @@
++import 'package:flow/api/mock/mock_backend.dart';
++import 'package:flow/api/models/session.dart';
++import 'package:flow/app.dart';
++import 'package:flow/router/app_router.dart';
++import 'package:flow/router/routes.dart';
++import 'package:flow/state/auth_controller.dart';
++import 'package:flow/state/session_controller.dart';
++import 'package:flow/ui/loading_blocks.dart';
++import 'package:flutter/material.dart';
++import 'package:flutter_riverpod/flutter_riverpod.dart';
++import 'package:flutter_test/flutter_test.dart';
++import 'package:shared_preferences/shared_preferences.dart';
++
++import 'helpers.dart';
++
++/// Page switches must feel instant: no loader on a revisit, no loader flash
++/// for fast loads, and live changes refresh in place.
++void main() {
++  setUp(() => SharedPreferences.setMockInitialValues({}));
++
++  Future<ProviderContainer> boot(WidgetTester tester, {Duration latency = Duration.zero}) async {
++    tester.view.physicalSize = const Size(1440, 900);
++    tester.view.devicePixelRatio = 1;
++    addTearDown(tester.view.reset);
++    final c = mockContainer(MockBackend(config: MockConfig(latency: latency, tick: const Duration(hours: 1))));
++    await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
++    await tester.pump(const Duration(seconds: 4));
++    await tester.runAsync(() => c.read(authProvider.notifier).login(email: 'solo@flow.dev', password: 'password'));
++    for (var i = 0; i < 10; i++) {
++      await tester.pump(const Duration(milliseconds: 200));
++    }
++    return c;
++  }
++
++  Future<void> go(WidgetTester tester, ProviderContainer c, String route) async {
++    c.read(appRouterProvider).go(route);
++    for (var i = 0; i < 12; i++) {
++      await tester.pump(const Duration(milliseconds: 100));
++    }
++  }
++
++  Future<void> done(WidgetTester tester, ProviderContainer c) async {
++    final err = tester.takeException();
++    await tester.pumpWidget(const SizedBox());
++    c.dispose();
++    await tester.pump(const Duration(seconds: 1));
++    expect(err, isNull);
++  }
++
++  /// Is any loader actually visible (past its grace period)?
++  bool loaderVisible(WidgetTester tester) => tester
++      .widgetList<AnimatedOpacity>(find.descendant(of: find.byType(LoadingBlocks), matching: find.byType(AnimatedOpacity)))
++      .any((o) => o.opacity > 0);
++
++  testWidgets('going back to a page shows it at once (data kept, no loader)', (tester) async {
++    final c = await boot(tester);
++    await go(tester, c, Routes.patterns);
++    await go(tester, c, Routes.home);
++    c.read(appRouterProvider).go(Routes.patterns);
++    // the very first frames of the revisit
++    for (var i = 0; i < 4; i++) {
++      await tester.pump(const Duration(milliseconds: 16));
++      expect(find.byType(LoadingBlocks), findsNothing, reason: 'cached data, no loader on a revisit');
++    }
++    await done(tester, c);
++  });
++
++  testWidgets('a load faster than the grace period never shows the loader', (tester) async {
++    final c = await boot(tester, latency: const Duration(milliseconds: 120));
++    c.read(appRouterProvider).go(Routes.patterns);
++    for (var i = 0; i < 12; i++) {
++      await tester.pump(const Duration(milliseconds: 20));
++      expect(loaderVisible(tester), isFalse);
++    }
++    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 200)));
++    await tester.pump(const Duration(milliseconds: 100));
++    await done(tester, c);
++  });
++
++  testWidgets('a slow load does show the loader, after the grace period', (tester) async {
++    final c = await boot(tester);
++    // the loader itself, as a slow page would show it
++    await tester.pumpWidget(const MaterialApp(home: Scaffold(body: LoadingBlocks(height: 120))));
++    await tester.pump(const Duration(milliseconds: 100));
++    expect(loaderVisible(tester), isFalse);
++    await tester.pump(LoadingGrace.delay);
++    expect(loaderVisible(tester), isTrue);
++    await done(tester, c);
++  });
++
++  testWidgets('starting a session refreshes Home in place (no loader)', (tester) async {
++    final c = await boot(tester);
++    await go(tester, c, Routes.home);
++    expect(find.byType(LoadingBlocks), findsNothing);
++    await tester.runAsync(
++      () => c.read(liveSessionProvider.notifier).start(const StartSessionRequest(taskText: 'x', demand: Demand.moderate, plannedMinutes: 50)),
++    );
++    c.read(appRouterProvider).go(Routes.home); // stay on Home (start navigates to the focus page)
++    for (var i = 0; i < 10; i++) {
++      await tester.pump(const Duration(milliseconds: 16));
++      // not even mounted: a hidden loader still blanks the content it replaced
++      expect(find.byType(LoadingBlocks), findsNothing);
++    }
++    await done(tester, c);
++  });
++}
+diff --git a/frontend/test/screens_layout_test.dart b/frontend/test/screens_layout_test.dart
+index 8e4c8be..866393e 100644
+--- a/frontend/test/screens_layout_test.dart
++++ b/frontend/test/screens_layout_test.dart
+@@ -41,7 +41,7 @@ void main() {
+           );
+           final c = mockContainer(b);
+           await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
+-          await tester.pump(const Duration(seconds: 3)); // launch overlay
++          await tester.pump(const Duration(seconds: 4)); // launch overlay
+ 
+           await tester.runAsync(() => c.read(authProvider.notifier).login(email: entry.key, password: 'password'));
+           for (var i = 0; i < 10; i++) {
+@@ -70,7 +70,7 @@ void main() {
+     );
+     final c = mockContainer(b);
+     await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
+-    await tester.pump(const Duration(seconds: 3));
++    await tester.pump(const Duration(seconds: 4));
+     await tester.runAsync(() async {
+       await c.read(authProvider.notifier).login(email: 'admin@flow.dev', password: 'password');
+       await c.read(authProvider.notifier).verifyMfa(MockBackend.mfaCode);
+diff --git a/frontend/test/widget_smoke_test.dart b/frontend/test/widget_smoke_test.dart
+index 5bfa86a..eb3ee9c 100644
+--- a/frontend/test/widget_smoke_test.dart
++++ b/frontend/test/widget_smoke_test.dart
+@@ -47,7 +47,7 @@ void main() {
+     await tester.pumpWidget(ProviderScope(overrides: mockOverrides(backend), retry: (_, _) => null, child: const FlowApp()));
+     await tester.pump(const Duration(milliseconds: 100));
+     await tester.tapAt(const Offset(10, 10));
+-    // Skipped to the reveal: done well before the full ~2.4 s timeline.
++    // Skipped to the snappy reveal: done well before the full ~3.4 s timeline.
+     await tester.pump(const Duration(milliseconds: 50));
+     await tester.pump(const Duration(milliseconds: 900));
+     expect(find.bySemanticsLabel('Flow is starting'), findsNothing);
