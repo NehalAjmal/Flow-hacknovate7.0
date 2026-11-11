@@ -63,9 +63,7 @@ class _LoadingBlocksState extends State<LoadingBlocks> with SingleTickerProvider
       width: double.infinity,
       child: _Graced(
         child: RepaintBoundary(
-          child: CustomPaint(
-            painter: _CupPainter(FlowPalette.of(context), _c, _ring, still: Motion.reduced(context)),
-          ),
+          child: CustomPaint(painter: _CupPainter(FlowPalette.of(context), _c, _ring, still: Motion.reduced(context))),
         ),
       ),
     ),
@@ -196,10 +194,7 @@ class _CupPainter extends CustomPainter {
       ..close();
     c.drawPath(wave, Paint()..color = p.accent.withValues(alpha: 0.78));
     // a highlight band just under the surface reads as "wet"
-    c.drawPath(
-      wave.shift(Offset(0, inner * 0.16)),
-      Paint()..color = p.accent.withValues(alpha: 0.28),
-    );
+    c.drawPath(wave.shift(Offset(0, inner * 0.16)), Paint()..color = p.accent.withValues(alpha: 0.28));
     // two bubbles rise while pouring
     if (!still && u < _holdEnd) {
       for (final (i, x) in const [(0, -0.35), (1, 0.28)].indexed) {
@@ -279,30 +274,32 @@ class _SkeletonLinesState extends State<SkeletonLines> with SingleTickerProvider
     return Semantics(
       label: widget.label,
       liveRegion: true,
-      child: _Graced(child: AnimatedBuilder(
-        animation: _c,
-        builder: (context, _) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (var i = 0; i < widget.rows; i++) ...[
-              if (i > 0) const SizedBox(height: 12),
-              Row(
-                children: [
-                  _bar(p, 64, _alpha(i)),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: widths[i % widths.length],
-                      child: _bar(p, null, _alpha(i)),
+      child: _Graced(
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < widget.rows; i++) ...[
+                if (i > 0) const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _bar(p, 64, _alpha(i)),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: FractionallySizedBox(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: widths[i % widths.length],
+                        child: _bar(p, null, _alpha(i)),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
-          ],
+          ),
         ),
-      )),
+      ),
     );
   }
 

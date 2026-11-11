@@ -94,19 +94,29 @@ class InviteLandingScreen extends StatelessWidget {
     final ok = token.isNotEmpty;
     return AuthLayout(
       title: ok ? "You're invited" : 'This link is incomplete',
-      subtitle: ok ? 'Your team uses Flow. Join with your own account; your data stays yours.' : 'Ask your admin for a new invite link.',
+      subtitle: ok ? 'Your team uses Flow. Before you join, here is exactly what your admin will see.' : 'Ask your admin for a new invite link.',
       stage: ok ? StageState.rest : StageState.error,
       form: [
         if (ok) ...[
-          const FeatureNote(number: 1, title: 'Only averages', body: 'Your team sees averages of 5 or more people, never you on your own.'),
+          const FeatureNote(
+            number: 1,
+            title: 'Your admin sees your time',
+            body: 'Focus time, sessions, breaks and how you answer break suggestions. Teammates only ever see team averages.',
+          ),
           const SizedBox(height: 4),
           const FeatureNote(
             number: 2,
+            title: 'Never what you work on',
+            body: 'No task text, window titles, apps, typing or camera data. Flow does not send them to anyone.',
+          ),
+          const SizedBox(height: 4),
+          const FeatureNote(
+            number: 3,
             title: 'Nothing until you agree',
             body: 'You choose what Flow may sense, and can change it any time.',
           ),
           const SizedBox(height: 4),
-          const FeatureNote(number: 3, title: 'You can leave', body: 'Turn off team averages in Privacy, or delete your account.'),
+          const FeatureNote(number: 4, title: 'You can leave', body: 'Turn off "Share with my team" in Privacy, or delete your account.'),
           const SizedBox(height: 10),
           AuthPrimary(
             label: 'Create my account',
@@ -322,7 +332,27 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           autofillHints: const [AutofillHints.newPassword],
           onSubmitted: _type == AccountType.solo ? (_) => _submit() : null,
         ),
-        if (_type == AccountType.employee) FlowTextField(controller: _invite, hint: 'Invite code or link', onSubmitted: (_) => _submit()),
+        if (_type == AccountType.employee) ...[
+          FlowTextField(controller: _invite, hint: 'Invite code or link', onSubmitted: (_) => _submit()),
+          // the consent warning, at the moment of joining
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Icon(Icons.shield_outlined, size: 14, color: FlowPalette.of(context).amber),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'By joining, your admin sees your focus time, sessions, breaks and how you answer break suggestions. '
+                  'Never what you work on. You can stop sharing in Privacy.',
+                  style: FlowType.note(FlowPalette.of(context), size: 13, color: FlowPalette.of(context).text1),
+                ),
+              ),
+            ],
+          ),
+        ],
         if (_error != null) AuthError(_error!),
         const SizedBox(height: 4),
         AuthPrimary(label: busy ? 'Creating…' : 'Create account', onPressed: busy ? null : _submit),
@@ -709,7 +739,7 @@ String consentTitle(ConsentScope s) => switch (s) {
   ConsentScope.camera => 'Camera (eye signal)',
   ConsentScope.calendar => 'Google Calendar',
   ConsentScope.llm => 'AI assistant',
-  ConsentScope.teamAggregate => 'Team averages',
+  ConsentScope.teamAggregate => 'Share with my team',
 };
 
 String consentDescription(ConsentScope s) => switch (s) {
@@ -718,5 +748,7 @@ String consentDescription(ConsentScope s) => switch (s) {
   ConsentScope.camera => 'Estimates eye openness on this computer. Frames never leave your device; only a single score is sent if enabled.',
   ConsentScope.calendar => 'Reads your next 3 hours of events (read-only) to avoid nudging right before meetings.',
   ConsentScope.llm => 'When you ask for help while stuck, your task text is sent to an AI model. Nothing else.',
-  ConsentScope.teamAggregate => 'Include your data in team averages. Only shown when at least 5 people share; never per person.',
+  ConsentScope.teamAggregate =>
+    'Your admin sees your focus time, sessions, breaks and how you answer break suggestions; teammates see only team averages. '
+        'Never what you work on.',
 };

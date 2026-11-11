@@ -6,6 +6,7 @@ import '../contracts/meta_api.dart';
 import '../contracts/team_api.dart';
 import '../models/day.dart';
 import '../models/insights.dart';
+import '../models/member.dart';
 import '../models/meta.dart';
 import '../models/team.dart';
 import 'http_transport.dart';
@@ -69,6 +70,13 @@ class RealTeamApi implements TeamApi {
 class RealAdminApi implements AdminApi {
   RealAdminApi(this._t);
   final HttpTransport _t;
+
+  @override
+  Future<List<MemberSummary>> members() async =>
+      asJsonList((await _t.getJson('/admin/members'))['items']).map(MemberSummary.fromJson).toList();
+
+  @override
+  Future<MemberDetail> member(String id) async => MemberDetail.fromJson(await _t.getJson('/admin/members/${Uri.encodeComponent(id)}'));
 
   Future<Suppressible<T>> _get<T>(String path, T Function(Json) read) async => Suppressible.fromJson(await _t.getJson(path), read);
 

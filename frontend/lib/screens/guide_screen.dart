@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../api/models/agent.dart';
 import '../api/models/consent.dart';
 import '../api/models/session.dart';
-import '../api/models/settings.dart';
 import '../router/routes.dart';
 import '../state/account_controllers.dart';
 import '../state/auth_controller.dart';
@@ -17,7 +16,9 @@ import '../ui/brand/wordmark.dart';
 import '../ui/dial.dart';
 import '../ui/feature_note.dart';
 import '../ui/kit.dart';
+import '../desktop/window_controller.dart';
 import '../ui/nudge_card.dart';
+import '../ui/nudge_style.dart';
 import '../widgets/common.dart';
 import 'auth_layout.dart';
 import 'auth_screens.dart';
@@ -429,103 +430,29 @@ class _LinkPainter extends CustomPainter {
 class _NudgeStyle extends ConsumerWidget {
   const _NudgeStyle();
 
-  static String _title(DeliveryMode m) => switch (m) {
-    DeliveryMode.advisory => 'Quiet',
-    DeliveryMode.explained => 'Explained',
-    DeliveryMode.lock => 'Firm',
-  };
-
-  static String _desc(DeliveryMode m) => switch (m) {
-    DeliveryMode.advisory => 'A small card. The reason is one tap away.',
-    DeliveryMode.explained => 'The card shows the reason up front.',
-    DeliveryMode.lock => 'A full-screen break with a slide-to-override. Opt-in.',
-  };
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final p = FlowPalette.of(context);
-    final mode = ref.watch(settingsProvider).value?.deliveryMode ?? DeliveryMode.advisory;
+    final style = ref.watch(desktopPrefsProvider).nudgeStyle;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _StepHead(4, 'How should nudges arrive?', 'Pick one. The preview below changes with it.'),
-        Row(
-          children: [
-            for (final (i, m) in DeliveryMode.values.indexed) ...[
-              if (i > 0) const SizedBox(width: 10),
-              Expanded(
-                child: Pressable(
-                  selected: m == mode,
-                  onPressed: () => runGuarded(context, () => ref.read(settingsProvider.notifier).patch(SettingsPatch(deliveryMode: m))),
-                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_title(m), style: const TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 3),
-                        Text(
-                          _desc(m),
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w400, color: m == mode ? p.onSelected : p.text2),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ],
+        const _StepHead(
+          4,
+          'How should nudges arrive?',
+          'Pick one. The little screen shows where it will appear. You can change it in Settings.',
         ),
+        const NudgeStyleOptions(axis: Axis.horizontal),
         const SizedBox(height: 20),
         ColorField(
           tone: FieldTone.rest,
-          child: AnimatedSwitcher(
-            duration: Motion.fade,
-            child: mode == DeliveryMode.lock
-                ? _LockPreview(key: const ValueKey('lock'))
-                : NudgeCardView(
-                    key: ValueKey(mode),
-                    message: 'You have been at this for 52 minutes and switching has picked up.',
-                    reason: mode == DeliveryMode.explained ? 'Window switching is 40% above your usual for this hour.' : null,
-                    onBreak: () {},
-                    onSnooze: (_) {},
-                    onDismiss: () {},
-                    onWhy: mode == DeliveryMode.advisory ? () {} : null,
-                  ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 420),
+              child: NudgeStylePreview(style: style),
+            ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _LockPreview extends StatelessWidget {
-  const _LockPreview({super.key});
-  @override
-  Widget build(BuildContext context) {
-    final p = FlowPalette.of(context);
-    return Container(
-      height: 170,
-      decoration: BoxDecoration(color: p.selected, borderRadius: BorderRadius.circular(12)),
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('Break · 5:00', style: FlowType.numeral(p, 30, color: p.onSelected)),
-          const SizedBox(height: 18),
-          Container(
-            height: 34,
-            width: 260,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(17),
-              border: Border.all(color: p.onSelected.withValues(alpha: 0.4)),
-            ),
-            alignment: Alignment.center,
-            child: Text('slide to override  ›', style: TextStyle(color: p.onSelected.withValues(alpha: 0.75), fontSize: 12)),
-          ),
-        ],
-      ),
     );
   }
 }

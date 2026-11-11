@@ -31,6 +31,8 @@ abstract final class Routes {
   static const privacy = '/privacy';
   static const team = '/team';
   static const admin = '/admin';
+  static const adminPeople = '/admin/people';
+  static String adminPerson(String id) => '/admin/people/${Uri.encodeComponent(id)}';
   static const export = '/export';
   static const feedback = '/feedback';
 

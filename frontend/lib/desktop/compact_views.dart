@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/models/session.dart';
@@ -16,6 +18,7 @@ import '../theme/tokens.dart';
 import '../ui/brand/wordmark.dart';
 import '../widgets/common.dart';
 import 'desktop_host.dart';
+import 'nudge_takeover.dart';
 import 'window_controller.dart';
 
 /// Wraps the whole app: in mini/card mode the router stays mounted but
@@ -40,7 +43,24 @@ class _WindowFrameState extends ConsumerState<WindowFrame> {
   Size _full = const Size(1280, 800); // until the first full layout
 
   @override
+  void initState() {
+    super.initState();
+    HardwareKeyboard.instance.addHandler(_onKey);
+  }
+
+  /// Esc in the widget or card: back to the full app. A way out that needs
+  /// no pointer target.
+  bool _onKey(KeyEvent e) {
+    if (e is! KeyDownEvent || e.logicalKey != LogicalKeyboardKey.escape) return false;
+    final mode = ref.read(windowModeProvider);
+    if (!mode.isCompact) return false; // a takeover handles its own keys
+    ref.read(windowModeProvider.notifier).expand();
+    return true;
+  }
+
+  @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
     _entry.remove();
     _entry.dispose();
     super.dispose();
@@ -49,7 +69,11 @@ class _WindowFrameState extends ConsumerState<WindowFrame> {
   @override
   Widget build(BuildContext context) {
     final mode = ref.watch(windowModeProvider);
-    final compact = mode == WindowMode.mini || mode == WindowMode.card;
+    // The app steps offstage under anything that covers the window. In a
+    // browser (no native window to reshape) a windowed takeover is a panel
+    // over the dimmed app instead.
+    final desktop = ref.watch(desktopHostProvider).isDesktop;
+    final compact = mode.isCompact || mode == WindowMode.nudgeFull || (mode == WindowMode.nudge && desktop);
     // expand: the parent's constraints are loose, and while compact the
     // offstage app sizes to nothing, so a plain Stack collapsed to 0×0 and
     // the widget painted into an empty (black) window.
@@ -70,7 +94,12 @@ class _WindowFrameState extends ConsumerState<WindowFrame> {
                 maxWidth: keep?.width,
                 minHeight: keep?.height,
                 maxHeight: keep?.height,
-                child: TickerMode(enabled: !compact, child: widget.child),
+                // hidden also means out of the focus order: a key pressed over
+                // the widget or a takeover must never reach a control in the app
+                child: ExcludeFocus(
+                  excluding: compact,
+                  child: TickerMode(enabled: !compact, child: widget.child),
+                ),
               ),
             );
           },
@@ -87,15 +116,92 @@ class _CompactSwitcher extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return AnimatedSwitcher(
-      duration: Motion.fade,
-      child: switch (ref.watch(windowModeProvider)) {
-        WindowMode.mini => const MiniWidget(key: ValueKey('mini')),
-        WindowMode.card => const CardView(key: ValueKey('card')),
-        _ => const SizedBox.shrink(key: ValueKey('none')),
-      },
+    return _Pop(
+      trigger: ref.read(windowModeProvider.notifier).popped,
+      child: AnimatedSwitcher(
+        duration: Motion.fade,
+        child: switch (ref.watch(windowModeProvider)) {
+          WindowMode.mini => const MiniWidget(key: ValueKey('mini')),
+          WindowMode.card => const CardView(key: ValueKey('card')),
+          WindowMode.nudge || WindowMode.nudgeFull => _takeover(context, ref),
+          _ => const SizedBox.shrink(key: ValueKey('none')),
+        },
+      ),
     );
   }
+}
+
+Widget _takeover(BuildContext context, WidgetRef ref) {
+  final id = ref.watch(liveSessionProvider).value?.pendingInterventionId;
+  if (id == null) return const SizedBox.shrink(key: ValueKey('none'));
+  final view = NudgeTakeover(key: ValueKey('nudge-$id'), interventionId: id);
+  final floating = ref.watch(windowModeProvider) == WindowMode.nudge && !ref.watch(desktopHostProvider).isDesktop;
+  if (!floating) return view;
+  // browser preview of the floating window: a panel over the dimmed app
+  final p = FlowPalette.of(context);
+  return ColoredBox(
+    key: ValueKey('nudge-panel-$id'),
+    color: const Color(0x99000000),
+    child: Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 760, maxHeight: 480),
+        margin: const EdgeInsets.all(16),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: p.amber.withValues(alpha: 0.4)),
+          boxShadow: const [BoxShadow(color: Color(0x55000000), blurRadius: 40, offset: Offset(0, 16))],
+        ),
+        child: view,
+      ),
+    ),
+  );
+}
+
+/// The pop-in: when the native window has just appeared in its compact shape
+/// ([trigger] bumps), the content springs up from 88% with a small overshoot.
+/// It rests at full size, so a missed trigger can never leave it hidden.
+class _Pop extends StatefulWidget {
+  const _Pop({required this.trigger, required this.child});
+  final ValueListenable<int> trigger;
+  final Widget child;
+  @override
+  State<_Pop> createState() => _PopState();
+}
+
+class _PopState extends State<_Pop> with SingleTickerProviderStateMixin {
+  late final _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 460), value: 1);
+
+  @override
+  void initState() {
+    super.initState();
+    widget.trigger.addListener(_go);
+  }
+
+  void _go() {
+    if (!mounted || Motion.reduced(context)) return;
+    _c.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    widget.trigger.removeListener(_go);
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _c,
+    child: widget.child,
+    builder: (context, child) {
+      final t = Curves.easeOutBack.transform(_c.value);
+      return Opacity(
+        opacity: Curves.easeOut.transform((_c.value * 2.5).clamp(0.0, 1.0)),
+        child: Transform.scale(scale: 0.88 + 0.12 * t, child: child),
+      );
+    },
+  );
 }
 
 /// The 320×88 session widget: [dashed ring] 32:10 · Steady [⏸] [⤢].

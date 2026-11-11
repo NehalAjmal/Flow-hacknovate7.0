@@ -151,5 +151,8 @@ class WordmarkPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(WordmarkPainter o) => true;
+  // the still mark (sidebar, auth) never needs repainting; the launch hands
+  // in a new frame object each tick
+  bool shouldRepaint(WordmarkPainter o) =>
+      !identical(o.frame, frame) || o.ink != ink || o.accent != accent || o.stroke != stroke || o.strokeWidthPx != strokeWidthPx;
 }

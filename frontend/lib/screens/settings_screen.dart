@@ -28,7 +28,7 @@ import '../ui/drum_wheel.dart';
 import '../ui/feature_note.dart';
 import '../ui/kit.dart';
 import '../ui/loading_blocks.dart';
-import '../ui/nudge_card.dart';
+import '../ui/nudge_style.dart';
 import '../ui/range_slider.dart';
 import '../widgets/common.dart';
 import 'auth_layout.dart' show AuthError, StageState;
@@ -171,14 +171,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
 // ── index ───────────────────────────────────────────────────────────────────
 
-class _Index extends StatelessWidget {
+class _Index extends ConsumerWidget {
   const _Index({required this.active, required this.settings, required this.onTap});
   final _Sec active;
   final UserSettings settings;
   final ValueChanged<_Sec> onTap;
 
-  String _value(_Sec s) => switch (s) {
-    _Sec.nudges => _modeTitle(settings.deliveryMode),
+  String _value(_Sec s, NudgeStyle style) => switch (s) {
+    _Sec.nudges => nudgeStyleTitle(style),
     _Sec.breaks => '${settings.breakLengthSec ~/ 60} min',
     _Sec.quiet => settings.quietHours == null ? 'Off' : '${settings.quietHours!.start}–${settings.quietHours!.end}',
     _Sec.window => '',
@@ -194,11 +194,12 @@ class _Index extends StatelessWidget {
   };
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final style = ref.watch(desktopPrefsProvider).nudgeStyle;
     final p = FlowPalette.of(context);
     final q = settings.quietHours;
     final summary =
-        '${_modeTitle(settings.deliveryMode)} nudges, ${settings.breakLengthSec ~/ 60}-minute breaks, '
+        '${nudgeStyleTitle(style)} nudges, ${settings.breakLengthSec ~/ 60}-minute breaks, '
         '${q == null ? 'no quiet hours' : 'quiet from ${q.start} to ${q.end}'}, '
         'snooze ${settings.snoozeOptions.join('/')} min.';
     return ColorField(
@@ -225,7 +226,7 @@ class _Index extends StatelessWidget {
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       width: 3,
-                      height: _value(s).isEmpty ? 14 : 28,
+                      height: _value(s, style).isEmpty ? 14 : 28,
                       margin: const EdgeInsets.only(right: 10),
                       decoration: BoxDecoration(
                         color: s == active ? p.selected : Colors.transparent,
@@ -244,9 +245,9 @@ class _Index extends StatelessWidget {
                               fontWeight: s == active ? FontWeight.w600 : FontWeight.w400,
                             ),
                           ),
-                          if (_value(s).isNotEmpty)
+                          if (_value(s, style).isNotEmpty)
                             Text(
-                              _value(s),
+                              _value(s, style),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: FlowType.chart(p, size: 10.5, color: p.text3),
@@ -279,12 +280,6 @@ class _Index extends StatelessWidget {
 extension on String {
   String ifEmpty(String other) => isEmpty ? other : this;
 }
-
-String _modeTitle(DeliveryMode m) => switch (m) {
-  DeliveryMode.advisory => 'Quiet',
-  DeliveryMode.explained => 'Explained',
-  DeliveryMode.lock => 'Firm',
-};
 
 // ── shared section frame ────────────────────────────────────────────────────
 
@@ -363,43 +358,49 @@ class _NudgesSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final p = FlowPalette.of(context);
-    final mode = settings.deliveryMode;
     final flags = ref.watch(flagsProvider).value;
-    final modes = [
-      for (final m in DeliveryMode.values)
-        if (m != DeliveryMode.lock || flags == null || flags.values.isEmpty || flags.isOn('lock_mode')) m,
-    ];
+    final style = ref.watch(desktopPrefsProvider).nudgeStyle;
+    final canLock = flags == null || flags.values.isEmpty || flags.isOn('lock_mode');
+    final lock = settings.deliveryMode == DeliveryMode.lock;
     return _Frame(
       tone: FieldTone.rest,
       title: 'Nudges',
-      note: 'How a break suggestion reaches you. The preview shows exactly what you will see.',
+      note: 'How a break suggestion reaches you on this computer. The little screen shows where it will appear.',
       controls: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final m in modes)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Pressable(
-                selected: m == mode,
-                onPressed: () => _save(context, ref, SettingsPatch(deliveryMode: m)),
-                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
-                child: SizedBox(
-                  width: double.infinity,
+          const NudgeStyleOptions(),
+          if (canLock) ...[
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_modeTitle(m), style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text(
+                        'Lock the screen during breaks',
+                        style: TextStyle(color: p.text1, fontSize: 13.5, fontWeight: FontWeight.w500),
+                      ),
                       const SizedBox(height: 2),
-                      Text(switch (m) {
-                        DeliveryMode.advisory => 'A small card you can ignore. The reason is one tap away.',
-                        DeliveryMode.explained => 'The card says why, up front.',
-                        DeliveryMode.lock => 'A full-screen break with a slide-to-override. Opt-in.',
-                      }, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: m == mode ? p.onSelected : p.text2)),
+                      Text(
+                        'A break you take fills the screen until it ends, with a slide-to-override. Off by default.',
+                        style: TextStyle(color: p.text2, fontSize: 12, height: 1.4),
+                      ),
                     ],
                   ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                PillToggle(
+                  value: lock,
+                  semanticLabel: 'Lock the screen during breaks',
+                  // the reason is always shown now, so the other value is "explained"
+                  onChanged: (v) => _save(context, ref, SettingsPatch(deliveryMode: v ? DeliveryMode.lock : DeliveryMode.explained)),
+                ),
+              ],
             ),
+          ],
           const SizedBox(height: 14),
           const SectionLabel('Snooze options'),
           const SizedBox(height: 8),
@@ -425,36 +426,18 @@ class _NudgesSection extends ConsumerWidget {
           Text('Pick up to three.', style: FlowType.chart(p, size: 10.5)),
         ],
       ),
-      preview: AnimatedSwitcher(
-        duration: Motion.fade,
-        child: mode == DeliveryMode.lock
-            ? Container(
-                key: const ValueKey('lock'),
-                height: 200,
-                decoration: BoxDecoration(color: p.selected, borderRadius: BorderRadius.circular(12)),
-                alignment: Alignment.center,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Break · 5:00', style: FlowType.numeral(p, 32, color: p.onSelected)),
-                    const SizedBox(height: 16),
-                    Text('slide to override  ›', style: TextStyle(color: p.onSelected.withValues(alpha: 0.75), fontSize: 12)),
-                  ],
-                ),
-              )
-            : IgnorePointer(
-                key: ValueKey(mode),
-                child: NudgeCardView(
-                  message: "You're 48 minutes in and your typing rhythm has broken up. A short break now usually buys you the next hour.",
-                  reason: mode == DeliveryMode.explained ? 'Window switching is 40% above your usual for this hour.' : null,
-                  breakMinutes: settings.breakLengthSec ~/ 60,
-                  snoozeOptions: settings.snoozeOptions,
-                  onBreak: () {},
-                  onSnooze: (_) {},
-                  onDismiss: () {},
-                  onWhy: mode == DeliveryMode.advisory ? () {} : null,
-                ),
-              ),
+      preview: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          NudgeStylePreview(style: style, minutes: settings.breakLengthSec ~/ 60),
+          const SizedBox(height: 10),
+          Text(
+            style == NudgeStyle.notification
+                ? 'Quietest. Easy to miss when you are deep in something.'
+                : 'For the first second and a half only the mouse answers it, so nothing you are typing can take or dismiss a break.',
+            style: FlowType.note(p, size: 13.5),
+          ),
+        ],
       ),
     );
   }
@@ -1138,7 +1121,9 @@ class _HelpSection extends StatelessWidget {
             child: Text(k, style: FlowType.chart(p, size: 11, color: p.text1)),
           ),
           const SizedBox(width: 12),
-          Flexible(child: Text(what, style: TextStyle(color: p.text2, fontSize: 12.5))),
+          Flexible(
+            child: Text(what, style: TextStyle(color: p.text2, fontSize: 12.5)),
+          ),
         ],
       ),
     );
@@ -1210,14 +1195,14 @@ class _WindowSection extends ConsumerWidget {
       tone: FieldTone.planned,
       title: 'Window',
       note: desktop
-          ? 'During a session Flow can step aside into a small widget that stays on top.'
+          ? 'During a session Flow can pop out into a small widget that stays on top.'
           : 'These apply to the desktop app (Windows and macOS).',
       controls: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           row(
-            'Shrink to the widget when a session starts',
-            'You can always shrink or open it again yourself.',
+            'Pop out into the widget when a session starts',
+            'You can always pop it out or open Flow again yourself (Esc in the widget opens Flow).',
             prefs.autoMini,
             (v) => set(prefs.copyWith(autoMini: v)),
           ),
@@ -1254,12 +1239,17 @@ class _WindowSection extends ConsumerWidget {
                         WidgetCorner.bottomLeft => Alignment.bottomLeft,
                         WidgetCorner.bottomRight => Alignment.bottomRight,
                       },
-                      child: Pressable(
-                        selected: prefs.corner == c,
-                        semanticLabel: 'Widget corner ${c.name}',
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        onPressed: desktop ? () => set(prefs.copyWith(corner: c)) : null,
-                        child: const SizedBox(width: 44, height: 10),
+                      // a pill the widget's own shape (320×88), not a stretched bar
+                      child: SizedBox(
+                        width: 72,
+                        height: 22,
+                        child: Pressable(
+                          selected: prefs.corner == c,
+                          semanticLabel: 'Widget corner ${c.name}',
+                          padding: EdgeInsets.zero,
+                          onPressed: desktop ? () => set(prefs.copyWith(corner: c)) : null,
+                          child: const SizedBox.expand(),
+                        ),
                       ),
                     ),
                 ],

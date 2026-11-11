@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../desktop/window_controller.dart';
 import '../router/routes.dart';
 import '../state/account_controllers.dart';
 import '../state/auth_controller.dart';
@@ -82,14 +83,49 @@ class AppShell extends ConsumerWidget {
                 child: Column(
                   children: [
                     const _PauseBanner(),
-                    Expanded(child: AppearScope(route: location, child: child)),
+                    Expanded(
+                      child: AppearScope(route: location, child: child),
+                    ),
                   ],
                 ),
               ),
             ],
           ),
-          if (live?.pendingInterventionId case final id?)
-            Positioned(right: 20, bottom: 20, width: 400, child: InterventionCard(interventionId: id)),
+          // The nudge arrives and leaves; it never just appears. In: rises 28 px
+          // from the corner with a small overshoot while fading in. Out (taken,
+          // snoozed, dismissed): sinks back and fades, faster.
+          Positioned(
+            right: 20,
+            bottom: 20,
+            width: 400,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 460),
+              reverseDuration: const Duration(milliseconds: 200),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeIn,
+              layoutBuilder: (current, previous) => Stack(alignment: Alignment.bottomRight, children: [...previous, ?current]),
+              transitionBuilder: (child, a) {
+                if (Motion.reduced(context)) return FadeTransition(opacity: a, child: child);
+                // `a` overshoots 1 (easeOutBack): clamp it for the opacity
+                return AnimatedBuilder(
+                  animation: a,
+                  child: child,
+                  builder: (context, child) => Opacity(
+                    opacity: (a.value / 0.6).clamp(0.0, 1.0),
+                    child: Transform.translate(
+                      offset: Offset(0, 28 * (1 - a.value)),
+                      child: Transform.scale(scale: 0.94 + 0.06 * a.value, alignment: Alignment.bottomRight, child: child),
+                    ),
+                  ),
+                );
+              },
+              // one nudge on screen: not the corner card under a takeover
+              child: switch (ref.watch(windowModeProvider).isTakeover ? null : live?.pendingInterventionId) {
+                final id? => InterventionCard(key: ValueKey(id), interventionId: id),
+                null => const SizedBox.shrink(key: ValueKey('no-nudge')),
+              },
+            ),
+          ),
           // a routine about to start: "Weekly review starts in 9 s · Start now · Skip"
           if (ref.watch(scheduleRunnerProvider) case final pending?)
             Positioned(

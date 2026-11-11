@@ -489,85 +489,99 @@ class _StartGroup extends ConsumerWidget {
         const SectionLabel('Start'),
         const SizedBox(height: 10),
         LayoutBuilder(
-          builder: (context, box) => Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // controls keep a slim width so the dial sits near the middle of
-              // the deck instead of being pushed to the far edge; they give way
-              // first when the window narrows
-              SizedBox(
-                width: (box.maxWidth - 204 - 32 - 28 - 240).clamp(160.0, 320.0),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 340),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Wrap(
-                        spacing: 8,
-                        children: [
-                          for (final m in const [25, 50, 90])
-                            Pressable(
-                              selected: minutes == m,
-                              onPressed: () => onMinutes(m),
-                              semanticLabel: '$m minutes',
-                              child: Text('$m'),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      FlowTextField(controller: task, hint: 'What are you working on? (optional)'),
-                      const SizedBox(height: 14),
-                      SnapSlider(
-                        steps: 3,
-                        index: demand.index,
-                        width: 200,
-                        labels: const ['light', 'moderate', 'heavy'],
-                        semanticLabel: 'How demanding',
-                        onChanged: (i) => onDemand(Demand.values[i]),
-                      ),
-                      if (llm) ...[
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            PillToggle(value: shareAi, onChanged: onShareAi, semanticLabel: 'Share task with the AI assistant'),
-                            const SizedBox(width: 8),
-                            Text('Let the AI assistant see this task', style: TextStyle(fontSize: 12, color: p.text2)),
-                          ],
-                        ),
-                      ],
-                    ],
+          builder: (context, box) {
+            // Too narrow for controls · dial · button side by side: the Start
+            // button moves under the controls instead of being squeezed.
+            final tight = box.maxWidth < 660;
+            final start = Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Pressable(
+                  tone: PressableTone.primary,
+                  onPressed: busy ? null : onStart,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  // shrinks a little before it would ever clip
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(busy ? 'Starting…' : 'Start · ends ${_hm(ends)}', maxLines: 1, softWrap: false),
                   ),
                 ),
-              ),
-              const SizedBox(width: 32),
-              DurationDial(minutes: minutes, suggestion: suggestion, size: 204, onChanged: onMinutes, onCenterTap: busy ? null : onStart),
-              const SizedBox(width: 28),
-              Flexible(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Pressable(
-                      tone: PressableTone.primary,
-                      onPressed: busy ? null : onStart,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      child: Text(
-                        busy ? 'Starting…' : 'Start · ends ${_hm(ends)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.fade,
-                        softWrap: false,
-                      ),
+                if (suggestion != null) ...[
+                  const SizedBox(height: 8),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '✦ $suggestion min suggested',
+                      maxLines: 1,
+                      softWrap: false,
+                      style: TextStyle(fontSize: 11, color: p.text3),
                     ),
-                    const SizedBox(height: 8),
-                    if (suggestion != null) Text('✦ $suggestion min suggested', style: TextStyle(fontSize: 11, color: p.text3)),
-                  ],
+                  ),
+                ],
+              ],
+            );
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // controls keep a slim width so the dial sits near the middle of
+                // the deck instead of being pushed to the far edge; they give way
+                // first when the window narrows
+                SizedBox(
+                  width: (tight ? box.maxWidth - 204 - 24 : box.maxWidth - 204 - 32 - 28 - 240).clamp(160.0, 320.0),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 340),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Wrap(
+                          spacing: 8,
+                          children: [
+                            for (final m in const [25, 50, 90])
+                              Pressable(
+                                selected: minutes == m,
+                                onPressed: () => onMinutes(m),
+                                semanticLabel: '$m minutes',
+                                child: Text('$m'),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        FlowTextField(controller: task, hint: 'What are you working on? (optional)'),
+                        const SizedBox(height: 14),
+                        SnapSlider(
+                          steps: 3,
+                          index: demand.index,
+                          width: 200,
+                          labels: const ['light', 'moderate', 'heavy'],
+                          semanticLabel: 'How demanding',
+                          onChanged: (i) => onDemand(Demand.values[i]),
+                        ),
+                        if (llm) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              PillToggle(value: shareAi, onChanged: onShareAi, semanticLabel: 'Share task with the AI assistant'),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text('Let the AI assistant see this task', style: TextStyle(fontSize: 12, color: p.text2)),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (tight) ...[const SizedBox(height: 14), start],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              const Spacer(),
-            ],
-          ),
+                SizedBox(width: tight ? 24 : 32),
+                DurationDial(minutes: minutes, suggestion: suggestion, size: 204, onChanged: onMinutes, onCenterTap: busy ? null : onStart),
+                if (!tight) ...[const SizedBox(width: 28), Flexible(flex: 3, child: start)],
+                const Spacer(),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -640,10 +654,15 @@ class _SessionGroup extends ConsumerWidget {
                       ),
                       // desktop only, and only during a session: shrink to the widget
                       if (ref.watch(desktopHostProvider).isDesktop)
-                        Pressable(
-                          onPressed: ref.read(windowModeProvider.notifier).shrink,
-                          tooltip: 'Keep the session in a small widget',
-                          child: const Text('Shrink'),
+                        ValueListenableBuilder(
+                          valueListenable: ref.read(windowModeProvider.notifier).widgetUnavailable,
+                          builder: (context, unavailable, _) => Pressable(
+                            onPressed: unavailable ? null : ref.read(windowModeProvider.notifier).shrink,
+                            tooltip: unavailable
+                                ? "The small widget couldn't open on this computer, so Flow stays in its window"
+                                : 'Pop the session out into a small always-on-top widget',
+                            child: const Text('Pop out'),
+                          ),
                         ),
                       Pressable(tone: PressableTone.primary, onPressed: onEnd, child: const Text('End')),
                     ],

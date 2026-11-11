@@ -123,7 +123,7 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
     final lo = widget.min.toDouble(), hi = widget.max.toDouble();
     if (raw < lo) v = lo - RubberBand.offset(lo - raw, 30, 0.4);
     if (raw > hi) v = hi + RubberBand.offset(raw - hi, 30, 0.4);
-    _v.animateTo(v, spring: Motion.follow);
+    _v.value = v; // 1:1 with the hand while dragging
     _tickPop(v.clamp(lo, hi));
   }
 
@@ -217,8 +217,13 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
           : null,
       child: MouseRegion(
         cursor: interactive ? SystemMouseCursors.grab : SystemMouseCursors.basic,
-        onHover: (e) => setState(() => _hoverCenter = _inCenter(e.localPosition)),
-        onExit: (_) => setState(() => _hoverCenter = false),
+        onHover: (e) {
+          final c = _inCenter(e.localPosition);
+          if (c != _hoverCenter) setState(() => _hoverCenter = c);
+        },
+        onExit: (_) {
+          if (_hoverCenter) setState(() => _hoverCenter = false);
+        },
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapUp: (d) {
@@ -237,6 +242,13 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
               : null,
           onPanUpdate: interactive
               ? (d) {
+                  // Close to the hub a pixel of hand movement is a huge angle:
+                  // ignore it there instead of letting the ring jump.
+                  final hub = Offset(widget.size / 2, widget.size / 2);
+                  if ((d.localPosition - hub).distance < widget.size * 0.12 ||
+                      (d.localPosition - d.delta - hub).distance < widget.size * 0.12) {
+                    return;
+                  }
                   // angular delta → minutes; tolerate the 0/360 wrap
                   final a0 = _angleOf(d.localPosition - d.delta);
                   final a1 = _angleOf(d.localPosition);

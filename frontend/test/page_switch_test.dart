@@ -4,6 +4,7 @@ import 'package:flow/app.dart';
 import 'package:flow/router/app_router.dart';
 import 'package:flow/router/routes.dart';
 import 'package:flow/state/auth_controller.dart';
+import 'package:flow/state/data_providers.dart';
 import 'package:flow/state/session_controller.dart';
 import 'package:flow/ui/loading_blocks.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,7 @@ import 'helpers.dart';
 /// Page switches must feel instant: no loader on a revisit, no loader flash
 /// for fast loads, and live changes refresh in place.
 void main() {
+  devLoaderTests();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   Future<ProviderContainer> boot(WidgetTester tester, {Duration latency = Duration.zero}) async {
@@ -102,5 +104,37 @@ void main() {
       expect(find.byType(LoadingBlocks), findsNothing);
     }
     await done(tester, c);
+  });
+}
+
+void devLoaderTests() {
+  testWidgets('dev panel: latency + "Forget cached pages" make the loader visible', (tester) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final b = MockBackend(config: const MockConfig(latency: Duration.zero, tick: Duration(hours: 1)));
+    final c = mockContainer(b);
+    await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
+    await tester.pump(const Duration(seconds: 4));
+    await tester.runAsync(() => c.read(authProvider.notifier).login(email: 'solo@flow.dev', password: 'password'));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    c.read(appRouterProvider).go(Routes.patterns);
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    b.latencyOverride = const Duration(milliseconds: 800);
+    c.read(cacheEpochProvider.notifier).bump();
+    await tester.pump(const Duration(milliseconds: 16)); // the reload mounts the loaders
+    await tester.pump(const Duration(milliseconds: 400)); // past the grace
+    final shown = tester
+        .widgetList<AnimatedOpacity>(find.descendant(of: find.byType(LoadingBlocks), matching: find.byType(AnimatedOpacity)))
+        .any((o) => o.opacity > 0);
+    expect(shown, isTrue);
+    await tester.runAsync(() => Future<void>.delayed(const Duration(seconds: 1)));
+    await tester.pumpWidget(const SizedBox());
+    c.dispose();
+    await tester.pump(const Duration(seconds: 1));
   });
 }

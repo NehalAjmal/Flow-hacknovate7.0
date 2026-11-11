@@ -218,7 +218,8 @@ class _FeedbackScreenState extends ConsumerState<FeedbackScreen> {
                             crossAxisAlignment: CrossAxisAlignment.baseline,
                             textBaseline: TextBaseline.alphabetic,
                             children: [
-                              Text(e.version, style: FlowType.numeral(p, 22)),
+                              // chart voice: the display numerals have no full stop
+                              Text(e.version, style: FlowType.chart(p, size: 15, color: p.text1, weight: FontWeight.w600)),
                               const SizedBox(width: 10),
                               if (e.date != null)
                                 Text(MaterialLocalizations.of(context).formatMediumDate(e.date!), style: FlowType.chart(p, size: 10.5)),

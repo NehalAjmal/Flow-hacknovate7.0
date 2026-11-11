@@ -17,6 +17,7 @@ import '../models/consent.dart';
 import '../models/day.dart';
 import '../models/insights.dart';
 import '../models/intervention.dart';
+import '../models/member.dart';
 import '../models/meta.dart';
 import '../models/privacy.dart';
 import '../models/session.dart';
@@ -26,6 +27,7 @@ import '../models/team.dart';
 import 'mock_backend.dart';
 import 'mock_focus_dna.dart';
 import 'mock_day.dart';
+import 'mock_members.dart';
 
 ApiError _forbidden() => const ApiError('forbidden', 'You do not have access to this.', status: 403);
 ApiError _notFound(String what) => ApiError(ApiError.notFound, '$what not found', status: 404);
@@ -654,8 +656,12 @@ class MockAdminApi implements AdminApi {
     return AdminPrivacyStatus(
       groupSize: small ? 3 : 8,
       suppressed: small,
-      canSee: const ['Team averages and trends', 'Number of active sessions', 'Team-level strain indicator'],
-      cannotSee: const ['Any individual\'s sessions, scores or tasks', 'Who is active right now', 'Window titles, apps or camera data'],
+      canSee: const [
+        'Team averages and trends',
+        'Each person\'s focus time, sessions and breaks',
+        'How each person answers break suggestions',
+      ],
+      cannotSee: const ['What anyone is working on (task text)', 'Window titles, apps or websites', 'Typing, mouse or camera data'],
     );
   });
 
@@ -680,6 +686,19 @@ class MockAdminApi implements AdminApi {
 
   @override
   Future<List<AuditEntry>> auditLog() => _admin('GET', '/admin/audit-log', () => List.of(b.audit));
+
+  @override
+  Future<List<MemberSummary>> members() =>
+      _admin('GET', '/admin/members', () => mockMembers(small: b.scenario == MockScenario.smallTeam));
+
+  @override
+  Future<MemberDetail> member(String id) => _admin('GET', '/admin/members/$id', () {
+    final m = mockMember(id);
+    if (m == null) throw const ApiError('not_found', 'That person is not on your team.', status: 404);
+    // every look at a person is on the record (the team can ask to see it)
+    b.audit.insert(0, AuditEntry(action: 'member.view', at: DateTime.now(), actor: b.requireUser().name));
+    return m;
+  });
 }
 
 // ── meta ───────────────────────────────────────────────────────────────────

@@ -109,7 +109,7 @@ class _DrumWheelState extends State<DrumWheel> with SingleTickerProviderStateMix
   void _dragUpdate(double deltaAlong) {
     // dragging the surface "down" (or right) moves to earlier values
     _finger -= deltaAlong / DrumWheel.ridgeGap;
-    _pos.animateTo(_banded(_finger), spring: Motion.follow);
+    _pos.value = _banded(_finger); // 1:1 with the hand while dragging
   }
 
   void _dragEnd(double velocityAlong) {
@@ -167,8 +167,13 @@ class _DrumWheelState extends State<DrumWheel> with SingleTickerProviderStateMix
       },
       child: MouseRegion(
         cursor: _hoverEnd != null ? SystemMouseCursors.click : SystemMouseCursors.resizeUpDown,
-        onHover: (e) => setState(() => _hoverEnd = _endAt(e.localPosition)),
-        onExit: (_) => setState(() => _hoverEnd = null),
+        onHover: (e) {
+          final end = _endAt(e.localPosition);
+          if (end != _hoverEnd) setState(() => _hoverEnd = end);
+        },
+        onExit: (_) {
+          if (_hoverEnd != null) setState(() => _hoverEnd = null);
+        },
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTapUp: (d) {

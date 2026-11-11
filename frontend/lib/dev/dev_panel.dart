@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/misc.dart' show Override, ProviderOrFamily;
 
 import '../api/api_connector.dart';
 import '../api/mock/mock_backend.dart';
+import '../api/models/session.dart';
 import '../api/real/http_transport.dart';
 import '../desktop/desktop_host.dart';
 import '../desktop/window_controller.dart';
@@ -146,6 +147,16 @@ class _DevPanelState extends ConsumerState<_DevPanel> {
       adminStrainProvider,
       adminMeetingWindowProvider,
       adminPrivacyProvider,
+      // kept for 5 min after leaving a page: forget them too
+      dayTimelineProvider,
+      weekTimelinesProvider,
+      rollingMinutesProvider,
+      yearMinutesProvider,
+      sessionsPageProvider,
+      calendarContextProvider,
+      dataSummaryProvider,
+      focusDnaProvider,
+      changelogProvider,
     ]) {
       ref.invalidate(p);
     }
@@ -208,19 +219,7 @@ class _DevPanelState extends ConsumerState<_DevPanel> {
                 TextButton(onPressed: () => ref.read(windowModeProvider.notifier).debugPreview(m), child: Text(m.name)),
             ],
           ),
-          if (anyMock)
-            Row(
-              children: [
-                const Expanded(child: Text('Nudge (mock sessions)', style: TextStyle(fontSize: 12))),
-                TextButton(
-                  onPressed: () {
-                    final why = backend.forceNudge();
-                    if (why != null) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(why)));
-                  },
-                  child: const Text('Send a nudge now'),
-                ),
-              ],
-            ),
+          const _SimulateBox(),
           for (final area in ApiArea.values)
             Row(
               children: [
@@ -285,6 +284,89 @@ class _DevPanelState extends ConsumerState<_DevPanel> {
               '${e.duration == null ? '' : ' (${e.duration!.inMilliseconds} ms)'}',
               style: TextStyle(fontSize: 11, fontFamily: 'monospace', color: (e.status ?? 500) >= 400 ? Colors.red.shade700 : null),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Simulate: mock latency (to see loading states) and a nudge on demand.
+/// Results show inline: the panel sits above the app's Scaffold, so a
+/// SnackBar from here would never appear.
+class _SimulateBox extends ConsumerStatefulWidget {
+  const _SimulateBox();
+  @override
+  ConsumerState<_SimulateBox> createState() => _SimulateBoxState();
+}
+
+class _SimulateBoxState extends ConsumerState<_SimulateBox> {
+  String? _status;
+
+  static const _latencies = [0, 250, 800, 2000];
+
+  Future<void> _nudge() async {
+    final modes = ref.read(apiModesProvider);
+    final notMock = [ApiArea.session, ApiArea.interventions].where((a) => modes[a] != ApiMode.mock).map((a) => a.label);
+    if (notMock.isNotEmpty) {
+      setState(() => _status = '${notMock.join(' and ')} use the real backend: nudges come from it. Set them to mock to simulate.');
+      return;
+    }
+    final b = ref.read(mockBackendProvider);
+    if (b.run == null) {
+      setState(() => _status = 'Starting a 50 min session…');
+      try {
+        await ref
+            .read(liveSessionProvider.notifier)
+            .start(const StartSessionRequest(taskText: 'Simulated', demand: Demand.moderate, plannedMinutes: 50));
+      } catch (e) {
+        if (mounted) setState(() => _status = 'Could not start a session: $e');
+        return;
+      }
+    }
+    final why = b.forceNudge();
+    if (mounted) setState(() => _status = why ?? 'Nudge sent: it shows bottom-right (or as the card in widget mode).');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final modes = ref.watch(apiModesProvider);
+    if (!modes.values.contains(ApiMode.mock)) return const SizedBox.shrink();
+    final b = ref.watch(mockBackendProvider);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Simulate', style: Theme.of(context).textTheme.titleSmall),
+          Row(
+            children: [
+              const Expanded(child: Text('Mock latency (loaders show after 250 ms)', style: TextStyle(fontSize: 12))),
+              SegmentedButton<int>(
+                showSelectedIcon: false,
+                segments: [for (final ms in _latencies) ButtonSegment(value: ms, label: Text(ms < 1000 ? '$ms' : '${ms ~/ 1000}s'))],
+                selected: {b.latency.inMilliseconds},
+                emptySelectionAllowed: true,
+                onSelectionChanged: (sel) {
+                  if (sel.isEmpty) return;
+                  setState(() => b.latencyOverride = Duration(milliseconds: sel.first));
+                },
+              ),
+            ],
+          ),
+          Row(
+            children: [
+              TextButton(
+                onPressed: () {
+                  ref.read(cacheEpochProvider.notifier).bump();
+                  setState(() => _status = 'Cache cleared: pages reload (with the loader, if latency > 250 ms).');
+                },
+                child: const Text('Forget cached pages'),
+              ),
+              const Spacer(),
+              FilledButton.tonal(onPressed: _nudge, child: const Text('Send a nudge now')),
+            ],
+          ),
+          if (_status != null) Text(_status!, style: const TextStyle(fontSize: 12)),
         ],
       ),
     );

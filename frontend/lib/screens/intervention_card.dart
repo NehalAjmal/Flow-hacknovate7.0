@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/models/intervention.dart';
-import '../api/models/settings.dart';
 import '../state/account_controllers.dart';
 import '../state/break_controller.dart';
 import '../ui/nudge_card.dart';
@@ -38,8 +37,8 @@ class _InterventionCardState extends ConsumerState<InterventionCard> {
         children: [
           NudgeCardView(
             message: iv.message,
-            // "Explained" mode shows the reason up front; advisory keeps it behind Why?.
-            reason: iv.deliveryMode != DeliveryMode.advisory ? iv.shortReason : null,
+            // the reason is always up front; Why? adds the breakdown
+            reason: iv.shortReason,
             breakMinutes: (iv.suggestedBreakSec / 60).round(),
             onBreak: () => runGuarded(context, () => actions.accept(iv)),
             snoozeOptions: snoozeOptions,

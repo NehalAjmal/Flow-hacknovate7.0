@@ -368,7 +368,7 @@ class _SnapSliderState extends State<SnapSlider> with SingleTickerProviderStateM
     var v = _finger;
     if (_finger < 0) v = -RubberBand.offset(-_finger * _stepPx, _stepPx, 0.4) / _stepPx;
     if (_finger > max) v = max + RubberBand.offset((_finger - max) * _stepPx, _stepPx, 0.4) / _stepPx;
-    _pos.animateTo(v, spring: Motion.follow);
+    _pos.value = v; // 1:1 with the hand while dragging
   }
 
   void _release() {

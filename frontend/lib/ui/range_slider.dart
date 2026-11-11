@@ -97,7 +97,7 @@ class _TimeRangeSliderState extends State<TimeRangeSlider> with TickerProviderSt
           var v = _finger;
           if (v < 0) v = -RubberBand.offset(-v * perMin, 40, 0.4) / perMin;
           if (v > TimeRangeSlider.day) v = TimeRangeSlider.day + RubberBand.offset((v - TimeRangeSlider.day) * perMin, 40, 0.4) / perMin;
-          (_dragging == 0 ? _a : _b).animateTo(v, spring: Motion.follow);
+          (_dragging == 0 ? _a : _b).value = v; // 1:1 with the hand while dragging
         }
 
         void release() {

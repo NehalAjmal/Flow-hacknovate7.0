@@ -90,6 +90,10 @@ class MockBackend {
   MockBackend({this.config = const MockConfig(), this.logger});
 
   final MockConfig config;
+
+  /// Dev panel: overrides [MockConfig.latency] (e.g. to see loading states).
+  Duration? latencyOverride;
+  Duration get latency => latencyOverride ?? config.latency;
   RequestLogger? logger;
 
   /// Called when the mock simulates an expired session (tokenExpiry).
@@ -198,7 +202,7 @@ class MockBackend {
   /// Wraps every mock call: latency, scenario failures, auth, request log.
   Future<T> call<T>(String method, String path, FutureOr<T> Function() body, {bool auth = true}) async {
     final started = DateTime.now();
-    if (config.latency > Duration.zero) await Future<void>.delayed(config.latency);
+    if (latency > Duration.zero) await Future<void>.delayed(latency);
     try {
       if (scenario == MockScenario.backendDown) {
         throw const ApiError(ApiError.network, "Can't reach Flow. Check your connection.");

@@ -3,7 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../api/api_connector.dart';
+import '../api/models/session.dart';
+import '../desktop/desktop_host.dart';
+import '../desktop/window_controller.dart';
 import '../state/auth_controller.dart';
+import '../state/session_controller.dart';
 
 import '../api/mock/mock_backend.dart';
 import '../api/mock/mock_day.dart';
@@ -170,9 +175,12 @@ class _KitGalleryState extends State<KitGallery> {
 }
 
 /// DEV ONLY: `/dev/login?as=solo|employee|admin|new` signs straight in (mock auth).
+/// `&nudge=fullScreen|windowed|notification` also starts a session and sends
+/// a nudge in that style (to look at the takeover without waiting).
 class DevLogin extends ConsumerStatefulWidget {
-  const DevLogin({super.key, required this.who});
+  const DevLogin({super.key, required this.who, this.nudge});
   final String who;
+  final String? nudge;
   @override
   ConsumerState<DevLogin> createState() => _DevLoginState();
 }
@@ -185,7 +193,18 @@ class _DevLoginState extends ConsumerState<DevLogin> {
       final auth = ref.read(authProvider.notifier);
       await auth.login(email: '${widget.who}@flow.dev', password: 'password');
       if (ref.read(authProvider) is MfaRequired) await auth.verifyMfa('123456');
-      if (mounted) GoRouter.of(context).go('/');
+      if (!mounted) return;
+      // this widget is gone after the redirect: keep the container, not `ref`
+      final c = ProviderScope.containerOf(context, listen: false);
+      GoRouter.of(context).go('/');
+      final style = NudgeStyle.values.asNameMap()[widget.nudge];
+      if (style == null) return;
+      await c.read(desktopPrefsProvider.notifier).set(c.read(desktopPrefsProvider).copyWith(nudgeStyle: style));
+      await c
+          .read(liveSessionProvider.notifier)
+          .start(const StartSessionRequest(taskText: 'Write spec', demand: Demand.moderate, plannedMinutes: 50));
+      await Future<void>.delayed(const Duration(seconds: 2));
+      c.read(mockBackendProvider).forceNudge();
     });
   }
 

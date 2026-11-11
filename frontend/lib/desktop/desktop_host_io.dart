@@ -37,6 +37,7 @@ Future<void> prepare(List<String> args) async {
 class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost {
   static const _miniSize = Size(320, 88);
   static const _cardSize = Size(380, 320);
+  static const _nudgeSize = Size(760, 480);
   static const _margin = 16.0;
 
   VoidCallback? _onClose;
@@ -86,6 +87,12 @@ class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost
     return pos & size;
   }
 
+  /// The primary display's full rectangle.
+  Future<Rect> _display() async {
+    final d = await screenRetriever.getPrimaryDisplay();
+    return Offset.zero & d.size;
+  }
+
   Offset _cornerPos(Rect area, Size s, WidgetCorner c) => switch (c) {
     WidgetCorner.topLeft => area.topLeft + const Offset(_margin, _margin),
     WidgetCorner.topRight => Offset(area.right - s.width - _margin, area.top + _margin),
@@ -93,44 +100,111 @@ class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost
     WidgetCorner.bottomRight => Offset(area.right - s.width - _margin, area.bottom - s.height - _margin),
   };
 
+  /// One native step. A failure is logged (dev console) and reported, never
+  /// thrown: one unsupported call must not abandon the rest of the sequence.
+  Future<bool> _step(String what, Future<void> Function() run) async {
+    try {
+      await run();
+      return true;
+    } catch (e) {
+      debugPrint('[flow/window] $what failed: $e');
+      return false;
+    }
+  }
+
+  /// The pop: the window is hidden, reshaped while invisible, and shown again
+  /// in its new form. Nothing half-styled is ever on screen, and Flutter gets
+  /// a clean first frame at the new size.
+  ///
+  /// Compact modes are **frameless** (client area = the whole window). The
+  /// earlier "hidden title bar + not resizable" pair left 8 px of dead,
+  /// unpainted non-client area on three sides on Windows; frameless has none,
+  /// and the Flutter view covers every edge, so the pill can't be resized by
+  /// hand without touching the resizable flag at all.
   @override
-  Future<void> applyMode(WindowMode mode, {WidgetCorner corner = WidgetCorner.bottomRight}) async {
+  Future<bool> applyMode(WindowMode mode, {WidgetCorner corner = WidgetCorner.bottomRight}) async {
     final from = _mode;
+    final wasCompact = from.isFloating;
+    final compact = mode.isFloating;
     _mode = mode;
     _placing = true;
+    var ok = true;
     try {
-      if (from == WindowMode.full && mode != WindowMode.full) _fullBounds = await windowManager.getBounds();
-      if (from == WindowMode.lock) await windowManager.setFullScreen(false);
-      switch (mode) {
-        case WindowMode.full:
-          await windowManager.setAlwaysOnTop(false);
-          await windowManager.setTitleBarStyle(TitleBarStyle.normal);
-          await windowManager.setResizable(true);
-          await windowManager.setMinimumSize(const Size(960, 640));
-          final b = _fullBounds;
+      if (from == WindowMode.full && mode != WindowMode.full) {
+        await _step('getBounds', () async => _fullBounds = await windowManager.getBounds());
+      }
+      if (from == WindowMode.lock) await _step('leave full screen', () => windowManager.setFullScreen(false));
+
+      if (compact) {
+        final area = await _workArea();
+        final Rect target;
+        if (mode == WindowMode.nudgeFull) {
+          // the whole display, taskbar included (not the OS "full screen"
+          // state: no Space switch on macOS, and it leaves like any pop-out)
+          target = await _display();
+        } else if (mode == WindowMode.nudge) {
+          final s = Size(_nudgeSize.width.clamp(320.0, area.width - 32), _nudgeSize.height.clamp(240.0, area.height - 32));
+          target = Rect.fromCenter(center: area.center, width: s.width, height: s.height);
+        } else {
+          final s = mode == WindowMode.mini ? _miniSize : _cardSize;
+          target = _cornerPos(area, s, corner) & s;
+        }
+        final size = target.size;
+        if (wasCompact) {
+          // pill ↔ card: same frameless window, it just grows from its corner
+          ok = await _step('resize', () => windowManager.setBounds(target));
+        } else {
+          await _step('hide', windowManager.hide);
+          ok = await _step('frameless', windowManager.setAsFrameless);
+          await _step('minimum size', () => windowManager.setMinimumSize(_miniSize));
+          await _step('always on top', () => windowManager.setAlwaysOnTop(true));
+          ok = await _step('place', () => windowManager.setBounds(target)) && ok;
+          await _step('show', () => windowManager.show(inactive: true));
+        }
+        // one extra size round-trip: makes the Flutter view re-read its size
+        // (some Windows setups keep the old surface after a style change)
+        await _step('refresh', () async {
+          await windowManager.setSize(Size(size.width + 1, size.height));
+          await windowManager.setSize(size);
+        });
+        // did the window really take the shape? If not, say so: the
+        // controller falls back to the full app instead of a broken pill.
+        await _step('verify', () async {
+          final got = await windowManager.getSize();
+          if ((got.width - size.width).abs() > 24 || (got.height - size.height).abs() > 24) {
+            debugPrint('[flow/window] asked for $size, window is $got');
+            ok = false;
+          }
+        });
+      } else if (mode == WindowMode.full) {
+        if (wasCompact) await _step('hide', windowManager.hide);
+        await _step('normal frame', () => windowManager.setTitleBarStyle(TitleBarStyle.normal));
+        await _step('always on top off', () => windowManager.setAlwaysOnTop(false));
+        await _step('minimum size', () => windowManager.setMinimumSize(const Size(960, 640)));
+        final b = _fullBounds;
+        ok = await _step('place', () async {
           if (b != null) {
-            await windowManager.setBounds(b, animate: true);
+            await windowManager.setBounds(b);
           } else {
-            await windowManager.setSize(const Size(1280, 820), animate: true);
+            await windowManager.setSize(const Size(1280, 820));
             await windowManager.center();
           }
-        case WindowMode.mini:
-        case WindowMode.card:
-          final size = mode == WindowMode.mini ? _miniSize : _cardSize;
-          await windowManager.setTitleBarStyle(TitleBarStyle.hidden, windowButtonVisibility: false);
-          await windowManager.setMinimumSize(size);
-          await windowManager.setResizable(false);
-          await windowManager.setAlwaysOnTop(true);
-          final area = await _workArea();
-          await windowManager.setBounds(_cornerPos(area, size, corner) & size, animate: true);
-        case WindowMode.lock:
-          await windowManager.setAlwaysOnTop(true);
-          await windowManager.setFullScreen(true);
+        });
+        await _step('show', () async {
+          await windowManager.show();
+          await windowManager.focus();
+        });
+      } else {
+        // lock: the opt-in full-screen break
+        await _step('always on top', () => windowManager.setAlwaysOnTop(true));
+        ok = await _step('full screen', () => windowManager.setFullScreen(true));
+        await _step('show', windowManager.show);
       }
-      if (!await windowManager.isVisible()) await windowManager.show(inactive: mode != WindowMode.full);
     } finally {
       _placing = false;
     }
+    if (!ok) debugPrint('[flow/window] could not apply ${mode.name}');
+    return ok;
   }
 
   @override
@@ -181,7 +255,7 @@ class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost
   /// Released after a drag: snap to the nearest corner (SNAP-like eased move).
   @override
   void onWindowMoved() {
-    if (_placing || (_mode != WindowMode.mini && _mode != WindowMode.card)) return;
+    if (_placing || !_mode.isCompact) return;
     _snapDebounce?.cancel();
     _snapDebounce = Timer(const Duration(milliseconds: 120), () async {
       final b = await windowManager.getBounds();

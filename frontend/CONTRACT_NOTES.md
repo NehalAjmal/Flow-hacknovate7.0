@@ -178,3 +178,41 @@ The frontend calls these; the backend needs to add them (`ApiArea.schedules`, mo
 1. `POST /calendar/connect` returns the Google consent URL.
 2. The app opens it in the system browser, then polls `GET /calendar/context` every 3 s for up to 2 min until `connected: true`.
 3. The OAuth redirect must therefore land on the **backend** (which stores the token), not on the app.
+
+## Admin: people (per-person pages): assumed, frontend ready
+
+**This changes the earlier rule** ("no per-person data, ever"). The product decision: the team's admin can see each member's *coarse* week. Teammates still only see aggregates (`/team/summary`, unchanged, still suppressed under 5).
+
+The frontend calls these (`ApiArea.admin`, mock by default; models in `models/member.dart`):
+
+| Method | Path | Returns |
+|---|---|---|
+| GET | `/admin/members` | `{ "items": [MemberSummary] }` |
+| GET | `/admin/members/{id}` | `MemberDetail` |
+
+```json
+// MemberSummary: one person, the current week (Mon..Sun in the team's time zone)
+{ "id": "u_42", "name": "Ada Okafor",
+  "focus_by_day": [185, 210, 0, 0, 0, 0, 0],        // minutes, always 7 entries
+  "sessions": 9, "breaks_taken": 5, "breaks_suggested": 7,
+  "nudges": { "taken": 5, "snoozed": 1, "dismissed": 1 },
+  "strain": "low",                                    // low | moderate | high (break pressure, not health)
+  "last_active_at": "2026-11-12T15:40:00Z", "in_session": false }
+
+// MemberDetail
+{ "summary": MemberSummary,
+  "days": [ { "date": "2026-11-09",
+              "sessions": [ { "start": "…", "end": "…", "demand": "moderate" } ],
+              "breaks":   [ { "at": "…", "mark": "taken" } ],       // taken | suggested | snoozed
+              "nudges":   [ { "at": "…", "outcome": "taken" } ] } ],  // 7 entries, Mon..Sun
+  "focus_trend":  [ { "date": "…", "value": 212 } ],   // minutes per day, last 30 days
+  "strain_trend": [ { "date": "…", "value": 0.41 } ] } // 0..1 per day, last 14 days
+```
+
+Rules the backend must enforce (the UI states them to users, so they are promises):
+
+1. **Admin role only**, and only for members of the admin's own team: 403 otherwise, 404 for an unknown id.
+2. **Never include** task text, window titles, app names, URLs, keystroke/mouse data, camera scores or the pressure curve. The frontend models have no such fields; do not add them.
+3. **Consent:** only members whose `team_aggregate` consent is granted appear (it is granted at invite signup, where the app shows the warning, and is shown in Privacy as "Share with my team"). Revoking it removes the person from `/admin/members` and from the team aggregates.
+4. **Audit:** every `GET /admin/members/{id}` writes an audit entry `member.view` (actor = the admin). The app shows the log on the admin page, and tells the team they can ask to see it.
+5. `GET /admin/privacy-status` `can_see` / `cannot_see` should now list the per-person items (see the mock in `mock_apis.dart` for the wording).

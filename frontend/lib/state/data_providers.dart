@@ -9,6 +9,7 @@ import '../api/models/agent.dart';
 import '../api/models/consent.dart';
 import '../api/models/day.dart';
 import '../api/models/insights.dart';
+import '../api/models/member.dart';
 import '../api/models/meta.dart';
 import '../api/models/privacy.dart';
 import '../api/models/schedule.dart';
@@ -29,7 +30,18 @@ import 'session_controller.dart';
 ///   refresh, so the old value stays on screen until the new one lands.
 const _keep = Duration(minutes: 5);
 
+/// Dev panel "Forget cached pages": bumping it reloads every cached provider
+/// (a dependency change = a real reload with the loader, not a quiet refresh).
+class CacheEpoch extends Notifier<int> {
+  @override
+  int build() => 0;
+  void bump() => state++;
+}
+
+final cacheEpochProvider = NotifierProvider<CacheEpoch, int>(CacheEpoch.new);
+
 void _cache(Ref ref) {
+  ref.watch(cacheEpochProvider);
   final link = ref.keepAlive();
   Timer? t;
   ref.onCancel(() => t = Timer(_keep, link.close));
@@ -109,6 +121,12 @@ final adminStrainProvider = _userData<Suppressible<TeamStrain>>((ref) => ref.wat
 final adminMeetingWindowProvider = _userData<Suppressible<MeetingWindow>>((ref) => ref.watch(adminApiProvider).meetingWindow());
 final adminPrivacyProvider = _userData<AdminPrivacyStatus>((ref) => ref.watch(adminApiProvider).privacyStatus());
 final invitesProvider = _userData<List<Invite>>((ref) => ref.watch(adminApiProvider).invites());
+final adminMembersProvider = _userData<List<MemberSummary>>((ref) => ref.watch(adminApiProvider).members());
+final adminMemberProvider = FutureProvider.autoDispose.family<MemberDetail, String>((ref, id) {
+  if (ref.watch(currentUserIdProvider) == null) throw StateError('Not signed in');
+  _cache(ref);
+  return ref.watch(adminApiProvider).member(id);
+});
 final auditLogProvider = _userData<List<AuditEntry>>((ref) => ref.watch(adminApiProvider).auditLog());
 
 // ── meta ───────────────────────────────────────────────────────────────────

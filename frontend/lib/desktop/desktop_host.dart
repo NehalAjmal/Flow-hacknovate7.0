@@ -4,8 +4,40 @@ import 'desktop_host_stub.dart' if (dart.library.io) 'desktop_host_io.dart' as i
 
 /// The one window's modes (DESIGN_SPEC §3).
 /// full: the app · mini: the 320×88 widget, only during a session ·
-/// card: the widget grown into a nudge or detail · lock: opt-in full-screen break.
-enum WindowMode { full, mini, card, lock }
+/// card: the widget grown into a nudge or detail · lock: opt-in full-screen break ·
+/// nudge: a break suggestion as a centred floating window ·
+/// nudgeFull: a break suggestion over the whole screen.
+enum WindowMode {
+  full,
+  mini,
+  card,
+  lock,
+  nudge,
+  nudgeFull;
+
+  /// The small session widget and its card.
+  bool get isCompact => this == mini || this == card;
+
+  /// A break suggestion that has taken over (floating window or whole screen).
+  bool get isTakeover => this == nudge || this == nudgeFull;
+
+  /// Frameless, always-on-top shapes: everything that pops out of the app.
+  bool get isFloating => isCompact || isTakeover;
+}
+
+/// How a break suggestion reaches you. A choice per computer (it is about
+/// this screen), kept with the other window preferences.
+enum NudgeStyle {
+  /// The suggestion takes the whole screen. The default.
+  fullScreen,
+
+  /// The same suggestion in a centred window that floats over your work.
+  windowed,
+
+  /// A small card in Flow (or the widget's card), and an OS notification
+  /// when Flow is not in front.
+  notification,
+}
 
 /// What the tray icon (and taskbar progress) shows.
 enum TrayState { idle, steady, approaching, breakDue, paused }
@@ -25,9 +57,10 @@ abstract class DesktopHost {
     required ValueChanged<WidgetCorner> onWidgetSnapped,
   });
 
-  /// Resizes/places the window for [mode]. The content cross-fades in Flutter;
-  /// the native window changes once (spec fallback: FADE + direct resize).
-  Future<void> applyMode(WindowMode mode, {WidgetCorner corner = WidgetCorner.bottomRight});
+  /// Reshapes the window for [mode] as a pop: hidden, reshaped, shown.
+  /// Returns false when the window did not take the shape (the caller then
+  /// falls back to the full app rather than leave a broken widget on screen).
+  Future<bool> applyMode(WindowMode mode, {WidgetCorner corner = WidgetCorner.bottomRight});
 
   Future<void> setTray(TrayState state, {String? tooltip, double? progress, required bool paused});
 
@@ -55,7 +88,7 @@ class NoopDesktopHost implements DesktopHost {
     required ValueChanged<WidgetCorner> onWidgetSnapped,
   }) async {}
   @override
-  Future<void> applyMode(WindowMode mode, {WidgetCorner corner = WidgetCorner.bottomRight}) async {}
+  Future<bool> applyMode(WindowMode mode, {WidgetCorner corner = WidgetCorner.bottomRight}) async => true;
   @override
   Future<void> setTray(TrayState state, {String? tooltip, double? progress, required bool paused}) async {}
   @override

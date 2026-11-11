@@ -113,7 +113,11 @@ See `CONTRACT_NOTES.md` for every place the frontend had to choose an API shape 
 - the second-launch focus on Windows
 - notifications
 
-Per the spec, Windows frame toggling may flicker. The fallback is already used: a cross-fade plus one direct resize.
+**The pop-out (how the widget opens).** The window is hidden, made frameless, sized and placed while invisible, then shown; the content springs in once it is there (`popped`). Each native step is logged in dev builds as `[flow/window] <step> failed: …` if it fails. If the window does not take the shape, Flow returns to the full window and stops offering the widget for that run (`widgetUnavailable`), so it can never be stuck. Ways back to the full app: the widget's open button, **Esc**, or the tray's "Show Flow".
+
+**Nudge styles.** `NudgeStyle` (full screen / windowed / notification) lives in `DesktopPrefs` (per computer). Full screen and windowed are window modes `nudgeFull` / `nudge`, drawn by `nudge_takeover.dart`; the controller returns to the previous mode when the nudge is answered, after 60 s, or on "Not now".
+
+Do not reintroduce "hidden title bar + `setResizable(false)`" for the widget: on Windows window_manager insets the client area by 8 px on three sides in that mode while removing the resize border, which leaves dead black strips.
 
 - **Linux tray** needs `libayatana-appindicator3-dev`.
 - **Invite links:** `/invite?token=…` is routed. Registering a `flow://` URL scheme for links clicked outside the app is a separate native step (not done).

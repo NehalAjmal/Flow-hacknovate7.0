@@ -5,7 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_connector.dart';
+import 'package:go_router/go_router.dart';
+
 import '../api/models/team.dart';
+import '../router/routes.dart';
 import '../state/data_providers.dart';
 import '../theme/motion.dart';
 import '../theme/tokens.dart';
@@ -23,7 +26,8 @@ String _pct(double v) => '${(v * 100).round()}';
 
 // ── Team (employees and admins) ─────────────────────────────────────────────
 
-/// Team (spec §11). Aggregates only, never a person. Below 5 people: the
+/// Team (spec §11). What every member sees: averages only, never a person
+/// (per-person pages are the admin's: see people_screens.dart). Below 5 people: the
 /// empty grid and one sentence; no numbers, no animation.
 class TeamScreen extends ConsumerWidget {
   const TeamScreen({super.key});
@@ -83,15 +87,15 @@ class TeamScreen extends ConsumerWidget {
                           const FeatureNote(
                             number: 1,
                             compact: true,
-                            title: 'Only averages',
-                            body: 'No one, admins included, can see a single person here.',
+                            title: 'Averages for the team',
+                            body: 'Teammates see only this. Your admin also sees each person\'s time, sessions and breaks: never what you work on.',
                           ),
                           const SizedBox(height: 10),
                           const FeatureNote(
                             number: 2,
                             compact: true,
                             title: 'You can leave',
-                            body: 'Turn off "Team averages" in Privacy and you drop out of these numbers.',
+                            body: 'Turn off "Share with my team" in Privacy and you drop out, for your admin too.',
                           ),
                         ],
                       ),
@@ -502,7 +506,15 @@ class _AdminScreenState extends ConsumerState<AdminScreen> {
         return ListView(
           padding: const EdgeInsets.only(right: 24, bottom: 32),
           children: [
-            FlowHeader(title: 'Team admin', subtitle: group == null ? 'Aggregates only' : 'Group of $group · aggregates only'),
+            FlowHeader(
+              title: 'Team admin',
+              subtitle: group == null ? 'The team as a whole' : 'Group of $group · the team as a whole',
+              action: Pressable(
+                tone: PressableTone.primary,
+                onPressed: () => context.go(Routes.adminPeople),
+                child: const Text('People'),
+              ),
+            ),
             const SizedBox(height: 10),
             _TwoUp(
               flex: const (8, 12),
@@ -1009,7 +1021,15 @@ class _Audit extends ConsumerWidget {
                         children: [
                           SizedBox(width: 92, child: Text(loc.formatShortMonthDay(e.at), style: FlowType.chart(p, size: 10.5))),
                           Expanded(
-                            child: Text(e.action, style: TextStyle(color: p.text1, fontSize: 13)),
+                            child: Text(
+                              switch (e.action) {
+                                'invite.create' => 'Created an invite',
+                                'invite.revoke' => 'Revoked an invite',
+                                'member.view' => "Opened a person's page",
+                                _ => e.action,
+                              },
+                              style: TextStyle(color: p.text1, fontSize: 13),
+                            ),
                           ),
                           Text(e.actor, style: FlowType.chart(p, size: 10.5)),
                         ],

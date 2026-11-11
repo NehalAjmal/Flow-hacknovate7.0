@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,13 +14,25 @@ final desktopHostProvider = Provider<DesktopHost>((ref) => createDesktopHost());
 
 /// Window preferences (Settings › Window). Local to this computer.
 class DesktopPrefs {
-  const DesktopPrefs({this.autoMini = true, this.closeToTray = true, this.corner = WidgetCorner.bottomRight});
+  const DesktopPrefs({
+    this.autoMini = true,
+    this.closeToTray = true,
+    this.corner = WidgetCorner.bottomRight,
+    this.nudgeStyle = NudgeStyle.fullScreen,
+  });
+
+  /// How a break suggestion reaches you on this computer.
+  final NudgeStyle nudgeStyle;
   final bool autoMini;
   final bool closeToTray;
   final WidgetCorner corner;
 
-  DesktopPrefs copyWith({bool? autoMini, bool? closeToTray, WidgetCorner? corner}) =>
-      DesktopPrefs(autoMini: autoMini ?? this.autoMini, closeToTray: closeToTray ?? this.closeToTray, corner: corner ?? this.corner);
+  DesktopPrefs copyWith({bool? autoMini, bool? closeToTray, WidgetCorner? corner, NudgeStyle? nudgeStyle}) => DesktopPrefs(
+    autoMini: autoMini ?? this.autoMini,
+    closeToTray: closeToTray ?? this.closeToTray,
+    corner: corner ?? this.corner,
+    nudgeStyle: nudgeStyle ?? this.nudgeStyle,
+  );
 }
 
 class DesktopPrefsController extends Notifier<DesktopPrefs> {
@@ -34,24 +47,30 @@ class DesktopPrefsController extends Notifier<DesktopPrefs> {
   Future<void> _load() async {
     try {
       final sp = await SharedPreferences.getInstance();
-      if (!ref.mounted) return;
+      // a choice made while the stored ones were still loading wins
+      if (!ref.mounted || _changed) return;
       state = DesktopPrefs(
         autoMini: sp.getBool('${_k}autoMini') ?? true,
         closeToTray: sp.getBool('${_k}closeToTray') ?? true,
         corner: WidgetCorner.values.asNameMap()[sp.getString('${_k}corner')] ?? WidgetCorner.bottomRight,
+        nudgeStyle: NudgeStyle.values.asNameMap()[sp.getString('${_k}nudgeStyle')] ?? NudgeStyle.fullScreen,
       );
     } catch (_) {
       // no storage (tests, private web): defaults are fine
     }
   }
 
+  bool _changed = false;
+
   Future<void> set(DesktopPrefs next) async {
+    _changed = true;
     state = next;
     try {
       final sp = await SharedPreferences.getInstance();
       await sp.setBool('${_k}autoMini', next.autoMini);
       await sp.setBool('${_k}closeToTray', next.closeToTray);
       await sp.setString('${_k}corner', next.corner.name);
+      await sp.setString('${_k}nudgeStyle', next.nudgeStyle.name);
     } catch (_) {}
   }
 }
@@ -70,9 +89,25 @@ final desktopPrefsProvider = NotifierProvider<DesktopPrefsController, DesktopPre
 class WindowModeController extends Notifier<WindowMode> {
   static const cardHold = Duration(seconds: 60);
 
+  /// A takeover nobody answers steps back after this long: the suggestion
+  /// stays waiting (card, amber dot, notification), the screen is yours again.
+  static const takeoverHold = Duration(seconds: 60);
+
   Timer? _collapse;
+  Timer? _retreat;
   WindowMode _beforeLock = WindowMode.full;
+  WindowMode _beforeNudge = WindowMode.full;
   bool _hidden = false;
+  Future<void> _native = Future.value(); // native changes run one at a time, in order
+
+  /// Bumps each time the native window has finished popping into a compact
+  /// shape: the compact view plays its pop-in from this, not from the state
+  /// change (which happens while the window is still hidden).
+  final popped = ValueNotifier<int>(0);
+
+  /// True once the widget failed to open on this computer: Flow then stays in
+  /// its window for the rest of the run instead of trying again.
+  final widgetUnavailable = ValueNotifier<bool>(false);
 
   DesktopHost get _host => ref.read(desktopHostProvider);
   bool get hidden => _hidden;
@@ -80,7 +115,12 @@ class WindowModeController extends Notifier<WindowMode> {
   @override
   WindowMode build() {
     final host = ref.watch(desktopHostProvider);
-    ref.onDispose(() => _collapse?.cancel());
+    ref.onDispose(() {
+      _collapse?.cancel();
+      _retreat?.cancel();
+      popped.dispose();
+      widgetUnavailable.dispose();
+    });
     unawaited(
       host.init(
         onCloseRequested: onCloseRequested,
@@ -92,7 +132,9 @@ class WindowModeController extends Notifier<WindowMode> {
     ref.listen(liveSessionProvider, (prev, next) => _onSession(prev?.value, next.value));
     ref.listen(breakProvider, (prev, next) {
       if (prev == null && next != null && next.lock) {
-        _beforeLock = state;
+        // a break taken from a takeover returns to where the takeover came from
+        _beforeLock = state.isTakeover ? _beforeNudge : state;
+        _retreat?.cancel();
         _go(WindowMode.lock);
       } else if (prev != null && next == null && state == WindowMode.lock) {
         final live = ref.read(liveSessionProvider).value != null;
@@ -106,20 +148,31 @@ class WindowModeController extends Notifier<WindowMode> {
   void _onSession(LiveSession? prev, LiveSession? next) {
     // started
     if (prev == null && next != null) {
-      if (ref.read(desktopPrefsProvider).autoMini && _host.isDesktop) _go(WindowMode.mini);
+      if (ref.read(desktopPrefsProvider).autoMini && _host.isDesktop && !widgetUnavailable.value) _go(WindowMode.mini);
     }
     // ended: grow back into the full app (the summary opens there)
-    if (prev != null && next == null && (state == WindowMode.mini || state == WindowMode.card)) _go(WindowMode.full);
+    if (prev != null && next == null && state.isFloating) {
+      _retreat?.cancel();
+      _go(WindowMode.full);
+    }
 
     // a nudge arrived
     final had = prev?.pendingInterventionId;
     final has = next?.pendingInterventionId;
     if (has != null && has != had) {
-      if (state == WindowMode.mini) openCard();
-      unawaited(_maybeNotify(next!));
+      final style = ref.read(desktopPrefsProvider).nudgeStyle;
+      if (style == NudgeStyle.notification || state == WindowMode.lock) {
+        if (state == WindowMode.mini) openCard();
+        unawaited(_maybeNotify(next!));
+      } else {
+        _takeOver(style == NudgeStyle.fullScreen ? WindowMode.nudgeFull : WindowMode.nudge);
+      }
     }
-    // answered while the card is open → back to the widget
-    if (has == null && had != null && state == WindowMode.card) _go(WindowMode.mini);
+    // answered
+    if (has == null && had != null) {
+      if (state == WindowMode.card) _go(WindowMode.mini);
+      if (state.isTakeover) _leaveTakeover();
+    }
 
     _updateTray(next);
   }
@@ -128,7 +181,7 @@ class WindowModeController extends Notifier<WindowMode> {
     if (!_host.isDesktop) return;
     // The card on top already is the nudge in widget mode; notify only when
     // the window is hidden, or the full app sits unfocused behind other work.
-    if (state == WindowMode.card || state == WindowMode.mini || state == WindowMode.lock) {
+    if (state.isFloating || state == WindowMode.lock) {
       if (!_hidden) return;
     } else if (!_hidden && await _host.isFocused()) {
       return;
@@ -173,12 +226,62 @@ class WindowModeController extends Notifier<WindowMode> {
     if (m != WindowMode.card) _collapse?.cancel();
     if (m == state) return;
     state = m;
-    unawaited(_host.applyMode(m, corner: ref.read(desktopPrefsProvider).corner));
+    final corner = ref.read(desktopPrefsProvider).corner;
+    _native = _native.then((_) => _apply(m, corner));
+  }
+
+  Future<void> _apply(WindowMode m, WidgetCorner corner) async {
+    var ok = false;
+    try {
+      ok = await _host.applyMode(m, corner: corner);
+    } catch (_) {}
+    if (!ref.mounted) return;
+    if (ok) {
+      if (m.isFloating) popped.value++;
+      return;
+    }
+    // The window did not take the shape. Never leave a broken window on
+    // screen: go back to the full app. A takeover still shows there, inside
+    // Flow's own window; the small widget is not offered again this run.
+    if (m.isFloating) {
+      if (m.isCompact) widgetUnavailable.value = true;
+      _collapse?.cancel();
+      if (state.isCompact) state = WindowMode.full;
+      try {
+        await _host.applyMode(WindowMode.full, corner: corner);
+      } catch (_) {}
+    }
+  }
+
+  /// The suggestion takes the screen (or a floating window). It remembers
+  /// where it came from and goes back there when answered or after
+  /// [takeoverHold] without an answer.
+  void _takeOver(WindowMode m) {
+    if (!state.isTakeover) _beforeNudge = state == WindowMode.card ? WindowMode.mini : state;
+    _hidden = false; // the pop shows the window
+    _go(m);
+    _retreat?.cancel();
+    _retreat = Timer(takeoverHold, retreat);
+  }
+
+  void _leaveTakeover() {
+    _retreat?.cancel();
+    final live = ref.read(liveSessionProvider).value != null;
+    _go(live && _beforeNudge == WindowMode.mini && !widgetUnavailable.value ? WindowMode.mini : WindowMode.full);
+  }
+
+  /// Step back from a takeover without answering (60 s passed, or "Not now").
+  /// The suggestion keeps waiting where a notification-style nudge would be.
+  void retreat() {
+    if (!state.isTakeover) return;
+    _leaveTakeover();
+    final s = ref.read(liveSessionProvider).value;
+    if (s?.pendingInterventionId != null) unawaited(_maybeNotify(s!));
   }
 
   /// Shrink to the widget: only while a session runs.
   void shrink() {
-    if (ref.read(liveSessionProvider).value == null) return;
+    if (ref.read(liveSessionProvider).value == null || widgetUnavailable.value) return;
     _go(WindowMode.mini);
   }
 

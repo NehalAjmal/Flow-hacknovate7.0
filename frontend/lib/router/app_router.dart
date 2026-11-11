@@ -15,6 +15,7 @@ import '../screens/session_screens.dart';
 import '../screens/settings_screen.dart';
 import '../screens/not_found_screen.dart';
 import '../screens/shell.dart';
+import '../screens/people_screens.dart';
 import '../screens/team_screens.dart';
 import '../state/account_controllers.dart';
 import '../state/auth_controller.dart';
@@ -53,7 +54,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (kDevBuild)
         GoRoute(
           path: '/dev/login',
-          builder: (_, s) => DevLogin(who: s.uri.queryParameters['as'] ?? 'solo'),
+          builder: (_, s) => DevLogin(who: s.uri.queryParameters['as'] ?? 'solo', nudge: s.uri.queryParameters['nudge']),
         ),
       GoRoute(path: Routes.welcome, builder: (_, _) => const WelcomeScreen()),
       GoRoute(path: Routes.login, builder: (_, _) => const LoginScreen()),
@@ -102,6 +103,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           GoRoute(path: Routes.privacy, builder: (_, _) => const PrivacyScreen()),
           GoRoute(path: Routes.team, builder: (_, _) => const TeamScreen()),
           GoRoute(path: Routes.admin, builder: (_, _) => const AdminScreen()),
+          GoRoute(path: Routes.adminPeople, builder: (_, _) => const PeopleScreen()),
+          GoRoute(path: '${Routes.adminPeople}/:id', builder: (_, s) => MemberScreen(id: s.pathParameters['id'] ?? '')),
           // Focus DNA lives in Insights now
           GoRoute(path: Routes.export, builder: (_, _) => const InsightsScreen()),
           GoRoute(path: Routes.feedback, builder: (_, _) => const FeedbackScreen()),

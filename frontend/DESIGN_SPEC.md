@@ -539,15 +539,15 @@ Old placeholder files removed: `admin_screens.dart`, `insight_screens.dart`. `/e
 
 ## 26. Window modes (built)
 
-Built per §3, using the documented fallback (FADE + one native resize).
+Built per §3 as a **pop-out**: the window hides, becomes a frameless pill in its corner, and reappears; the content springs in (88% → 100%, slight overshoot). Esc, the open button or the tray's "Show Flow" bring the full app back. If the OS refuses the shape, Flow stays in its window.
 
 - **Widget:** `[ring] 1:09:55 · STEADY [⏸] [⤢]`. Drag anywhere to move (native); it snaps to the nearest corner and remembers it. Click the time to pause; an amber dot scales in once for a waiting nudge and opens the card.
 - **Card:** the waiting nudge (the live `InterventionCard`), or, without one, the session itself (time, progress, Pause / Take a break / End).
-- **Settings › Window:** shrink to the widget when a session starts; closing keeps Flow in the tray; widget corner (picked on a small screen).
-- **Home's session group:** gains a "Shrink" button (desktop only, only while a session runs).
+- **Settings › Window:** pop out into the widget when a session starts; closing keeps Flow in the tray; widget corner (picked on a small screen).
+- **Home's session group:** gains a "Pop out" button (desktop only, only while a session runs).
 - **Tray icons:** idle (dashed ring) · steady (green core) · approaching (amber ring) · break due (amber full) · paused (bars).
 - **Notification rule:** in widget/card mode the card is the nudge, so no OS notification. Notify only when the window is hidden or the full app is unfocused.
-- **Invite landing:** `/invite?token=` shows "You're invited" with three notes (only averages · nothing until you agree · you can leave), then opens Create account with the token filled in.
+- **Invite landing:** `/invite?token=` shows "You're invited" with four notes (your admin sees your time · never what you work on · nothing until you agree · you can leave), then opens Create account with the token filled in.
 
 ## 27. Schedules, calendar hand-off, Focus DNA save (built)
 
@@ -559,3 +559,32 @@ Built per §3, using the documented fallback (FADE + one native resize).
 - **On time:** a slim banner at the top, "Weekly review starts in 9 s · Start now · Skip". It starts by itself after 10 s, only when no session runs and Flow isn't paused, and offers each routine once per day. On desktop with auto-widget on, the session then moves into the widget.
 - **Calendar connect:** opens Google in the browser; the row reads "Finish signing in in your browser… Flow is waiting" with Cancel, and turns connected by itself.
 - **Focus DNA → Save PNG:** a save dialog on desktop, a download on web.
+
+## 28. Admin: People (built)
+
+The admin (only the admin) can look at each person; teammates still see averages only. People are told at the invite and again when creating the account, and "Share with my team" in Privacy is the off switch.
+
+- **Team admin** gains a **People** button. Its panel lists what the admin can and cannot see, per person included.
+- **People (`/admin/people`):** one row per person. Display: the week as seven blocks on a scale shared by everyone, with a tick for the team's average that day; days to come are a dashed base (line = not yet). Read-out: focus, sessions, breaks taken of suggested, break pressure (words + three bars; amber only when high). Controls last: sort by focus / break pressure / name. Rows grow to fill the page; a green dot marks who is in a session now. A row opens the person.
+- **Person (`/admin/people/:id`):** the week as seven day lanes on a shared clock (sessions shaded by demand, a filled amber dot = break taken, a ring = snoozed or dismissed); focus this week against the team average; how break suggestions were answered as one bar; 30 days of focus with 14 days of break pressure drawn over it.
+- **Always on screen:** one line saying what this is and what it never includes. Never task text, window titles, apps, typing or camera data: the models have no such fields.
+- **On the record:** opening a person writes "Opened a person's page" to the admin activity log.
+
+## 29. Page switches and loading (built)
+
+- Data outlives its page by 5 minutes, and live changes refresh in place, so going back is instant and nothing blinks.
+- The loader (the o as a jelly cup: pours, sloshes, jiggles, drains) appears only when a load takes longer than 250 ms.
+- One page transition everywhere: 180 ms fade with a 6 px rise. Entrances play on a page's first visit only.
+- Dev panel › Simulate: mock latency, "Forget cached pages", "Send a nudge now".
+
+## 30. Nudges: three ways to arrive (built)
+
+One choice in Settings › Nudges (and guide step 4), kept per computer: **Full screen** (default) · **Windowed** · **Notification**. The old Quiet / Explained / Firm choice is gone: the reason is always shown, and "Firm" is now a separate switch, *Lock the screen during breaks*.
+
+- **Full screen:** the suggestion takes the whole display. **Windowed:** the same view in a centred 760×480 window that floats over your work. Both are the pop-out window (frameless, always on top), so they appear whether Flow was open, popped out or in the tray.
+- **The view (display → read-out → controls):** an amber tide rises from the bottom edge to *your break line* (the Score's nudge line) and calms; "Take 5?" lands above it, then its reason; the controls arrive last: Take a 5 min break · Snooze 5 / 10 / 20 · Why? · Dismiss · Not now. Everything scales with the window.
+- **Mouse first:** the keyboard is ignored for 1.5 s (it appears while you type elsewhere). Then Enter takes the break and Esc snoozes; the hint fades in when the keys are live.
+- **Steps back by itself:** unanswered for 60 s (or "Not now"), it returns to where it came from and waits as the corner card / the widget's amber dot, with a system notification if Flow is not in front.
+- **Notification:** the corner card in Flow (it rises in), the widget's card when popped out, and a system notification when Flow is hidden or behind other work.
+- **If the OS refuses the window shape,** the takeover shows inside Flow's own window instead.
+- **Dev:** `/dev/login?as=solo&nudge=fullScreen|windowed|notification` signs in, starts a session and sends a nudge in that style.

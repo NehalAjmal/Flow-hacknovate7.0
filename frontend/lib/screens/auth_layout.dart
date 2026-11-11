@@ -91,13 +91,22 @@ class AuthLayout extends StatelessWidget {
                 ),
                 child: showcase == null
                     ? BlocksStage(state: stage)
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const FlowWordmark(capHeight: 34),
-                          const SizedBox(height: 22),
-                          Expanded(child: SingleChildScrollView(child: showcase)),
-                        ],
+                    : LayoutBuilder(
+                        // room to spare: the day's blocks stand under the
+                        // showcase, so the field is never half empty
+                        builder: (context, field) => Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const FlowWordmark(capHeight: 34),
+                            const SizedBox(height: 22),
+                            if (field.maxHeight >= 760) ...[
+                              showcase!,
+                              const SizedBox(height: 12),
+                              Expanded(child: BlocksStage(state: stage, showBrand: false)),
+                            ] else
+                              Expanded(child: SingleChildScrollView(child: showcase)),
+                          ],
+                        ),
                       ),
               ),
               Expanded(child: scrollForm),
@@ -207,8 +216,9 @@ class _StagePainter extends CustomPainter {
   @override
   void paint(Canvas c, Size s) {
     // the line sits level with the form's centre; blocks rise above it
-    final maxH = math.min(190.0, s.height * 0.42);
-    final base = math.min(s.height - 6, s.height * 0.5 + maxH * 0.42);
+    // the blocks scale with the panel and stand on its floor: no dead half
+    final maxH = (s.height * 0.62).clamp(120.0, 460.0);
+    final base = s.height - 10;
     final depth = (maxH * 0.07).clamp(4.0, 8.0);
 
     final ink = onField ? p.onField.withValues(alpha: 0.6) : p.text3;

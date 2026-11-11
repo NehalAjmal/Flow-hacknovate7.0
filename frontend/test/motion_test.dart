@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flow/theme/motion.dart';
+import 'package:flutter/physics.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -26,6 +29,17 @@ void main() {
   test('spring presets: stiffness (2π/0.5)² ≈ 157.91, smooth critically damped', () {
     expect(Motion.settle.stiffness, closeTo(157.91, 0.01));
     expect(Motion.settle.damping, closeTo(25.13, 0.01));
-    expect(Motion.snap.damping, closeTo(21.36, 0.01));
+    // snap: response 0.32 s, ratio 0.9 → a trace of overshoot, settled fast
+    expect(Motion.snap.stiffness, closeTo(385.53, 0.01));
+    expect(Motion.snap.damping, closeTo(35.34, 0.01));
+  });
+
+  test('follow never overshoots what it follows (critically damped)', () {
+    final s = Motion.follow;
+    expect(s.damping, closeTo(2 * math.sqrt(s.stiffness * s.mass), 1e-6));
+    final sim = SpringSimulation(s, 0, 1, 0);
+    for (var t = 0.0; t < 1; t += 0.004) {
+      expect(sim.x(t), lessThanOrEqualTo(1.0 + 1e-9));
+    }
   });
 }

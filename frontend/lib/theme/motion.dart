@@ -14,11 +14,16 @@ abstract final class Motion {
   static SpringDescription _spring(double response, double dampingRatio) =>
       SpringDescription.withDampingRatio(mass: 1, stiffness: math.pow(2 * math.pi / response, 2).toDouble(), ratio: dampingRatio);
 
-  /// Tracking the pointer while dragging.
-  static final follow = _spring(0.15, 0.85);
+  /// Catching up with something that moved in steps (wheel notches, hover).
+  /// Critically damped: it must never overshoot what it follows.
+  ///
+  /// NOT for drags. A drag sets the value directly (`SpringValue.value = v`):
+  /// restarting a spring on every pointer event makes the control lag and
+  /// wobble around the hand, which reads as jitter.
+  static final follow = _spring(0.12, 1.0);
 
-  /// Detents, presses, releases, choices.
-  static final snap = _spring(0.5, 0.85);
+  /// Detents, presses, releases, choices: quick, with a trace of overshoot.
+  static final snap = _spring(0.32, 0.9);
 
   /// Shape/position changes and shared-element moves. No overshoot.
   static final settle = _spring(0.5, 1.0);
