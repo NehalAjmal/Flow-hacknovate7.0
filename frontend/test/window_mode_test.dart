@@ -67,7 +67,8 @@ Future<(ProviderContainer, FakeHost)> setup({NudgeStyle style = NudgeStyle.notif
   final b = MockBackend(config: MockConfig.fast);
   final c = ProviderContainer.test(overrides: [...mockOverrides(b), desktopHostProvider.overrideWithValue(host)], retry: (_, _) => null);
   c.listen(desktopPrefsProvider, (_, _) {});
-  await c.read(desktopPrefsProvider.notifier).set(DesktopPrefs(nudgeStyle: style));
+  // these tests are about the pop-out, so turn auto pop-out on (off by default)
+  await c.read(desktopPrefsProvider.notifier).set(DesktopPrefs(nudgeStyle: style, autoMini: true));
   c.listen(authProvider, (_, _) {});
   await eventually(() => c.read(authProvider) is SignedOut);
   await c.read(authProvider.notifier).login(email: 'solo@flow.dev', password: 'password');
@@ -151,7 +152,7 @@ void devNudgeTests() {
     final b = MockBackend(config: const MockConfig(latency: Duration.zero, tick: Duration(hours: 1)))..scenario = MockScenario.quiet;
     final c = ProviderContainer.test(overrides: [...mockOverrides(b), desktopHostProvider.overrideWithValue(host)], retry: (_, _) => null);
     c.listen(desktopPrefsProvider, (_, _) {});
-    await c.read(desktopPrefsProvider.notifier).set(const DesktopPrefs(nudgeStyle: NudgeStyle.notification));
+    await c.read(desktopPrefsProvider.notifier).set(const DesktopPrefs(nudgeStyle: NudgeStyle.notification, autoMini: true));
     c.listen(authProvider, (_, _) {});
     await eventually(() => c.read(authProvider) is SignedOut);
     await c.read(authProvider.notifier).login(email: 'solo@flow.dev', password: 'password');
@@ -237,6 +238,12 @@ void takeoverTests() {
     await nudged(c);
     await c.read(liveSessionProvider.notifier).end();
     await eventually(() => c.read(windowModeProvider) == WindowMode.full);
+  });
+
+  test('defaults: full-screen nudges; the pop-out is opt-in', () {
+    const d = DesktopPrefs();
+    expect(d.nudgeStyle, NudgeStyle.fullScreen);
+    expect(d.autoMini, isFalse, reason: 'starting a session must not reshape the window unasked');
   });
 
   test('window modes: which shapes float', () {

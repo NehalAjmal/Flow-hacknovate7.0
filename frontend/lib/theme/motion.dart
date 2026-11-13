@@ -22,6 +22,10 @@ abstract final class Motion {
   /// wobble around the hand, which reads as jitter.
   static final follow = _spring(0.12, 1.0);
 
+  /// A highlight moving to what the pointer is over. Quick and critically
+  /// damped: anything that overshoots under a moving pointer reads as jitter.
+  static final hover = _spring(0.2, 1.0);
+
   /// Detents, presses, releases, choices: quick, with a trace of overshoot.
   static final snap = _spring(0.32, 0.9);
 

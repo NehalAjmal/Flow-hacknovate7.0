@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../state/auth_controller.dart';
+import '../../state/boot.dart';
 import '../../theme/motion.dart';
 import '../../theme/palette.dart';
 import 'wordmark.dart';
@@ -91,7 +92,10 @@ class _LaunchOverlayState extends ConsumerState<LaunchOverlay> with SingleTicker
     if (_ms < _filledAt) _offsetMs += _filledAt - _ms;
   }
 
-  bool get _authReady => ref.read(authProvider) is! AuthUnknown;
+  /// Ready to reveal: we know who is signed in, and (if someone is) Home's
+  /// data is in, or its wait has run out. Until then the mark stays up with
+  /// the dashed line running under it.
+  bool get _authReady => ref.read(authProvider) is! AuthUnknown && !ref.read(bootReadyProvider).isLoading;
 
   void _tick(Duration elapsed) {
     if (_done) return;

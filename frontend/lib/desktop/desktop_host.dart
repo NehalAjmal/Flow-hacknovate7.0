@@ -25,6 +25,17 @@ enum WindowMode {
   bool get isFloating => isCompact || isTakeover;
 }
 
+/// Light or dark. A choice per computer.
+enum Appearance {
+  /// Follow this computer's own setting.
+  system,
+  light,
+  dark,
+
+  /// Light between two times of day you set, dark for the rest.
+  schedule,
+}
+
 /// How a break suggestion reaches you. A choice per computer (it is about
 /// this screen), kept with the other window preferences.
 enum NudgeStyle {

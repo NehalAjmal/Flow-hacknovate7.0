@@ -36,7 +36,6 @@ const _weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satu
 const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 String _hm(DateTime t) => '${(t.hour - 1) % 12 + 1}:${t.minute.toString().padLeft(2, '0')}';
-String _dur(int m) => m >= 60 ? '${m ~/ 60} h ${(m % 60).toString().padLeft(2, '0')} min' : '$m min';
 DateTime _day(DateTime t) => DateTime(t.year, t.month, t.day);
 
 /// Home (DESIGN_SPEC §6): DISPLAY (Day Score) → READ-OUT → CONTROL DECK
@@ -77,12 +76,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool get _isToday => DateUtils.isSameDay(_selected, _now);
 
   Future<void> _start(int minutes) async {
+    if (_busy) return; // a second click or key press while the first is in flight
     setState(() => _busy = true);
     final ok = await runGuarded(
       context,
       () => ref
           .read(liveSessionProvider.notifier)
-          .start(StartSessionRequest(taskText: _task.text, demand: _demand, plannedMinutes: minutes, shareTaskWithLlm: _shareAi)),
+          .start(
+            StartSessionRequest(
+              // an empty field is "no task", not a task called ""
+              taskText: _task.text.trim().isEmpty ? null : _task.text.trim(),
+              demand: _demand,
+              plannedMinutes: minutes,
+              shareTaskWithLlm: _shareAi && _task.text.trim().isNotEmpty,
+            ),
+          ),
     );
     if (!mounted) return;
     setState(() {
@@ -239,7 +247,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final name = _weekdays[_selected.weekday - 1];
     final parts = <String>['$name ${_selected.day}'];
     if (d != null) {
-      parts.add(_dur(d.totals.focusMinutes));
+      parts.add(flowDuration(d.totals.focusMinutes, caps: true)); // shown in caps
       if (_isToday) {
         final next = d.meetings.where((m) => m.start.isAfter(_now)).toList()..sort((a, b) => a.start.compareTo(b.start));
         if (next.isNotEmpty) parts.add('next meeting ${_hm(next.first.start)}');
@@ -336,11 +344,11 @@ class _Display extends StatelessWidget {
     final p = FlowPalette.of(context);
     final t = day.totals;
     final delta = t.usualFocusMinutes == null ? null : t.focusMinutes - t.usualFocusMinutes!;
-    Widget margin(String big, String label, String? sub, {Color? subColor}) => Column(
+    Widget margin(Widget big, String label, String? sub, {Color? subColor}) => Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        TabularNumeral(big, style: FlowType.numeral(p, 28)),
+        big,
         const SizedBox(height: 3),
         Text(flowCaps(label), style: FlowType.label(p, size: 9, color: p.text3)),
         if (sub != null) Text(sub, style: FlowType.chart(p, size: 10, color: subColor ?? p.text3)),
@@ -359,15 +367,15 @@ class _Display extends StatelessWidget {
                 Positioned(
                   top: (h * 0.40).clamp(0, 112.0) - 52,
                   child: margin(
-                    '${t.focusMinutes ~/ 60}h${(t.focusMinutes % 60).toString().padLeft(2, '0')}',
+                    DurationNumeral(t.focusMinutes, size: 28),
                     'focused',
-                    delta == null ? null : '${delta >= 0 ? '+' : '−'}${_dur(delta.abs())} vs usual',
+                    delta == null ? null : '${delta >= 0 ? '+' : '−'}${flowDuration(delta.abs())} vs usual',
                   ),
                 ),
                 Positioned(
                   top: (h * 0.40).clamp(0, 112.0) + 76,
                   child: margin(
-                    '${t.breaksTaken}/${t.breaksSuggested}',
+                    TabularNumeral('${t.breaksTaken}/${t.breaksSuggested}', style: FlowType.numeral(p, 28)),
                     'breaks',
                     t.breaksSkipped > 0 ? '${t.breaksSkipped} skipped' : null,
                   ),
@@ -517,6 +525,16 @@ class _StartGroup extends ConsumerWidget {
                       softWrap: false,
                       style: TextStyle(fontSize: 11, color: p.text3),
                     ),
+                  ),
+                ],
+                // past one turn of the dial: say what a session this long means
+                if (minutes > DurationDial.fullTurn) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    minutes >= DurationDial.healthyMax
+                        ? '4 h is the most for one session. Flow will suggest breaks along the way.'
+                        : 'A long one. Flow will suggest breaks along the way.',
+                    style: TextStyle(fontSize: 11, height: 1.35, color: p.amber),
                   ),
                 ],
               ],

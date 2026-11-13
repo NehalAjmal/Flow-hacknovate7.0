@@ -96,6 +96,59 @@ abstract final class FlowType {
       TextStyle(fontFamily: FlowFonts.note, fontSize: size - 1, height: 1.5, color: color ?? p.text2);
 }
 
+/// A length of time in words, one format everywhere: "25 min", "1 h 05 min",
+/// "2 h". The unit always follows its number after a space, so it never reads
+/// as part of the number. [caps] is for all-caps captions, where a lone "H"
+/// is hard to read: "1 HR 05 MIN" once upper-cased.
+String flowDuration(int minutes, {bool caps = false}) {
+  final m = minutes.abs();
+  final h = m ~/ 60, r = m % 60;
+  final hour = caps ? 'hr' : 'h';
+  if (h == 0) return '$r min';
+  if (r == 0) return '$h $hour';
+  return '$h $hour ${r.toString().padLeft(2, '0')} min';
+}
+
+/// The same length of time as a display numeral: the numbers in the
+/// instrument face, the units small and quiet beside them ("1 h 25 min").
+/// In the display face an "h" set at full size reads as another digit.
+List<InlineSpan> durationSpans(FlowPalette p, int minutes, double size, {Color? color}) {
+  final m = minutes.abs();
+  final h = m ~/ 60, r = m % 60;
+  final num = FlowType.numeral(p, size, color: color);
+  final unit = TextStyle(
+    fontFamily: FlowFonts.ui,
+    fontSize: (size * 0.4).clamp(9.0, 22.0),
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0.2,
+    color: color?.withValues(alpha: 0.75) ?? p.text2,
+  );
+  final gap = TextSpan(text: '\u2009', style: unit); // thin space
+  return [
+    if (h > 0) ...[TextSpan(text: '$h', style: num), gap, TextSpan(text: 'h', style: unit), TextSpan(text: ' ', style: unit)],
+    if (h == 0 || r > 0) ...[
+      TextSpan(text: h > 0 ? r.toString().padLeft(2, '0') : '$r', style: num),
+      gap,
+      TextSpan(text: 'min', style: unit),
+    ],
+  ];
+}
+
+class DurationNumeral extends StatelessWidget {
+  const DurationNumeral(this.minutes, {super.key, required this.size, this.color});
+  final int minutes;
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) => Text.rich(
+    TextSpan(children: durationSpans(FlowPalette.of(context), minutes, size, color: color)),
+    maxLines: 1,
+    softWrap: false,
+    semanticsLabel: flowDuration(minutes),
+  );
+}
+
 /// Fixed-width digit cells for OffBit numbers that change (timers, dial value),
 /// since the face has no tabular figures. Non-digits keep their natural width.
 class TabularNumeral extends StatelessWidget {
@@ -169,9 +222,7 @@ ThemeData buildTheme(Brightness brightness) {
   return base.copyWith(
     // One page motion everywhere, replacing each platform's default (the
     // Windows/Linux zoom is the loudest): a short fade with a small rise.
-    pageTransitionsTheme: PageTransitionsTheme(
-      builders: {for (final t in TargetPlatform.values) t: const FlowPageTransitions()},
-    ),
+    pageTransitionsTheme: PageTransitionsTheme(builders: {for (final t in TargetPlatform.values) t: const FlowPageTransitions()}),
     scaffoldBackgroundColor: p.bg,
     canvasColor: p.bg,
     dividerColor: p.hairline,
@@ -187,7 +238,6 @@ ThemeData buildTheme(Brightness brightness) {
     ),
   );
 }
-
 
 /// Incoming page: 180 ms fade + 6 px rise (FADE family, ease-out). The page
 /// underneath fades out a little faster, so the two never sit at half opacity
@@ -210,7 +260,10 @@ class FlowPageTransitions extends PageTransitionsBuilder {
     Widget child,
   ) {
     final inCurve = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
-    final outCurve = CurvedAnimation(parent: secondaryAnimation, curve: const Interval(0, 0.7, curve: Curves.easeIn));
+    final outCurve = CurvedAnimation(
+      parent: secondaryAnimation,
+      curve: const Interval(0, 0.7, curve: Curves.easeIn),
+    );
     return FadeTransition(
       opacity: ReverseAnimation(outCurve),
       child: FadeTransition(

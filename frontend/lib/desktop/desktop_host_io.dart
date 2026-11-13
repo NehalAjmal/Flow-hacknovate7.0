@@ -45,6 +45,7 @@ class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost
   ValueChanged<WidgetCorner>? _onSnapped;
   WindowMode _mode = WindowMode.full;
   Rect? _fullBounds;
+  bool _wasMaximized = false;
   bool _placing = false;
   Timer? _snapDebounce;
   TrayState? _trayState;
@@ -100,6 +101,12 @@ class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost
     WidgetCorner.bottomRight => Offset(area.right - s.width - _margin, area.bottom - s.height - _margin),
   };
 
+  /// Dev builds only (`--dart-define=FLOW_DEV=true`): what the window did,
+  /// one line per event, prefixed so it is easy to find and paste.
+  static void _log(String m) {
+    if (const bool.fromEnvironment('FLOW_DEV')) debugPrint('[flow/window] $m');
+  }
+
   /// One native step. A failure is logged (dev console) and reported, never
   /// thrown: one unsupported call must not abandon the rest of the sequence.
   Future<bool> _step(String what, Future<void> Function() run) async {
@@ -107,35 +114,84 @@ class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost
       await run();
       return true;
     } catch (e) {
-      debugPrint('[flow/window] $what failed: $e');
+      _log('$what failed: $e');
       return false;
     }
   }
 
-  /// The pop: the window is hidden, reshaped while invisible, and shown again
-  /// in its new form. Nothing half-styled is ever on screen, and Flutter gets
-  /// a clean first frame at the new size.
+  /// Windows applies a restore-from-maximized asynchronously: a resize sent
+  /// before it lands is undone by it, leaving the pill's content stretched
+  /// across a full-size window. So wait until the window really is normal.
+  Future<void> _leaveMaximized() async {
+    var maximized = false, minimized = false;
+    await _step('read state', () async {
+      maximized = await windowManager.isMaximized();
+      minimized = await windowManager.isMinimized();
+    });
+    if (minimized) await _step('restore', windowManager.restore);
+    if (maximized) {
+      _wasMaximized = true;
+      await _step('unmaximize', windowManager.unmaximize);
+    }
+    if (!maximized && !minimized) return;
+    for (var i = 0; i < 20; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      var still = false;
+      await _step('read state', () async => still = await windowManager.isMaximized() || await windowManager.isMinimized());
+      if (!still) break;
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 60)); // let the restore's own resize finish
+  }
+
+  /// Sets [target] and confirms the window took it; retries once (a late
+  /// restore or DPI change can undo the first). False = it would not.
+  Future<bool> _place(Rect target) async {
+    for (var attempt = 0; attempt < 2; attempt++) {
+      if (!await _step('place', () => windowManager.setBounds(target))) return false;
+      await Future<void>.delayed(const Duration(milliseconds: 90));
+      Size? got;
+      await _step('verify', () async => got = await windowManager.getSize());
+      if (got == null) return true; // cannot read it back: trust the call
+      if ((got!.width - target.width).abs() <= 24 && (got!.height - target.height).abs() <= 24) return true;
+      _log('asked for ${target.size}, window is $got (attempt ${attempt + 1})');
+    }
+    return false;
+  }
+
+  /// Flutter may not draw after a native reshape until the next input event
+  /// (the window looked empty until clicked). Ask for frames explicitly, now
+  /// and again once the OS has settled.
+  void _wake() {
+    void frame() => WidgetsBinding.instance.scheduleForcedFrame();
+    frame();
+    for (final ms in const [60, 180, 450]) {
+      Timer(Duration(milliseconds: ms), frame);
+    }
+  }
+
+  /// Reshapes the one window. It stays visible throughout: hiding it makes
+  /// Flutter stop drawing (lifecycle "hidden") and it did not reliably start
+  /// again when shown without focus.
   ///
-  /// Compact modes are **frameless** (client area = the whole window). The
-  /// earlier "hidden title bar + not resizable" pair left 8 px of dead,
-  /// unpainted non-client area on three sides on Windows; frameless has none,
-  /// and the Flutter view covers every edge, so the pill can't be resized by
-  /// hand without touching the resizable flag at all.
+  /// Floating shapes (pill, card, nudge window, nudge over the whole screen)
+  /// are **frameless**: the client area is the whole window, so there are no
+  /// dead strips (the "hidden title bar + not resizable" pair left 8 px of
+  /// unpainted non-client area on three sides on Windows).
   @override
   Future<bool> applyMode(WindowMode mode, {WidgetCorner corner = WidgetCorner.bottomRight}) async {
     final from = _mode;
-    final wasCompact = from.isFloating;
-    final compact = mode.isFloating;
+    final wasFloating = from.isFloating;
     _mode = mode;
     _placing = true;
     var ok = true;
     try {
-      if (from == WindowMode.full && mode != WindowMode.full) {
-        await _step('getBounds', () async => _fullBounds = await windowManager.getBounds());
-      }
       if (from == WindowMode.lock) await _step('leave full screen', () => windowManager.setFullScreen(false));
 
-      if (compact) {
+      if (mode.isFloating) {
+        if (!wasFloating) {
+          await _leaveMaximized();
+          await _step('getBounds', () async => _fullBounds = await windowManager.getBounds());
+        }
         final area = await _workArea();
         final Rect target;
         if (mode == WindowMode.nudgeFull) {
@@ -149,35 +205,22 @@ class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost
           final s = mode == WindowMode.mini ? _miniSize : _cardSize;
           target = _cornerPos(area, s, corner) & s;
         }
-        final size = target.size;
-        if (wasCompact) {
-          // pill ↔ card: same frameless window, it just grows from its corner
-          ok = await _step('resize', () => windowManager.setBounds(target));
-        } else {
-          await _step('hide', windowManager.hide);
+        if (!wasFloating) {
           ok = await _step('frameless', windowManager.setAsFrameless);
           await _step('minimum size', () => windowManager.setMinimumSize(_miniSize));
           await _step('always on top', () => windowManager.setAlwaysOnTop(true));
-          ok = await _step('place', () => windowManager.setBounds(target)) && ok;
-          await _step('show', () => windowManager.show(inactive: true));
         }
-        // one extra size round-trip: makes the Flutter view re-read its size
-        // (some Windows setups keep the old surface after a style change)
-        await _step('refresh', () async {
-          await windowManager.setSize(Size(size.width + 1, size.height));
-          await windowManager.setSize(size);
-        });
-        // did the window really take the shape? If not, say so: the
-        // controller falls back to the full app instead of a broken pill.
-        await _step('verify', () async {
-          final got = await windowManager.getSize();
-          if ((got.width - size.width).abs() > 24 || (got.height - size.height).abs() > 24) {
-            debugPrint('[flow/window] asked for $size, window is $got');
-            ok = false;
-          }
-        });
+        ok = await _place(target) && ok;
+        // in the tray (or behind everything) when a nudge takes over: bring it up
+        var visible = true;
+        await _step('visible?', () async => visible = await windowManager.isVisible());
+        if (!visible || mode.isTakeover) {
+          await _step('show', () async {
+            await windowManager.show();
+            await windowManager.focus();
+          });
+        }
       } else if (mode == WindowMode.full) {
-        if (wasCompact) await _step('hide', windowManager.hide);
         await _step('normal frame', () => windowManager.setTitleBarStyle(TitleBarStyle.normal));
         await _step('always on top off', () => windowManager.setAlwaysOnTop(false));
         await _step('minimum size', () => windowManager.setMinimumSize(const Size(960, 640)));
@@ -190,6 +233,10 @@ class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost
             await windowManager.center();
           }
         });
+        if (_wasMaximized) {
+          _wasMaximized = false;
+          await _step('maximize again', windowManager.maximize);
+        }
         await _step('show', () async {
           await windowManager.show();
           await windowManager.focus();
@@ -203,7 +250,12 @@ class NativeDesktopHost with WindowListener, TrayListener implements DesktopHost
     } finally {
       _placing = false;
     }
-    if (!ok) debugPrint('[flow/window] could not apply ${mode.name}');
+    _wake();
+    Rect? now;
+    await _step('read back', () async => now = await windowManager.getBounds());
+    _log(
+      '${from.name} → ${mode.name}: ${ok ? 'ok' : 'FAILED'}, window is now ${now == null ? 'unknown' : '${now!.width.round()}×${now!.height.round()} at ${now!.left.round()},${now!.top.round()}'}',
+    );
     return ok;
   }
 

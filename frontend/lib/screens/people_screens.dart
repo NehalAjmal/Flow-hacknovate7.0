@@ -20,8 +20,6 @@ import 'shell.dart' show FlowHeader;
 
 // ── shared ─────────────────────────────────────────────────────────────────
 
-String _hm(int minutes) => minutes < 60 ? '${minutes}m' : '${minutes ~/ 60}h ${(minutes % 60).toString().padLeft(2, '0')}';
-
 const _wd = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 /// Break pressure as words (text carries the meaning; amber only when high).
@@ -224,7 +222,7 @@ class _PeopleScreenState extends ConsumerState<PeopleScreen> with SingleTickerPr
                             Container(width: 14, height: 1.5, color: p.text2),
                             const SizedBox(width: 6),
                             Text(
-                              'team average that day · ${_hm(teamAvg)} each this week',
+                              'team average that day · ${flowDuration(teamAvg)} each this week',
                               style: FlowType.chart(p, size: 10.5, color: p.text2),
                             ),
                           ],
@@ -334,7 +332,7 @@ class _PersonRowState extends State<_PersonRow> {
     return Semantics(
       button: true,
       label:
-          '${m.name}: ${_hm(m.focusMinutes)} of focus, ${m.sessions} sessions, '
+          '${m.name}: ${flowDuration(m.focusMinutes)} of focus, ${m.sessions} sessions, '
           '${m.breaksTaken} of ${m.breaksSuggested} breaks taken, break pressure ${m.strain}. Open their page.',
       excludeSemantics: true,
       child: MouseRegion(
@@ -386,7 +384,7 @@ class _PersonRowState extends State<_PersonRow> {
                   painter: _WeekBlocks(p, m.focusByDay, widget.peak, widget.avg, widget.today, widget.rise, widget.index),
                 ),
               ),
-              focus: TabularNumeral(_hm(m.focusMinutes), style: FlowType.numeral(p, big ? 22 : 17)),
+              focus: DurationNumeral(m.focusMinutes, size: big ? 22 : 17),
               sessions: TabularNumeral('${m.sessions}', style: FlowType.numeral(p, big ? 22 : 17)),
               breaks: Row(
                 children: [
@@ -541,7 +539,7 @@ class _MemberScreenState extends ConsumerState<MemberScreen> with SingleTickerPr
                 const SizedBox(height: 8),
                 Expanded(
                   child: Semantics(
-                    label: 'Week timeline: ${[for (final d in m.days) _hm(d.focusMinutes)].join(', ')} Monday to Sunday',
+                    label: 'Week timeline: ${[for (final d in m.days) flowDuration(d.focusMinutes)].join(', ')} Monday to Sunday',
                     child: CustomPaint(size: Size.infinite, painter: _LanesPainter(p, m.days, _rise, MediaQuery.textScalerOf(context))),
                   ),
                 ),
@@ -562,14 +560,14 @@ class _MemberScreenState extends ConsumerState<MemberScreen> with SingleTickerPr
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    TabularNumeral(_hm(s.focusMinutes), style: FlowType.numeral(p, 46)),
+                    DurationNumeral(s.focusMinutes, size: 46),
                     const SizedBox(width: 12),
                     if (diff != null)
                       Flexible(
                         child: Text(
                           diff.abs() < 15
                               ? 'about the team average'
-                              : '${_hm(diff.abs())} ${diff > 0 ? 'above' : 'below'} the team average',
+                              : '${flowDuration(diff.abs())} ${diff > 0 ? 'above' : 'below'} the team average',
                           style: FlowType.note(p, size: 13.5),
                         ),
                       ),
@@ -584,7 +582,7 @@ class _MemberScreenState extends ConsumerState<MemberScreen> with SingleTickerPr
                     Expanded(
                       child: _Stat(
                         label: 'Longest',
-                        value: _hm(m.days.expand((d) => d.sessions).fold(0, (a, x) => math.max(a, x.end.difference(x.start).inMinutes))),
+                        minutes: m.days.expand((d) => d.sessions).fold<int>(0, (a, x) => math.max(a, x.end.difference(x.start).inMinutes)),
                       ),
                     ),
                     Expanded(
@@ -738,8 +736,12 @@ class _MemberScreenState extends ConsumerState<MemberScreen> with SingleTickerPr
 }
 
 class _Stat extends StatelessWidget {
-  const _Stat({required this.label, required this.value});
-  final String label, value;
+  const _Stat({required this.label, this.value, this.minutes}) : assert(value != null || minutes != null);
+  final String label;
+  final String? value;
+
+  /// A length of time: drawn with small units instead of [value].
+  final int? minutes;
   @override
   Widget build(BuildContext context) {
     final p = FlowPalette.of(context);
@@ -748,7 +750,7 @@ class _Stat extends StatelessWidget {
       children: [
         SectionLabel(label),
         const SizedBox(height: 2),
-        TabularNumeral(value, style: FlowType.numeral(p, 24)),
+        if (minutes != null) DurationNumeral(minutes!, size: 24) else TabularNumeral(value!, style: FlowType.numeral(p, 24)),
       ],
     );
   }
@@ -883,7 +885,7 @@ class _LanesPainter extends CustomPainter {
         }
       }
       if (d.focusMinutes > 0) {
-        final tp = text(_hm(d.focusMinutes), FlowType.chart(p, size: 11, color: p.text1));
+        final tp = text(flowDuration(d.focusMinutes), FlowType.chart(p, size: 11, color: p.text1));
         tp.paint(c, Offset(s.width - tp.width, y - tp.height / 2));
       } else {
         final tp = text('–', FlowType.chart(p, size: 11));

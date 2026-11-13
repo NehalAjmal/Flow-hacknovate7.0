@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -15,11 +16,22 @@ final desktopHostProvider = Provider<DesktopHost>((ref) => createDesktopHost());
 /// Window preferences (Settings › Window). Local to this computer.
 class DesktopPrefs {
   const DesktopPrefs({
-    this.autoMini = true,
+    this.autoMini = false,
     this.closeToTray = true,
     this.corner = WidgetCorner.bottomRight,
     this.nudgeStyle = NudgeStyle.fullScreen,
+    this.appearance = Appearance.system,
+    this.lightFrom = 7 * 60,
+    this.lightTo = 19 * 60,
   });
+
+  /// Light, dark, this computer's setting, or by time of day.
+  final Appearance appearance;
+
+  /// [Appearance.schedule]: Flow is light from [lightFrom] to [lightTo]
+  /// (minutes after midnight, local time) and dark for the rest of the day.
+  final int lightFrom;
+  final int lightTo;
 
   /// How a break suggestion reaches you on this computer.
   final NudgeStyle nudgeStyle;
@@ -27,12 +39,28 @@ class DesktopPrefs {
   final bool closeToTray;
   final WidgetCorner corner;
 
-  DesktopPrefs copyWith({bool? autoMini, bool? closeToTray, WidgetCorner? corner, NudgeStyle? nudgeStyle}) => DesktopPrefs(
+  DesktopPrefs copyWith({
+    bool? autoMini,
+    bool? closeToTray,
+    WidgetCorner? corner,
+    NudgeStyle? nudgeStyle,
+    Appearance? appearance,
+    int? lightFrom,
+    int? lightTo,
+  }) => DesktopPrefs(
     autoMini: autoMini ?? this.autoMini,
     closeToTray: closeToTray ?? this.closeToTray,
     corner: corner ?? this.corner,
     nudgeStyle: nudgeStyle ?? this.nudgeStyle,
+    appearance: appearance ?? this.appearance,
+    lightFrom: lightFrom ?? this.lightFrom,
+    lightTo: lightTo ?? this.lightTo,
   );
+
+  /// Is Flow light at [minuteOfDay] under the time-of-day schedule? The light
+  /// span may cross midnight (e.g. 22:00 → 06:00 for a night shift).
+  bool lightAt(int minuteOfDay) =>
+      lightFrom <= lightTo ? minuteOfDay >= lightFrom && minuteOfDay < lightTo : minuteOfDay >= lightFrom || minuteOfDay < lightTo;
 }
 
 class DesktopPrefsController extends Notifier<DesktopPrefs> {
@@ -50,10 +78,13 @@ class DesktopPrefsController extends Notifier<DesktopPrefs> {
       // a choice made while the stored ones were still loading wins
       if (!ref.mounted || _changed) return;
       state = DesktopPrefs(
-        autoMini: sp.getBool('${_k}autoMini') ?? true,
+        autoMini: sp.getBool('${_k}autoMini') ?? false,
         closeToTray: sp.getBool('${_k}closeToTray') ?? true,
         corner: WidgetCorner.values.asNameMap()[sp.getString('${_k}corner')] ?? WidgetCorner.bottomRight,
         nudgeStyle: NudgeStyle.values.asNameMap()[sp.getString('${_k}nudgeStyle')] ?? NudgeStyle.fullScreen,
+        appearance: Appearance.values.asNameMap()[sp.getString('${_k}appearance')] ?? Appearance.system,
+        lightFrom: (sp.getInt('${_k}lightFrom') ?? 7 * 60).clamp(0, 24 * 60 - 1),
+        lightTo: (sp.getInt('${_k}lightTo') ?? 19 * 60).clamp(0, 24 * 60),
       );
     } catch (_) {
       // no storage (tests, private web): defaults are fine
@@ -71,11 +102,43 @@ class DesktopPrefsController extends Notifier<DesktopPrefs> {
       await sp.setBool('${_k}closeToTray', next.closeToTray);
       await sp.setString('${_k}corner', next.corner.name);
       await sp.setString('${_k}nudgeStyle', next.nudgeStyle.name);
+      await sp.setString('${_k}appearance', next.appearance.name);
+      await sp.setInt('${_k}lightFrom', next.lightFrom);
+      await sp.setInt('${_k}lightTo', next.lightTo);
     } catch (_) {}
   }
 }
 
 final desktopPrefsProvider = NotifierProvider<DesktopPrefsController, DesktopPrefs>(DesktopPrefsController.new);
+
+/// The minute of the day, refreshed twice a minute. Only alive while the
+/// time-of-day appearance is in use.
+final _minuteOfDayProvider = StreamProvider.autoDispose<int>((ref) async* {
+  int now() {
+    final t = DateTime.now();
+    return t.hour * 60 + t.minute;
+  }
+
+  yield now();
+  yield* Stream<int>.periodic(const Duration(seconds: 30), (_) => now()).distinct();
+});
+
+/// The theme Flow uses right now (Settings › Appearance).
+final themeModeProvider = Provider<ThemeMode>((ref) {
+  final p = ref.watch(desktopPrefsProvider);
+  switch (p.appearance) {
+    case Appearance.system:
+      return ThemeMode.system;
+    case Appearance.light:
+      return ThemeMode.light;
+    case Appearance.dark:
+      return ThemeMode.dark;
+    case Appearance.schedule:
+      final t = DateTime.now();
+      final minute = ref.watch(_minuteOfDayProvider).value ?? t.hour * 60 + t.minute;
+      return p.lightAt(minute) ? ThemeMode.light : ThemeMode.dark;
+  }
+});
 
 /// The window state model (DESIGN_SPEC §3, D6):
 /// - mini exists only during a session (auto on start if enabled; Shrink

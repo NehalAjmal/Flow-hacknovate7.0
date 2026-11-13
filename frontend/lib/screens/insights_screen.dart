@@ -26,7 +26,6 @@ const _months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 
 
 DateTime _d(DateTime t) => DateTime(t.year, t.month, t.day);
 DateTime _monday(DateTime t) => _d(t).subtract(Duration(days: t.weekday - 1));
-String _hm(int minutes) => minutes >= 60 ? '${minutes ~/ 60} h ${(minutes % 60).toString().padLeft(2, '0')}' : '$minutes min';
 
 /// Insights (spec §8): the week as day cards standing on a floor line; the
 /// chosen day in full underneath; then what Flow has learned, each on its own
@@ -65,7 +64,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
           children: [
             FlowHeader(
               title: 'Insights',
-              subtitle: 'Week $weekNo · ${_hm(totalMin)} focused · $breaks breaks',
+              subtitle: 'Week $weekNo · ${flowDuration(totalMin)} focused · $breaks breaks',
               action: _WeekStepper(
                 label: _weekOffset == 0 ? 'This week' : (_weekOffset == -1 ? 'Last week' : '${-_weekOffset} weeks ago'),
                 onBack: () => setState(() {
@@ -108,7 +107,7 @@ class _InsightsScreenState extends ConsumerState<InsightsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SectionLabel(
-                      '${_days[sel]} ${days[sel].date.day} ${_months[days[sel].date.month - 1]} · ${_hm(days[sel].totals.focusMinutes)}',
+                      '${_days[sel]} ${days[sel].date.day} ${_months[days[sel].date.month - 1]} · ${flowDuration(days[sel].totals.focusMinutes)}',
                     ),
                     const SizedBox(height: 6),
                     DayScore(
@@ -205,6 +204,7 @@ class _WeekCards extends StatefulWidget {
 
 class _WeekCardsState extends State<_WeekCards> with TickerProviderStateMixin {
   late final _hover = SpringValue(vsync: this, initial: -10);
+  double? _hoverCard;
   // the selection outline slides between cards (SNAP, carries velocity)
   late final _sel = SpringValue(vsync: this, initial: widget.selected.toDouble());
   late final _rise = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
@@ -244,8 +244,20 @@ class _WeekCardsState extends State<_WeekCards> with TickerProviderStateMixin {
       builder: (context, box) {
         final slot = box.maxWidth / 7;
         return MouseRegion(
-          onHover: (e) => _hover.animateTo((e.localPosition.dx / slot).floorToDouble(), spring: Motion.snap),
-          onExit: (_) => _hover.animateTo(-10, spring: Motion.settle),
+          // retarget only when the card under the pointer changes (not on
+          // every mouse event), and arrive without overshoot
+          onHover: (e) {
+            final i = (e.localPosition.dx / slot).floorToDouble().clamp(0.0, 6.0);
+            if (i == _hoverCard) return;
+            // entering from outside: appear on the card, don't sweep in from afar
+            if (_hoverCard == null) _hover.value = i;
+            _hoverCard = i;
+            _hover.animateTo(i, spring: Motion.hover, reduced: Motion.reduced(context));
+          },
+          onExit: (_) {
+            _hoverCard = null;
+            _hover.value = -10;
+          },
           child: GestureDetector(
             onTapUp: (e) => widget.onSelect((e.localPosition.dx / slot).floor().clamp(0, 6)),
             child: AnimatedBuilder(
@@ -344,7 +356,9 @@ class _WeekPainter extends CustomPainter {
       // hover stands the card up; neighbours part a little
       final dist = (i - hover).abs();
       final lift = math.max(0.0, 1 - dist) * 10;
-      final part = hover < -5 ? 0.0 : (i - hover).sign * math.max(0.0, 1.6 - dist) * 3;
+      // continuous through zero: `sign` here made the hovered card itself
+      // jump ±5 px whenever the hover point crossed its centre
+      final part = hover < -5 ? 0.0 : (i - hover).clamp(-1.0, 1.0) * math.max(0.0, 1.6 - dist) * 3;
       final cx = slot * i + slot / 2 + part;
       final w = slot - 14;
       final cardH = floor - 10 - lift;
@@ -404,14 +418,14 @@ class _WeekPainter extends CustomPainter {
       // the day's total as a big numeral at the top of the card
       final tot = d.totals.focusMinutes;
       if (tot > 0) {
-        _t(
-          c,
-          '${tot ~/ 60}h${(tot % 60).toString().padLeft(2, '0')}',
-          Offset(cx, card.top + 26),
-          size: 22,
-          family: FlowFonts.instrument,
-          color: p.text1,
-        );
+        // numbers in the instrument face, units small beside them
+        final tp = TextPainter(
+          text: TextSpan(children: durationSpans(p, tot, 21, color: p.text1)),
+          textDirection: TextDirection.ltr,
+          textScaler: scaler,
+          maxLines: 1,
+        )..layout();
+        tp.paint(c, Offset(cx - tp.width / 2, card.top + 26 - tp.height / 2));
       } else {
         _t(c, future ? 'ahead' : 'no focus', Offset(cx, card.top + 26), size: 11, color: p.text3);
       }
@@ -578,8 +592,10 @@ class _PeakBars extends StatefulWidget {
   State<_PeakBars> createState() => _PeakBarsState();
 }
 
-class _PeakBarsState extends State<_PeakBars> with SingleTickerProviderStateMixin {
+class _PeakBarsState extends State<_PeakBars> with TickerProviderStateMixin {
   late final _rise = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200));
+  // where the lift is, in hours: it glides to the hovered bar instead of popping
+  late final _lift = SpringValue(vsync: this, initial: -10);
   int? _hoverHour;
   @override
   void initState() {
@@ -590,6 +606,7 @@ class _PeakBarsState extends State<_PeakBars> with SingleTickerProviderStateMixi
   @override
   void dispose() {
     _rise.dispose();
+    _lift.dispose();
     super.dispose();
   }
 
@@ -598,11 +615,17 @@ class _PeakBarsState extends State<_PeakBars> with SingleTickerProviderStateMixi
     builder: (context, box) => MouseRegion(
       onHover: (e) {
         final h = (e.localPosition.dx / (box.maxWidth / 24)).floor().clamp(0, 23);
-        if (h != _hoverHour) setState(() => _hoverHour = h);
+        if (h == _hoverHour) return;
+        if (_hoverHour == null) _lift.value = h.toDouble();
+        _lift.animateTo(h.toDouble(), spring: Motion.hover, reduced: Motion.reduced(context));
+        setState(() => _hoverHour = h);
       },
-      onExit: (_) => setState(() => _hoverHour = null),
+      onExit: (_) {
+        _lift.value = -10;
+        setState(() => _hoverHour = null);
+      },
       child: AnimatedBuilder(
-        animation: _rise,
+        animation: Listenable.merge([_rise, _lift.animation]),
         builder: (context, _) => CustomPaint(
           size: Size.infinite,
           painter: _PeakPainter(
@@ -612,6 +635,7 @@ class _PeakBarsState extends State<_PeakBars> with SingleTickerProviderStateMixi
             _rise.isCompleted ? 1e9 : _rise.value * 2.2,
             MediaQuery.textScalerOf(context),
             hoverHour: _hoverHour,
+            liftAt: _lift.value,
           ),
         ),
       ),
@@ -620,8 +644,9 @@ class _PeakBarsState extends State<_PeakBars> with SingleTickerProviderStateMixi
 }
 
 class _PeakPainter extends CustomPainter {
-  _PeakPainter(this.p, this.perHour, this.peaks, this.rise, this.scaler, {this.hoverHour});
+  _PeakPainter(this.p, this.perHour, this.peaks, this.rise, this.scaler, {this.hoverHour, this.liftAt = -10});
   final int? hoverHour;
+  final double liftAt;
   final FlowPalette p;
   final List<int> perHour;
   final List<int> peaks;
@@ -645,7 +670,7 @@ class _PeakPainter extends CustomPainter {
     for (var h = 0; h < 24; h++) {
       final x0 = h * slot + (slot - w) / 2, x1 = x0 + w;
       final tt = rise >= 1e8 ? 1e9 : rise - (h - 12).abs() * 0.035;
-      final lifted = h == hoverHour ? 4.0 : 0.0;
+      final lifted = 4.0 * math.max(0.0, 1 - (h - liftAt).abs());
       final bh = (base - 24) * perHour[h] / maxV + lifted;
       final col = perHour[h] / maxV > 0.66 ? p.pastHeavy : (perHour[h] / maxV > 0.33 ? p.pastModerate : p.pastLight);
       final rh = bh * (tt >= 1e8 ? 1.0 : Motion.settleAt(tt));
@@ -685,7 +710,8 @@ class _PeakPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PeakPainter o) => o.hoverHour != hoverHour || o.rise != rise || o.perHour != perHour || o.p != p;
+  bool shouldRepaint(_PeakPainter o) =>
+      o.hoverHour != hoverHour || o.liftAt != liftAt || o.rise != rise || o.perHour != perHour || o.p != p;
 }
 
 /// Relative focus × minutes into a session. The curve is Flow's model of you
@@ -719,7 +745,11 @@ class _CycleCurveState extends State<_CycleCurve> with SingleTickerProviderState
 
   @override
   Widget build(BuildContext context) => MouseRegion(
-    onHover: (e) => setState(() => _hoverX = e.localPosition.dx),
+    onHover: (e) {
+      // whole pixels: sub-pixel mouse noise is not worth a repaint
+      final x = e.localPosition.dx.roundToDouble();
+      if (x != _hoverX) setState(() => _hoverX = x);
+    },
     onExit: (_) => setState(() => _hoverX = null),
     child: AnimatedBuilder(
       animation: _draw,
@@ -1032,7 +1062,7 @@ class _HeatPainter extends CustomPainter {
           ..strokeWidth = 1.4
           ..color = p.selected,
       );
-      final label = '${_days[day.weekday - 1]} ${day.day} ${_months[day.month - 1]} · ${m == 0 ? 'no focus' : _hm(m)}';
+      final label = '${_days[day.weekday - 1]} ${day.day} ${_months[day.month - 1]} · ${m == 0 ? 'no focus' : flowDuration(m)}';
       final tp = TextPainter(
         text: TextSpan(
           text: label,

@@ -25,6 +25,12 @@ enum DialMode {
 /// - Dashes near the dot grow/darken with distance falloff while turning.
 /// - Each 5-min step pops the dash under the dot (+ selection haptic).
 /// - Rubber band beyond [min]/[max]; notched mouse wheel = one step per notch.
+/// - One turn is 3 h. Past it the dial keeps going on a **second, outer ring**
+///   (amber: this long, breaks are part of it) up to [max], 4 h by default:
+///   the most Flow plans in one go. The outer ring fades in as you near a
+///   full turn so you can see there is more; crossing it sends a ripple out
+///   from the ring and the handle hops outward onto the new one. A stop mark
+///   shows where it ends.
 /// - In [DialMode.progress]/[DialMode.drain] the same ring shows elapsed/remaining.
 class DurationDial extends StatefulWidget {
   const DurationDial({
@@ -33,7 +39,7 @@ class DurationDial extends StatefulWidget {
     required this.onChanged,
     this.suggestion,
     this.min = 15,
-    this.max = 180,
+    this.max = healthyMax,
     this.size = 168,
     this.mode = DialMode.pick,
     this.fraction = 0,
@@ -61,6 +67,10 @@ class DurationDial extends StatefulWidget {
   static const step = 5;
   static const fullTurn = 180; // minutes per revolution
 
+  /// The longest single session Flow will plan. Longer than this is better
+  /// as two sessions with a real break between (the dial says so at the stop).
+  static const healthyMax = 240;
+
   @override
   State<DurationDial> createState() => _DurationDialState();
 }
@@ -68,6 +78,11 @@ class DurationDial extends StatefulWidget {
 class _DurationDialState extends State<DurationDial> with TickerProviderStateMixin {
   late final _v = SpringValue(vsync: this, initial: widget.minutes.toDouble());
   late final _pop = SpringValue(vsync: this, initial: 0);
+  // 0 = on the first turn, 1 = on the second: moves the handle outward
+  late final _lap = SpringValue(vsync: this, initial: widget.minutes > DurationDial.fullTurn ? 1 : 0);
+  // the ripple sent out when a full turn is crossed
+  late final _ripple = AnimationController(vsync: this, duration: const Duration(milliseconds: 620), value: 1);
+  bool _over = false;
   late final _drawIn = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
   double _finger = 0;
   bool _dragging = false;
@@ -78,6 +93,7 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
   void initState() {
     super.initState();
     _lastStep = widget.minutes ~/ DurationDial.step;
+    _over = widget.minutes > DurationDial.fullTurn;
     Motion.enterOnMount(context, _drawIn, () => mounted);
   }
 
@@ -86,6 +102,7 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
     super.didUpdateWidget(old);
     if (!_dragging && old.minutes != widget.minutes) {
       _v.animateTo(widget.minutes.toDouble(), spring: Motion.settle, reduced: Motion.reduced(context));
+      _crossed(widget.minutes.toDouble());
     }
   }
 
@@ -93,6 +110,8 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
   void dispose() {
     _v.dispose();
     _pop.dispose();
+    _lap.dispose();
+    _ripple.dispose();
     _drawIn.dispose();
     super.dispose();
   }
@@ -106,6 +125,20 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
   }
 
   double _minutesAt(double angle) => angle / (2 * math.pi) * DurationDial.fullTurn;
+
+  /// Entering or leaving the second turn: the handle changes ring, and going
+  /// up a ripple leaves the first one (so it is felt as "another lap").
+  void _crossed(double v) {
+    final over = v > DurationDial.fullTurn + 0.01;
+    if (over == _over) return;
+    _over = over;
+    final reduced = Motion.reduced(context);
+    _lap.animateTo(over ? 1 : 0, spring: Motion.snap, reduced: reduced);
+    if (over && !reduced) {
+      HapticFeedback.mediumImpact();
+      _ripple.forward(from: 0);
+    }
+  }
 
   void _tickPop(double v) {
     final s = (v / DurationDial.step).round();
@@ -125,6 +158,7 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
     if (raw > hi) v = hi + RubberBand.offset(raw - hi, 30, 0.4);
     _v.value = v; // 1:1 with the hand while dragging
     _tickPop(v.clamp(lo, hi));
+    _crossed(v.clamp(lo, hi));
   }
 
   void _commit() {
@@ -145,6 +179,7 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
       return;
     }
     _tickPop(next.toDouble());
+    _crossed(next.toDouble());
     widget.onChanged!(next);
   }
 
@@ -155,13 +190,16 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
     final p = FlowPalette.of(context);
     final interactive = widget.mode == DialMode.pick && widget.onChanged != null;
     Widget dial = AnimatedBuilder(
-      animation: Listenable.merge([_v.animation, _pop.animation, _drawIn]),
+      animation: Listenable.merge([_v.animation, _pop.animation, _drawIn, _lap.animation, _ripple]),
       builder: (context, _) => CustomPaint(
         size: Size.square(widget.size),
         painter: _DialPainter(
           p: p,
           value: _v.value,
           min: widget.min,
+          max: widget.max,
+          lap: _lap.value.clamp(0.0, 1.2),
+          ripple: _ripple.value,
           suggestion: widget.suggestion,
           pop: _pop.value,
           drawIn: Curves.easeOut.transform(_drawIn.value),
@@ -201,6 +239,27 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
                   style: FlowType.label(p, size: 9.5, color: _hoverCenter ? p.text1 : p.text3),
                 ),
               ),
+              // past a full turn: say it in hours, in the second ring's colour
+              AnimatedSize(
+                duration: Motion.fade,
+                child: widget.mode == DialMode.pick && _over
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        child: AnimatedBuilder(
+                          animation: _v.animation,
+                          builder: (context, _) {
+                            final live = ((_v.value / DurationDial.step).round() * DurationDial.step).clamp(widget.min, widget.max);
+                            return Text(
+                              flowCaps(
+                                live >= widget.max ? '${flowDuration(live, caps: true)} · the most' : flowDuration(live, caps: true),
+                              ),
+                              style: FlowType.label(p, size: 8.5, color: p.amber),
+                            );
+                          },
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
         ),
@@ -230,7 +289,12 @@ class _DurationDialState extends State<DurationDial> with TickerProviderStateMix
             if (_inCenter(d.localPosition)) {
               widget.onCenterTap?.call();
             } else if (interactive) {
-              final m = _minutesAt(_angleOf(d.localPosition));
+              var m = _minutesAt(_angleOf(d.localPosition));
+              // a tap on the outer ring (or anywhere while already past a
+              // full turn, within its reach) means the second turn
+              final r = (d.localPosition - Offset(widget.size / 2, widget.size / 2)).distance;
+              final outer = r > widget.size * 0.36 + 12 || widget.minutes > DurationDial.fullTurn;
+              if (outer && m + DurationDial.fullTurn <= widget.max) m += DurationDial.fullTurn;
               widget.onChanged!(((m / DurationDial.step).round() * DurationDial.step).clamp(widget.min, widget.max));
             }
           },
@@ -306,6 +370,9 @@ class _DialPainter extends CustomPainter {
     required this.p,
     required this.value,
     required this.min,
+    this.max = DurationDial.healthyMax,
+    this.lap = 0,
+    this.ripple = 1,
     required this.suggestion,
     required this.pop,
     required this.drawIn,
@@ -317,6 +384,13 @@ class _DialPainter extends CustomPainter {
   final FlowPalette p;
   final double value;
   final int min;
+  final int max;
+
+  /// 0 on the first turn → 1 on the second (springs, may overshoot a little).
+  final double lap;
+
+  /// 0 → 1 once, each time a full turn is crossed going up.
+  final double ripple;
   final int? suggestion;
   final double pop;
   final double drawIn;
@@ -379,6 +453,62 @@ class _DialPainter extends CustomPainter {
       );
     }
 
+    // ── the second turn ──
+    // Its ring sits outside the first. It fades in over the last half hour
+    // of the first turn (so you can see the dial goes on), fills in amber as
+    // you go round again, and ends at a stop mark at [max].
+    final extra = max - DurationDial.fullTurn;
+    var outerVis = 0.0;
+    if (mode == DialMode.pick && extra > 0) {
+      final overTick = valueTick - ticks; // ticks into the second turn (negative before it)
+      final limitTick = extra / DurationDial.step;
+      outerVis = ((value - (DurationDial.fullTurn - 30)) / 30).clamp(0.0, 1.0);
+      if (outerVis > 0) {
+        const gap = 15.0; // from the first ring's base to the outer ring's
+        for (var t = 0; t <= limitTick; t++) {
+          final angle = -math.pi / 2 + t * 2 * math.pi / ticks;
+          var len = t % 3 == 0 ? 5.0 : 3.2;
+          final near = math.max(0.0, 1 - (t - overTick).abs() / 4) * lap.clamp(0.0, 1.0);
+          len += near * 3;
+          if (overTick > 0 && t == overTick.round()) len += pop * 3;
+          final filled = overTick >= 0 && t <= overTick + 0.001;
+          final dir = Offset(math.cos(angle), math.sin(angle));
+          canvas.drawLine(
+            c + dir * (R + gap),
+            c + dir * (R + gap + len),
+            Paint()
+              ..color = filled ? p.amber : p.text3.withValues(alpha: 0.4 * outerVis)
+              ..strokeWidth = t % 3 == 0 ? 1.5 : 1.2
+              ..strokeCap = StrokeCap.round,
+          );
+        }
+        // the stop: where a single session ends. It thickens as you reach it.
+        final sa = -math.pi / 2 + limitTick * 2 * math.pi / ticks + 0.055;
+        final sd = Offset(math.cos(sa), math.sin(sa));
+        final atStop = (1 - (limitTick - overTick).abs() / 2).clamp(0.0, 1.0);
+        canvas.drawLine(
+          c + sd * (R + gap - 2),
+          c + sd * (R + gap + 9 + atStop * 2),
+          Paint()
+            ..color = Color.lerp(p.text2.withValues(alpha: outerVis), p.amber, atStop)!
+            ..strokeWidth = 2 + atStop
+            ..strokeCap = StrokeCap.round,
+        );
+      }
+      // crossing a full turn: one ripple leaves the first ring
+      if (ripple < 1) {
+        final e = Curves.easeOutCubic.transform(ripple);
+        canvas.drawCircle(
+          c,
+          R + 4 + e * 26,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.4 * (1 - e) + 0.4
+            ..color = p.amber.withValues(alpha: 0.55 * (1 - e)),
+        );
+      }
+    }
+
     // below-minimum arc is muted (you can't pick under [min])
     if (mode == DialMode.pick && min > 0) {
       final sweep = min / DurationDial.fullTurn * 2 * math.pi;
@@ -397,7 +527,8 @@ class _DialPainter extends CustomPainter {
     // ✦ suggestion mark (outside the ring)
     if (mode == DialMode.pick && suggestion != null) {
       final a = -math.pi / 2 + suggestion! / DurationDial.fullTurn * 2 * math.pi;
-      final pos = c + Offset(math.cos(a), math.sin(a)) * (R + 17);
+      // steps outward to clear the second ring when that is showing
+      final pos = c + Offset(math.cos(a), math.sin(a)) * (R + 17 + 12 * outerVis);
       final path = Path();
       for (var i = 0; i < 8; i++) {
         final rr = i.isEven ? 3.6 : 1.3;
@@ -412,8 +543,10 @@ class _DialPainter extends CustomPainter {
     // accent indicator dot (pick) / progress head (progress, drain)
     final headTick = mode == DialMode.pick ? valueTick : filledUpTo;
     final a = -math.pi / 2 + headTick * 2 * math.pi / ticks;
-    final dot = c + Offset(math.cos(a), math.sin(a)) * (R - 14);
-    final dotColor = mode == DialMode.drain ? p.amber : p.accent;
+    // on the second turn the handle rides the outer ring, in its colour
+    final out = mode == DialMode.pick ? lap : 0.0;
+    final dot = c + Offset(math.cos(a), math.sin(a)) * (R - 14 + 36 * out);
+    final dotColor = mode == DialMode.drain ? p.amber : Color.lerp(p.accent, p.amber, out.clamp(0.0, 1.0))!;
     canvas.drawCircle(dot, active ? 5.2 : 4.4, Paint()..color = dotColor);
   }
 
@@ -425,6 +558,9 @@ class _DialPainter extends CustomPainter {
       o.mode != mode ||
       o.fraction != fraction ||
       o.active != active ||
+      o.lap != lap ||
+      o.ripple != ripple ||
+      o.max != max ||
       o.p != p ||
       o.suggestion != suggestion;
 }

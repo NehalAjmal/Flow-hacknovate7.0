@@ -15,6 +15,7 @@ import 'package:flow/state/auth_controller.dart';
 import 'package:flow/state/session_controller.dart';
 import 'package:flow/theme/tokens.dart';
 import 'package:flow/ui/dial.dart';
+import 'package:flow/ui/range_slider.dart';
 import 'package:flow/ui/nudge_card.dart';
 import 'package:flow/ui/brand/launch_overlay.dart';
 import 'package:flutter/gestures.dart';
@@ -31,8 +32,11 @@ import 'helpers.dart';
 /// - a schedule row's day + demand pills overflowed at mid widths.
 void main() {
   dialTests();
+  dialLapTests();
   arrivalTests();
   takeoverViewTests();
+  settingsNavTests();
+  appearanceTests();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   Future<ProviderContainer> boot(WidgetTester tester, Size size) async {
@@ -118,8 +122,7 @@ void main() {
       await settle(tester, 20);
       // the row's key is ValueKey<String?>, so match by value, not by type
       final row = find.byWidgetPredicate((w) => w.key is ValueKey && (w.key! as ValueKey).value == 'sch_1');
-      final list = find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first;
-      await tester.scrollUntilVisible(row, 300, scrollable: list);
+      await tester.ensureVisible(row); // every section is built now, so it can be scrolled to directly
       await settle(tester);
       await teardown(tester, c);
     });
@@ -364,5 +367,218 @@ void takeoverViewTests() {
     expect(c.read(liveSessionProvider).value?.pendingInterventionId, isNotNull);
     expect(find.byType(NudgeCardView), findsOneWidget, reason: 'it waits as the corner card');
     await finish(tester, c);
+  });
+}
+
+void settingsNavTests() {
+  testWidgets('settings: every entry in the index scrolls its section into view', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final c = mockContainer(MockBackend(config: const MockConfig(latency: Duration.zero, tick: Duration(hours: 1))));
+    await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
+    await tester.pump(const Duration(seconds: 4));
+    await tester.runAsync(() => c.read(authProvider.notifier).login(email: 'solo@flow.dev', password: 'password'));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    c.read(appRouterProvider).go(Routes.settings);
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+    // index label → a text that only that section's body has
+    const sections = {
+      'Help': 'Replay the welcome guide',
+      'Account': 'Sign out',
+      'Agent': 'Agent',
+      'Sensors': 'Camera eye signal',
+      'Window': 'Closing keeps Flow in the tray',
+      'Appearance': 'Light or dark, on this computer.',
+      'Quiet hours': 'Quiet hours',
+      'Schedules': 'Schedules',
+      'Breaks': 'Breaks',
+      'Nudges': 'Lock the screen during breaks',
+    };
+    final viewport = tester.getRect(find.byType(SingleChildScrollView).first);
+    for (final e in sections.entries) {
+      // the index entry is the first match (it sits left of the sections)
+      await tester.tap(find.text(e.key).first);
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 60));
+      }
+      final target = find.text(e.value).last;
+      expect(target, findsOneWidget, reason: '${e.key} exists');
+      final r = tester.getRect(target);
+      expect(r.top, inInclusiveRange(viewport.top - 4, viewport.bottom), reason: '${e.key} is on screen after its index entry is clicked');
+    }
+    final err = tester.takeException();
+    await tester.pumpWidget(const SizedBox());
+    c.dispose();
+    await tester.pump(const Duration(seconds: 1));
+    expect(err, isNull);
+  });
+}
+
+void dialLapTests() {
+  Future<int Function()> dial(WidgetTester tester, int start) async {
+    var minutes = start;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: StatefulBuilder(
+              builder: (context, set) => DurationDial(minutes: minutes, size: 220, onChanged: (m) => set(() => minutes = m)),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 2));
+    return () => minutes;
+  }
+
+  /// Drags round the ring from the [from] o'clock angle by [turn] of a revolution.
+  Future<void> sweep(WidgetTester tester, double fromTurn, double turn) async {
+    final c = tester.getCenter(find.byType(DurationDial));
+    Offset at(double t) => c + Offset(80 * math.sin(t * 2 * math.pi), -80 * math.cos(t * 2 * math.pi));
+    final g = await tester.startGesture(at(fromTurn));
+    await tester.pump();
+    const n = 60;
+    for (var i = 1; i <= n; i++) {
+      await g.moveTo(at(fromTurn + turn * i / n));
+      await tester.pump(const Duration(milliseconds: 4));
+    }
+    await g.up();
+    await tester.pump(const Duration(seconds: 1));
+  }
+
+  test('one turn is 3 h; the healthy limit is 4 h', () {
+    expect(DurationDial.fullTurn, 180);
+    expect(DurationDial.healthyMax, 240);
+    expect(const DurationDial(minutes: 50, onChanged: null).max, 240);
+  });
+
+  testWidgets('the dial goes past a full turn onto the second ring, and says so', (tester) async {
+    final minutes = await dial(tester, 150);
+    expect(find.textContaining('HR'), findsNothing);
+    // a quarter turn more: 150 → about 195, across the 180 mark
+    await sweep(tester, 150 / 180, 0.25);
+    expect(minutes(), greaterThan(180));
+    expect(minutes(), lessThanOrEqualTo(200));
+    expect(find.textContaining('3 HR'), findsOneWidget, reason: 'past a turn the caption gives it in hours');
+    // and back under: the caption goes
+    await sweep(tester, (minutes() - 180) / 180, -0.2);
+    expect(minutes(), lessThan(180));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.textContaining('HR'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the dial stops at the healthy limit however far it is dragged', (tester) async {
+    final minutes = await dial(tester, 170);
+    await sweep(tester, 170 / 180, 0.9); // most of another full turn
+    expect(minutes(), DurationDial.healthyMax);
+    expect(find.textContaining('THE MOST'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a tap on the outer ring picks a second-turn value', (tester) async {
+    final minutes = await dial(tester, 185);
+    final c = tester.getCenter(find.byType(DurationDial));
+    // 1 o'clock on the dial = 15 min into a turn; already past a turn, so 195
+    await tester.tapAt(c + Offset(98 * math.sin(math.pi / 6), -98 * math.cos(math.pi / 6)));
+    await tester.pump(const Duration(seconds: 1));
+    expect(minutes(), 195);
+  });
+}
+
+void appearanceTests() {
+  test('time-of-day appearance: light inside the span, dark outside, spans may cross midnight', () {
+    const day = DesktopPrefs(appearance: Appearance.schedule, lightFrom: 7 * 60, lightTo: 19 * 60);
+    expect(day.lightAt(6 * 60 + 59), isFalse);
+    expect(day.lightAt(7 * 60), isTrue);
+    expect(day.lightAt(12 * 60), isTrue);
+    expect(day.lightAt(19 * 60), isFalse, reason: 'the end is exclusive');
+    expect(day.lightAt(23 * 60), isFalse);
+    // someone who works nights: light 22:00 → 06:00
+    const night = DesktopPrefs(appearance: Appearance.schedule, lightFrom: 22 * 60, lightTo: 6 * 60);
+    expect(night.lightAt(23 * 60), isTrue);
+    expect(night.lightAt(3 * 60), isTrue);
+    expect(night.lightAt(6 * 60), isFalse);
+    expect(night.lightAt(12 * 60), isFalse);
+  });
+
+  test('theme mode follows the appearance choice, and is remembered', () async {
+    SharedPreferences.setMockInitialValues({});
+    final c = ProviderContainer.test();
+    c.listen(themeModeProvider, (_, _) {});
+    expect(c.read(themeModeProvider), ThemeMode.system, reason: 'default: this computer');
+    final ctl = c.read(desktopPrefsProvider.notifier);
+    await ctl.set(c.read(desktopPrefsProvider).copyWith(appearance: Appearance.dark));
+    expect(c.read(themeModeProvider), ThemeMode.dark);
+    await ctl.set(c.read(desktopPrefsProvider).copyWith(appearance: Appearance.light));
+    expect(c.read(themeModeProvider), ThemeMode.light);
+    // by time of day: a span that covers every minute but one is light now
+    final now = DateTime.now();
+    final m = now.hour * 60 + now.minute;
+    await ctl.set(c.read(desktopPrefsProvider).copyWith(appearance: Appearance.schedule, lightFrom: m, lightTo: (m + 60) % 1440));
+    expect(c.read(themeModeProvider), ThemeMode.light);
+    await ctl.set(c.read(desktopPrefsProvider).copyWith(lightFrom: (m + 120) % 1440, lightTo: (m + 180) % 1440));
+    expect(c.read(themeModeProvider), ThemeMode.dark);
+    // stored for next launch
+    final sp = await SharedPreferences.getInstance();
+    expect(sp.getString('flow.desktop.appearance'), 'schedule');
+    final c2 = ProviderContainer.test();
+    c2.listen(desktopPrefsProvider, (_, _) {});
+    await Future<void>.delayed(const Duration(milliseconds: 30));
+    expect(c2.read(desktopPrefsProvider).appearance, Appearance.schedule);
+    expect(c2.read(desktopPrefsProvider).lightFrom, (m + 120) % 1440);
+  });
+
+  testWidgets('Settings › Appearance: choosing Dark turns the whole app dark, Light turns it back', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final c = mockContainer(MockBackend(config: const MockConfig(latency: Duration.zero, tick: Duration(hours: 1))));
+    await tester.pumpWidget(UncontrolledProviderScope(container: c, child: const FlowApp()));
+    await tester.pump(const Duration(seconds: 4));
+    await tester.runAsync(() => c.read(authProvider.notifier).login(email: 'solo@flow.dev', password: 'password'));
+    for (var i = 0; i < 10; i++) {
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+    c.read(appRouterProvider).go(Routes.settings);
+    for (var i = 0; i < 20; i++) {
+      await tester.pump(const Duration(milliseconds: 150));
+    }
+    Brightness app() => Theme.of(tester.element(find.text('Settings').first)).brightness;
+    Future<void> choose(String label) async {
+      final option = find.text(label).last;
+      await tester.ensureVisible(option);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(option);
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    await choose('Always dark.');
+    expect(c.read(desktopPrefsProvider).appearance, Appearance.dark);
+    expect(app(), Brightness.dark);
+    await choose('Always light.');
+    expect(app(), Brightness.light);
+    await choose('Light between two times you set, dark for the rest.');
+    expect(c.read(desktopPrefsProvider).appearance, Appearance.schedule);
+    expect(
+      find.byWidgetPredicate((w) => w is TimeRangeSlider && w.semanticLabel == 'Light hours'),
+      findsOneWidget,
+      reason: 'the hours can be set',
+    );
+    final err = tester.takeException();
+    await tester.pumpWidget(const SizedBox());
+    c.dispose();
+    await tester.pump(const Duration(seconds: 1));
+    expect(err, isNull);
   });
 }

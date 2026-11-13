@@ -113,7 +113,7 @@ See `CONTRACT_NOTES.md` for every place the frontend had to choose an API shape 
 - the second-launch focus on Windows
 - notifications
 
-**The pop-out (how the widget opens).** The window is hidden, made frameless, sized and placed while invisible, then shown; the content springs in once it is there (`popped`). Each native step is logged in dev builds as `[flow/window] <step> failed: …` if it fails. If the window does not take the shape, Flow returns to the full window and stops offering the widget for that run (`widgetUnavailable`), so it can never be stuck. Ways back to the full app: the widget's open button, **Esc**, or the tray's "Show Flow".
+**The pop-out (how the widget opens).** The window stays visible: it is restored if maximized (and Flow waits for that), made frameless, sized and placed, the size is read back, and frames are forced; the content springs in once it is there (`popped`). In a dev build every reshape logs one line, e.g. `[flow/window] full → mini: ok, window is now 320×88 at 1584,948`. Each native step is logged in dev builds as `[flow/window] <step> failed: …` if it fails. If the window does not take the shape, Flow returns to the full window and stops offering the widget for that run (`widgetUnavailable`), so it can never be stuck. Ways back to the full app: the widget's open button, **Esc**, or the tray's "Show Flow".
 
 **Nudge styles.** `NudgeStyle` (full screen / windowed / notification) lives in `DesktopPrefs` (per computer). Full screen and windowed are window modes `nudgeFull` / `nudge`, drawn by `nudge_takeover.dart`; the controller returns to the previous mode when the nudge is answered, after 60 s, or on "Not now".
 

@@ -35,7 +35,7 @@ import 'auth_layout.dart' show AuthError, StageState;
 import 'auth_screens.dart' show CodeBoxes;
 import 'shell.dart' show FlowHeader;
 
-enum _Sec { nudges, breaks, schedules, quiet, window, sensors, agent, account, help }
+enum _Sec { nudges, breaks, schedules, quiet, appearance, window, sensors, agent, account, help }
 
 extension on _Sec {
   String get title => switch (this) {
@@ -43,6 +43,7 @@ extension on _Sec {
     _Sec.breaks => 'Breaks',
     _Sec.schedules => 'Schedules',
     _Sec.quiet => 'Quiet hours',
+    _Sec.appearance => 'Appearance',
     _Sec.window => 'Window',
     _Sec.sensors => 'Sensors',
     _Sec.agent => 'Agent',
@@ -90,6 +91,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _jump(_Sec s) {
     final ctx = _keys[s]!.currentContext;
     if (ctx == null) return;
+    setState(() => _active = s); // answer the click at once; scrolling confirms it
     Scrollable.ensureVisible(
       ctx,
       duration: Motion.reduced(context) ? Duration.zero : const Duration(milliseconds: 450),
@@ -122,17 +124,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       });
                       return false;
                     },
-                    child: ListView(
+                    // Not a lazy list: every section must exist to be jumped to
+                    // from the index (a ListView only builds what is near the
+                    // viewport, so far sections had nothing to scroll to).
+                    child: SingleChildScrollView(
                       controller: _scroll,
-                      padding: const EdgeInsets.only(bottom: 40),
-                      children: [
-                        for (final (i, sec) in _Sec.values.indexed)
-                          Padding(
-                            key: _keys[sec],
-                            padding: const EdgeInsets.only(bottom: 18),
-                            child: Appear(index: i, child: _section(sec, s)),
-                          ),
-                      ],
+                      // room below the last section so it can reach the top too
+                      padding: EdgeInsets.only(bottom: box.maxHeight * 0.55),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          for (final (i, sec) in _Sec.values.indexed)
+                            Padding(
+                              key: _keys[sec],
+                              padding: const EdgeInsets.only(bottom: 18),
+                              child: Appear(index: i, child: _section(sec, s)),
+                            ),
+                        ],
+                      ),
                     ),
                   );
                   if (!wide) return body;
@@ -161,6 +170,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _Sec.breaks => _BreaksSection(settings: s),
     _Sec.schedules => const _SchedulesSection(),
     _Sec.quiet => _QuietSection(settings: s),
+    _Sec.appearance => const _AppearanceSection(),
     _Sec.window => const _WindowSection(),
     _Sec.sensors => _SensorsSection(settings: s),
     _Sec.agent => const _AgentSection(),
@@ -177,7 +187,8 @@ class _Index extends ConsumerWidget {
   final UserSettings settings;
   final ValueChanged<_Sec> onTap;
 
-  String _value(_Sec s, NudgeStyle style) => switch (s) {
+  String _value(_Sec s, NudgeStyle style, DesktopPrefs prefs) => switch (s) {
+    _Sec.appearance => _appearanceValue(prefs),
     _Sec.nudges => nudgeStyleTitle(style),
     _Sec.breaks => '${settings.breakLengthSec ~/ 60} min',
     _Sec.quiet => settings.quietHours == null ? 'Off' : '${settings.quietHours!.start}–${settings.quietHours!.end}',
@@ -195,7 +206,8 @@ class _Index extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final style = ref.watch(desktopPrefsProvider).nudgeStyle;
+    final prefs = ref.watch(desktopPrefsProvider);
+    final style = prefs.nudgeStyle;
     final p = FlowPalette.of(context);
     final q = settings.quietHours;
     final summary =
@@ -226,7 +238,7 @@ class _Index extends ConsumerWidget {
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       width: 3,
-                      height: _value(s, style).isEmpty ? 14 : 28,
+                      height: _value(s, style, prefs).isEmpty ? 14 : 28,
                       margin: const EdgeInsets.only(right: 10),
                       decoration: BoxDecoration(
                         color: s == active ? p.selected : Colors.transparent,
@@ -245,9 +257,9 @@ class _Index extends ConsumerWidget {
                               fontWeight: s == active ? FontWeight.w600 : FontWeight.w400,
                             ),
                           ),
-                          if (_value(s, style).isNotEmpty)
+                          if (_value(s, style, prefs).isNotEmpty)
                             Text(
-                              _value(s, style),
+                              _value(s, style, prefs),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: FlowType.chart(p, size: 10.5, color: p.text3),
@@ -1155,6 +1167,181 @@ class _HelpSection extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── appearance ──────────────────────────────────────────────────────────────
+
+String _clock(int minutes) => '${(minutes ~/ 60 % 24).toString().padLeft(2, '0')}:${(minutes % 60).toString().padLeft(2, '0')}';
+
+String _appearanceValue(DesktopPrefs p) => switch (p.appearance) {
+  Appearance.system => 'This computer',
+  Appearance.light => 'Light',
+  Appearance.dark => 'Dark',
+  Appearance.schedule => 'Light ${_clock(p.lightFrom)}–${_clock(p.lightTo)}',
+};
+
+/// Light, dark, this computer's setting, or by time of day. The strip beside
+/// it is the day: which hours are light, which dark, and where now is.
+class _AppearanceSection extends ConsumerWidget {
+  const _AppearanceSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final p = FlowPalette.of(context);
+    final prefs = ref.watch(desktopPrefsProvider);
+    final set = ref.read(desktopPrefsProvider.notifier).set;
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    const options = [
+      (Appearance.system, 'This computer', 'Follows your system setting.'),
+      (Appearance.light, 'Light', 'Always light.'),
+      (Appearance.dark, 'Dark', 'Always dark.'),
+      (Appearance.schedule, 'By time of day', 'Light between two times you set, dark for the rest.'),
+    ];
+    return _Frame(
+      tone: FieldTone.past,
+      title: 'Appearance',
+      note: 'Light or dark, on this computer.',
+      controls: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final (a, title, blurb) in options)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Pressable(
+                selected: prefs.appearance == a,
+                onPressed: () => set(prefs.copyWith(appearance: a)),
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                      const SizedBox(height: 2),
+                      Text(
+                        blurb,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w400, color: prefs.appearance == a ? p.onSelected : p.text2),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          // display → read-out → control: the hours, then the slider that sets them
+          AnimatedSize(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topLeft,
+            child: prefs.appearance != Appearance.schedule
+                ? const SizedBox(width: double.infinity)
+                : Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
+                          children: [
+                            TabularNumeral('${_clock(prefs.lightFrom)} – ${_clock(prefs.lightTo)}', style: FlowType.numeral(p, 26)),
+                            const SizedBox(width: 10),
+                            Text(flowCaps('light'), style: FlowType.label(p, size: 9.5, color: p.text3)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        TimeRangeSlider(
+                          start: prefs.lightFrom,
+                          end: prefs.lightTo,
+                          semanticLabel: 'Light hours',
+                          onChanged: (a, b) => set(prefs.copyWith(lightFrom: a, lightTo: b)),
+                        ),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
+      preview: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionLabel('The day'),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 74,
+            child: CustomPaint(size: Size.infinite, painter: _DayLightPainter(p, prefs, dark, MediaQuery.textScalerOf(context))),
+          ),
+          const SizedBox(height: 10),
+          Text(switch (prefs.appearance) {
+            Appearance.system => 'Flow is ${dark ? 'dark' : 'light'} now because this computer is.',
+            Appearance.light => 'Light all day.',
+            Appearance.dark => 'Dark all day.',
+            Appearance.schedule =>
+              'Light from ${_clock(prefs.lightFrom)} to ${_clock(prefs.lightTo)}, dark for the rest. It changes by itself, within a minute.',
+          }, style: FlowType.note(p, size: 13.5)),
+        ],
+      ),
+    );
+  }
+}
+
+/// 24 hours as one strip: light hours as paper, dark hours as ink, a tick for
+/// now. With "This computer" the whole strip is whatever the system is now.
+class _DayLightPainter extends CustomPainter {
+  _DayLightPainter(this.p, this.prefs, this.darkNow, this.scaler);
+  final FlowPalette p;
+  final DesktopPrefs prefs;
+  final bool darkNow;
+  final TextScaler scaler;
+
+  @override
+  void paint(Canvas c, Size s) {
+    const foot = 18.0;
+    final strip = RRect.fromRectAndRadius(Rect.fromLTWH(0, 12, s.width, s.height - foot - 12), const Radius.circular(8));
+    final paper = FlowPalette.light.bg, ink = FlowPalette.dark.bg;
+    bool lightAt(int m) => switch (prefs.appearance) {
+      Appearance.system => !darkNow,
+      Appearance.light => true,
+      Appearance.dark => false,
+      Appearance.schedule => prefs.lightAt(m),
+    };
+    c.save();
+    c.clipRRect(strip);
+    // quarter-hour slices are plenty for a strip this size
+    for (var m = 0; m < 24 * 60; m += 15) {
+      final x0 = s.width * m / (24 * 60), x1 = s.width * (m + 15) / (24 * 60);
+      c.drawRect(Rect.fromLTRB(x0, strip.top, x1 + 0.5, strip.bottom), Paint()..color = lightAt(m) ? paper : ink);
+    }
+    c.restore();
+    c.drawRRect(
+      strip,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..color = p.text3.withValues(alpha: 0.6),
+    );
+    for (final h in const [0, 6, 12, 18, 24]) {
+      final x = s.width * h / 24;
+      final tp = TextPainter(
+        text: TextSpan(text: '$h', style: FlowType.chart(p, size: 9.5)),
+        textDirection: TextDirection.ltr,
+        textScaler: scaler,
+      )..layout();
+      tp.paint(c, Offset((x - tp.width / 2).clamp(0.0, s.width - tp.width), s.height - tp.height));
+    }
+    // now = accent
+    final t = DateTime.now();
+    final nx = s.width * (t.hour * 60 + t.minute) / (24 * 60);
+    c.drawLine(
+      Offset(nx, 4),
+      Offset(nx, strip.bottom + 3),
+      Paint()
+        ..color = p.accent
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_DayLightPainter o) => o.prefs != prefs || o.darkNow != darkNow || o.p != p || o.scaler != scaler;
 }
 
 // ── window (desktop) ────────────────────────────────────────────────────────

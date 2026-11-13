@@ -6,6 +6,7 @@ import '../desktop/window_controller.dart';
 import '../router/routes.dart';
 import '../state/account_controllers.dart';
 import '../state/auth_controller.dart';
+import '../state/boot.dart';
 import '../state/break_controller.dart';
 import '../state/data_providers.dart';
 import '../state/schedule_runner.dart';
@@ -15,6 +16,7 @@ import '../theme/tokens.dart';
 import '../ui/appear.dart';
 import '../ui/brand/wordmark.dart';
 import '../ui/dial.dart';
+import '../ui/loading_blocks.dart';
 import '../ui/pressable.dart';
 import '../widgets/common.dart';
 import 'intervention_card.dart';
@@ -83,8 +85,13 @@ class AppShell extends ConsumerWidget {
                 child: Column(
                   children: [
                     const _PauseBanner(),
+                    // just signed in: one loader until Home's data is in, so
+                    // the page arrives whole (the launch screen covers this on
+                    // a cold start)
                     Expanded(
-                      child: AppearScope(route: location, child: child),
+                      child: ref.watch(bootReadyProvider).isLoading
+                          ? const Center(child: LoadingBlocks(height: 160, label: 'Getting your day ready'))
+                          : AppearScope(route: location, child: child),
                     ),
                   ],
                 ),

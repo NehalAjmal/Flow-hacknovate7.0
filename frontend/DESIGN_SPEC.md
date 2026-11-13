@@ -59,7 +59,7 @@ The colour palette is **decided** (§16). The logo is **parked**. Elsewhere, col
   - dashes near the dot grow/darken with falloff while turning (FOLLOW)
   - each 5-min step pops the dash under the dot (SNAP; Mac trackpad haptic)
   - fill changes spread from the dot (SETTLE)
-  - rubber band at 15 / 180 min
+  - rubber band at 15 min and at the healthy limit, 4 h (one turn is 3 h; past it the dial continues on a second, outer amber ring: see §32)
   - **in a session the dashed ring is the progress ring** (dashes fill with the CLOCK)
   - **in a break the dashes drain**
 
@@ -588,3 +588,30 @@ One choice in Settings › Nudges (and guide step 4), kept per computer: **Full 
 - **Notification:** the corner card in Flow (it rises in), the widget's card when popped out, and a system notification when Flow is hidden or behind other work.
 - **If the OS refuses the window shape,** the takeover shows inside Flow's own window instead.
 - **Dev:** `/dev/login?as=solo&nudge=fullScreen|windowed|notification` signs in, starts a session and sends a nudge in that style.
+
+## 31. Refinements after Windows testing (built)
+
+- **Pop-out, third pass.** The window is no longer hidden while it reshapes (Flutter stopped drawing until the next click). A maximized window is restored first, and Flow waits for that restore before resizing (Windows applies it late, which left the pill's content stretched over a full-size window); the size is read back and retried once; frames are requested explicitly afterwards. Returning to the full app maximizes again if it was. **Auto pop-out on session start is now off by default** (Settings › Window): starting a session should not reshape the window unasked.
+- **Durations, one format.** "25 min", "1 h 05 min", "2 h": the unit always after a space. As big numerals the numbers are in the instrument face and the units small beside them, because an "h" in that face reads as a digit. In caps captions: "1 HR 05 MIN".
+- **Hover.** A highlight glides to what is under the pointer with a critically damped spring and only retargets when the target changes. (The week cards' "neighbours part" offset used `sign`, so the hovered card itself jumped ±5 px at its centre.)
+- **Settings index.** Every entry scrolls to its section (sections are no longer built lazily, so each one exists to be scrolled to) and is marked active at once.
+- **Ready before shown.** The launch screen holds its reveal until Home's data is loaded (settings, consent, live session, today, the last four weeks, the pre-check, schedules), for at most 4 s. After a sign-in the shell shows one loader for the same set, then the page arrives whole.
+- **Start.** A second click while starting is ignored; an empty task field is sent as no task.
+
+## 32. The dial's second turn (built)
+
+One turn of the dial is 3 hours. It used to stop there; it now goes on to **4 h, the most Flow plans as one session**.
+
+- **You can see it coming:** over the last half hour of the first turn, the outer ring's dashes fade in, ending at a stop mark.
+- **Crossing a full turn:** a ripple leaves the first ring, the handle hops outward onto the second ring and turns amber (this long, breaks are part of it), with a firmer haptic tick.
+- **On the second turn:** its dashes fill in amber; the caption under the number gives it in hours ("3 HR 35 MIN").
+- **At the stop:** the mark thickens and turns amber, the dial rubber-bands, the caption reads "4 HR · THE MOST", and Home says: "4 h is the most for one session. Flow will suggest breaks along the way."
+- A tap on the outer ring (or anywhere once past a turn, within reach) picks a second-turn value.
+
+## 33. Appearance (built)
+
+Settings › Appearance, kept per computer: **This computer** (follows the system; the default) · **Light** · **Dark** · **By time of day**.
+
+- **By time of day:** light between two times you set (default 07:00–19:00), dark for the rest. The span may cross midnight. Flow switches by itself within a minute of the boundary.
+- **The day strip** beside the options shows the 24 hours as paper and ink, with a tick for now, for whichever option is chosen.
+- The index shows the current choice ("This computer", "Dark", "Light 07:00–19:00").

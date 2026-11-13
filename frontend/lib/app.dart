@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/config.dart';
 import 'desktop/compact_views.dart';
+import 'desktop/window_controller.dart';
 import 'dev/dev_panel.dart';
 import 'router/app_router.dart';
 import 'theme/input_kind.dart';
@@ -20,7 +21,7 @@ class FlowApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
-      themeMode: ThemeMode.system,
+      themeMode: ref.watch(themeModeProvider), // Settings › Appearance
       routerConfig: ref.watch(appRouterProvider),
       scrollBehavior: const FlowScrollBehavior(),
       // kDevBuild is const: in release this branch and DevShell are compiled out.

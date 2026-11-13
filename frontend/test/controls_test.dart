@@ -13,7 +13,7 @@ Widget _host(Widget child) => MaterialApp(
 
 void main() {
   testWidgets('dial: arrow keys step 5 min and stop at the limits', (t) async {
-    var m = 175;
+    var m = DurationDial.healthyMax - 5; // 235: one step below the 4 h limit
     await t.pumpWidget(
       StatefulBuilder(
         builder: (c, set) => _host(DurationDial(minutes: m, onChanged: (v) => set(() => m = v))),
@@ -25,13 +25,13 @@ void main() {
     await t.pump();
     await t.sendKeyEvent(LogicalKeyboardKey.arrowUp);
     await t.pumpAndSettle();
-    expect(m, 180);
+    expect(m, 240);
     await t.sendKeyEvent(LogicalKeyboardKey.arrowUp); // at max: refused, stays
     await t.pumpAndSettle();
-    expect(m, 180);
+    expect(m, 240);
     await t.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await t.pumpAndSettle();
-    expect(m, 175);
+    expect(m, 235);
   });
 
   testWidgets('drum wheel: clicking the built-in ends steps once', (t) async {
